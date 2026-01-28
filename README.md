@@ -1,1 +1,1 @@
-# Gr3_Franchise_ChoiCoffee
+# Franchise Choi Coffee – ReactJS

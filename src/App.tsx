@@ -1,7 +1,8 @@
 import { Suspense } from "react"
-import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
 import ClientAuthRoutes from "./routes/client/ClientAuth.route"
 import { ClientPublicRoutes } from "./routes/client/ClientPublic.route"
+import AdminRoutes from "./routes/admin/Admin.route"
 import NotFoundPage from "./pages/NotFoundPage.page"
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
       <Suspense fallback = {<div>Loading...</div>}>
         <Routes>
            {/* Admin */}
+           {AdminRoutes}
 
           {/* Client */}
            {ClientAuthRoutes}

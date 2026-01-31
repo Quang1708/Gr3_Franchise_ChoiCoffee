@@ -4,11 +4,15 @@ import ClientAuthRoutes from "./routes/client/ClientAuth.route"
 import { ClientPublicRoutes } from "./routes/client/ClientPublic.route"
 import AdminRoutes from "./routes/admin/Admin.route"
 import NotFoundPage from "./pages/NotFoundPage.page"
+import { Toaster } from "sonner"
+
+import { AdminAuthRoutes } from "./routes/admin/AdminAuth.route"
 
 function App() {
 
   return (
     <BrowserRouter>
+      <Toaster position="top-right" />
       <Suspense fallback = {<div>Loading...</div>}>
         <Routes>
            {/* Admin */}

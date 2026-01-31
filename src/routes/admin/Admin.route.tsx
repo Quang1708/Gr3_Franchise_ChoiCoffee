@@ -12,23 +12,26 @@ import ProductPage from "../../pages/admin/product";
 import UserPage from "../../pages/admin/user";
 import SettingsPage from "../../pages/admin/settings";
 import LogoutPage from "../../pages/admin/logout";
+import AdminGuard from "../guard/AdminGuard.route";
 import ROUTER_URL from "../router.const";
 
 const AdminRoutes = (
-  <Route path={ROUTER_URL.ADMIN} element={<AdminLayout />}>
-    <Route index element={<DashboardPage />} />
-    <Route path="dashboard" element={<DashboardPage />} />
-    <Route path="category" element={<CategoryPage />} />
-    <Route path="customer" element={<CustomerPage />} />
-    <Route path="franchise" element={<FranchisePage />} />
-    <Route path="inventory" element={<InventoryPage />} />
-    <Route path="loyalty" element={<LoyaltyPage />} />
-    <Route path="order" element={<OrderPage />} />
-    <Route path="payment" element={<PaymentPage />} />
-    <Route path="product" element={<ProductPage />} />
-    <Route path="user" element={<UserPage />} />
-    <Route path="settings" element={<SettingsPage />} />
-    <Route path="logout" element={<LogoutPage />} />
+  <Route path={ROUTER_URL.ADMIN} element={<AdminGuard />}>
+    <Route element={<AdminLayout />}>
+      <Route index element={<DashboardPage />} />
+      <Route path="dashboard" element={<DashboardPage />} />
+      <Route path="category" element={<CategoryPage />} />
+      <Route path="customer" element={<CustomerPage />} />
+      <Route path="franchise" element={<FranchisePage />} />
+      <Route path="inventory" element={<InventoryPage />} />
+      <Route path="loyalty" element={<LoyaltyPage />} />
+      <Route path="order" element={<OrderPage />} />
+      <Route path="payment" element={<PaymentPage />} />
+      <Route path="product" element={<ProductPage />} />
+      <Route path="user" element={<UserPage />} />
+      <Route path="settings" element={<SettingsPage />} />
+      <Route path="logout" element={<LogoutPage />} />
+    </Route>
   </Route>
 );
 

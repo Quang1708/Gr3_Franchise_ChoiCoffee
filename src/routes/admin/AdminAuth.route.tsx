@@ -9,8 +9,9 @@ const ResetPasswordPage = React.lazy(() => import("../../pages/admin/auth/ResetP
 
 export const AdminAuthRoutes = (
   <>
-    <Route path={ROUTER_URL.ADMIN_ROUTER.LOGIN} element={<AdminLoginPage />} />
+    <Route path={ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN} element={<AdminLoginPage />} />
     <Route path={ROUTER_URL.ADMIN_ROUTER.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
     <Route path={ROUTER_URL.ADMIN_ROUTER.RESET_PASSWORD} element={<ResetPasswordPage />} />
   </>
 );
+  

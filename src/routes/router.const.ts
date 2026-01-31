@@ -9,6 +9,7 @@ const ROUTER_URL = {
     CLIENT: `/client`,
 
     ADMIN: `/admin`,
+    ADMIN_ROUTER: {
     ADMIN_DASHBOARD: `/admin/dashboard`,
     ADMIN_CATEGORY: `/admin/category`,
     ADMIN_CUSTOMER: `/admin/customer`,
@@ -22,6 +23,9 @@ const ROUTER_URL = {
     ADMIN_SETTINGS: `/admin/settings`,
     ADMIN_LOGOUT: `/admin/logout`,
     ADMIN_LOGIN: `/admin/login`,
+    FORGOT_PASSWORD: `/admin/forgot-password`,
+    RESET_PASSWORD: `/admin/reset-password`,
+    }
 }
 
 export default ROUTER_URL;

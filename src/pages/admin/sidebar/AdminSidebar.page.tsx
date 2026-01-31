@@ -87,7 +87,7 @@ const AdminSidebar = () => {
   const location = useLocation();
 
   return (
-    <div className="w-full">
+    <div className="w-full min-w-0">
       <nav className="space-y-1">
         {menuItems.map((item) => {
           const isActive = location.pathname === `/admin/${item.path}` || 
@@ -96,16 +96,19 @@ const AdminSidebar = () => {
             <NavLink
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+              className={`flex items-center gap-0 group-hover:gap-3 px-2 group-hover:px-4 py-3.5 rounded-lg transition-all justify-center group-hover:justify-start min-w-0 ${
                 isActive
                   ? "bg-purple-100 text-purple-700"
                   : "text-gray-700 hover:bg-gray-50"
               }`}
+              title={item.label}
             >
-              <span className={isActive ? "text-purple-700" : "text-gray-600"}>
+              <span className={`shrink-0 flex items-center justify-center ${isActive ? "text-purple-700" : "text-gray-600"}`}>
                 {item.icon}
               </span>
-              <span className={`font-medium ${isActive ? "text-purple-700" : "text-gray-700"}`}>
+              <span className={`font-medium whitespace-nowrap overflow-hidden transition-all duration-300 ${
+                isActive ? "text-purple-700" : "text-gray-700"
+              } hidden group-hover:inline-block`}>
                 {item.label}
               </span>
             </NavLink>

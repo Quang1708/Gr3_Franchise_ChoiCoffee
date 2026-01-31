@@ -8,8 +8,8 @@ const AdminLayout = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 min-h-screen bg-gray-50 border-r border-gray-200 p-4">
-          <div className="bg-white rounded-lg shadow-sm p-4">
+        <aside className="group w-16 hover:w-64 min-h-screen bg-gray-50 border-r border-gray-200 p-2 group-hover:p-4 transition-all duration-300 ease-in-out">
+          <div className="bg-white rounded-lg shadow-sm p-3 group-hover:p-4 transition-all duration-300 overflow-hidden">
             <AdminSidebar />
           </div>
         </aside>

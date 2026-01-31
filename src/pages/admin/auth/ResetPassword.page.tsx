@@ -86,7 +86,7 @@ const ResetPasswordPage: React.FC = () => {
         </button>
         {success && <p className="text-xs text-green-600 mt-2 text-center">Mật khẩu đã được thay đổi thành công!</p>}
         <div className="w-full flex justify-end items-center mt-2">
-          <button type="button" className="text-xs text-black hover:text-gray-800 cursor-pointer" onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.LOGIN)}>Về đăng nhập</button>
+          <button type="button" className="text-xs text-black hover:text-gray-800 cursor-pointer" onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN)}>Về đăng nhập</button>
         </div>
       </form>
     </div>

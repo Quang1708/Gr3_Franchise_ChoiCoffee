@@ -41,8 +41,8 @@ const AdminLoginPage: React.FC = () => {
         setItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_ADMIN, foundUser);
         toastSuccess("Đăng nhập thành công!");
         setTimeout(() => {
-          navigate(ROUTER_URL.HOME);
-        }, 500);
+          navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD);
+        }, 1000);
       } else if (foundUser) {
         toastError("Tài khoản không có quyền truy cập admin!");
       } else {
@@ -50,7 +50,6 @@ const AdminLoginPage: React.FC = () => {
       }
     };
   return (
-    
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
       <form onSubmit={handleSubmit} className="w-full max-w-md flex flex-col items-center justify-center gap-2 p-10 bg-white shadow-2xl rounded-2xl font-inter border border-gray-100">
         <div className="flex flex-col items-center gap-1 w-full mb-2">

@@ -17,6 +17,12 @@ const ForgotPasswordPage: React.FC = () => {
       AdminForgotPasswordSchema.parse({ email });
       setError("");
       setSent(true);
+      const fakeToken = `demo.${btoa(email)}.${Date.now()}`;
+
+      navigate(
+        `${ROUTER_URL.ADMIN_ROUTER.VERIFY_TOKEN}?type=reset&token=${encodeURIComponent(fakeToken)}`,
+        { replace: true },
+      );
     } catch (err: unknown) {
       if (err instanceof ZodError) {
         setError(err.issues?.[0]?.message || "Có lỗi xảy ra");
@@ -29,13 +35,25 @@ const ForgotPasswordPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-      <form onSubmit={handleSubmit} className="w-full max-w-md flex flex-col items-center justify-center gap-2 p-10 bg-white shadow-2xl rounded-2xl font-inter border border-gray-100">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-md flex flex-col items-center justify-center gap-2 p-10 bg-white shadow-2xl rounded-2xl font-inter border border-gray-100"
+      >
         <div className="flex flex-col items-center gap-1 w-full mb-2">
-          <h1 className="text-2xl font-extrabold text-black tracking-tight">Quên mật khẩu</h1>
-          <span className="text-sm text-gray-700">Nhập email để nhận liên kết đặt lại mật khẩu</span>
+          <h1 className="text-2xl font-extrabold text-black tracking-tight">
+            Quên mật khẩu
+          </h1>
+          <span className="text-sm text-gray-700">
+            Nhập email để nhận liên kết đặt lại mật khẩu
+          </span>
         </div>
         <div className="w-full flex flex-col gap-0.5 mt-0">
-          <label className="text-xs text-[#8B8E98] font-semibold mb-1" htmlFor="email_field">Email</label>
+          <label
+            className="text-xs text-[#8B8E98] font-semibold mb-1"
+            htmlFor="email_field"
+          >
+            Email
+          </label>
           <div className="relative flex items-center w-full">
             <span className="absolute left-3">
               <Mail size={20} color="#222" />
@@ -46,7 +64,7 @@ const ForgotPasswordPage: React.FC = () => {
               name="email"
               type="text"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               className="input_field w-full h-10 pl-10 rounded-lg outline-none border border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50 shadow-sm transition-all"
               id="email_field"
               required
@@ -60,10 +78,22 @@ const ForgotPasswordPage: React.FC = () => {
         >
           <span>Gửi liên kết</span>
         </button>
-        {sent && <p className="text-xs text-green-600 mt-2 text-center">Liên kết đặt lại mật khẩu đã được gửi đến email của bạn.</p>}
-        {error && <p className="text-xs text-red-500 mt-2 text-center">{error}</p>}
+        {sent && (
+          <p className="text-xs text-green-600 mt-2 text-center">
+            Liên kết đặt lại mật khẩu đã được gửi đến email của bạn.
+          </p>
+        )}
+        {error && (
+          <p className="text-xs text-red-500 mt-2 text-center">{error}</p>
+        )}
         <div className="w-full flex justify-between items-center mt-2">
-          <button type="button" className="text-xs text-gray-400 hover:text-gray-800 cursor-pointer" onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN)}>Về đăng nhập</button>
+          <button
+            type="button"
+            className="text-xs text-gray-400 hover:text-gray-800 cursor-pointer"
+            onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN)}
+          >
+            Về đăng nhập
+          </button>
         </div>
       </form>
     </div>

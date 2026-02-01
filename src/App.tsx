@@ -15,7 +15,7 @@ function App() {
         <Routes>
           {/* Admin Auth */}
           {AdminAuthRoutes}
-            {AdminRoutes}
+          {AdminRoutes}
           {/* Client */}
           {ClientAuthRoutes}
           {ClientPublicRoutes}

@@ -1,12 +1,13 @@
 import React from "react";
 import { Outlet, Navigate } from "react-router-dom";
 import ROUTER_URL from "../router.const";
-import { getCurrentUser } from "../../utils/localStorage.util";
+import { getAdminToken, getCurrentUser } from "../../utils/localStorage.util";
 import { ROLE } from "../../models/role.model";
 
 const isAdminAuthenticated = () => {
   const user = getCurrentUser();
-  return Boolean(user && user.role === ROLE.ADMIN);
+  const token = getAdminToken();
+  return Boolean(user && user.role === ROLE.ADMIN && token);
 };
 
 const AdminGuard: React.FC = () => {

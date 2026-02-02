@@ -3,13 +3,11 @@ import { Mail, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import ROUTER_URL from "../../../../routes/router.const";
 import {
   AdminAuthSchema,
   type AdminAuthSchemaType,
 } from "./schema/AdminAuth.schema";
-
 import { toastSuccess, toastError } from "../../../../utils/toast.util";
 import { FAKE_ADMIN_USERS } from "../../../../mocks/dataUser.const";
 import { useAuthStore } from "../../../../stores/auth.store";
@@ -33,13 +31,10 @@ const AdminLoginPage: React.FC = () => {
     );
 
     if (foundUser && foundUser.role === "admin") {
-      
-
       // eslint-disable-next-line react-hooks/purity
       const fakeToken = `demo.${btoa(foundUser.email)}.${Date.now()}`;
       useAuthStore.getState().login(foundUser, fakeToken);
 
-      
       toastSuccess("Đăng nhập thành công!");
       setTimeout(() => {
         navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });

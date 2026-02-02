@@ -10,7 +10,7 @@ import AdminRoutes from "./routes/admin/Admin.route";
 function App() {
   return (
     <BrowserRouter>
-      <Toaster position="top-right" />
+      <Toaster richColors position="top-right" />
       <Suspense fallback={<div>Loading...</div>}>
         <Routes>
           {/* Admin Auth */}

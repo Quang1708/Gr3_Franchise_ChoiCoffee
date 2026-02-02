@@ -39,3 +39,15 @@ body{
   font-weight: 100 700;
   src: url(https://fonts.gstatic.com/s/materialsymbolsoutlined/v311/kJEPBvYX7BgnkSrUwT8OhrdQw4oELdPIeeII9v6oDMzBwG-RpA6RzaxHMPdY40KH8nGzv3fzfVJO1Q.woff2) format('woff2');
 }
+
+
+[data-sonner-toaster] {
+  --success-bg: #10b981;
+  --success-text: #ffffff;
+  --error-bg: #ef4444;
+  --error-text: #ffffff;
+  --warning-bg: #f59e0b; 
+  --warning-text: #ffffff;
+  --info-bg: #3b82f6;
+  --info-text: #ffffff;
+}

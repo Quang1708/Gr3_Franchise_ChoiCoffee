@@ -1,15 +1,22 @@
 const ROUTER_URL = {
-    HOME: "/",
-    ABOUT: `/about`,
-    CONTACT: `/contact`,
-    MENU : `/menu`,
-    MEMBER: `/member`,
-    FRANCHISE: `/franchise`,
-    
-    CLIENT: `/client`,
+  HOME: "/",
+  ABOUT: `/about`,
+  CONTACT: `/contact`,
+  MENU: `/menu`,
+  MEMBER: `/member`,
+  FRANCHISE: `/franchise`,
 
-    ADMIN: `/admin`,
-    ADMIN_ROUTER: {
+  CLIENT: `/client`,
+  CLIENT_ROUTER: {
+    LOGIN: `/client/login`,
+    REGISTER: `/client/register`,
+    PROFILE: `/client/profile`,
+    FORGOT_PASSWORD: `/client/forgot-password`,
+    VERIFY: `/client/verify`,
+  },
+
+  ADMIN: `/admin`,
+  ADMIN_ROUTER: {
     ADMIN_DASHBOARD: `/admin/dashboard`,
     ADMIN_CATEGORY: `/admin/category`,
     ADMIN_CUSTOMER: `/admin/customer`,
@@ -25,7 +32,7 @@ const ROUTER_URL = {
     ADMIN_LOGIN: `/admin/login`,
     FORGOT_PASSWORD: `/admin/forgot-password`,
     RESET_PASSWORD: `/admin/reset-password`,
-    }
-}
+  },
+};
 
 export default ROUTER_URL;

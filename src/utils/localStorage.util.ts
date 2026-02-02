@@ -35,3 +35,20 @@ export function getCurrentUserRole(): string | null {
 export function isUserLoggedIn(): boolean {
   return !!getCurrentUser();
 }
+
+// Client functions
+export function getCurrentClient(): User | null {
+  return getItemInLocalStorage<User>(LOCAL_STORAGE.ACCOUNT_CLIENT);
+}
+
+export function getCurrentClientId(): string | null {
+  return getCurrentClient()?.id ?? null;
+}
+
+export function getCurrentClientRole(): string | null {
+  return getCurrentClient()?.role ?? null;
+}
+
+export function isClientLoggedIn(): boolean {
+  return !!getCurrentClient();
+}

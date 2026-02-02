@@ -3,6 +3,7 @@ import { Route } from "react-router-dom";
 import ClientLayout from "../../layouts/client/Client.layout";
 import ClientLoginByGoogle from "@/pages/client/auth/login/ClientLoginByGoogle.page";
 import OrderPage from "../../pages/client/order";
+import OrderDetailPage from "../../pages/client/order/OrderDetail.index";
 import ROUTER_URL from "../router.const";
 
 const ClientLoginPage = React.lazy(
@@ -42,6 +43,10 @@ const ClientAuthRoutes = (
     <Route
       path={ROUTER_URL.CLIENT_ROUTER.LOGIN_BY_GOOGLE}
       element={<ClientLoginByGoogle />}
+    />
+    <Route
+      path={ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER_DETAIL}
+      element={<OrderDetailPage />}
     />
   </>
 );

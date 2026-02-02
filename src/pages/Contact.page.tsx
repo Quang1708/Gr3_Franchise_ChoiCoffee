@@ -1,14 +1,12 @@
-import React from 'react';
-
 const ContactPage = () => {
   return (
     <div className="flex-1 flex flex-col bg-white font-display overflow-x-hidden">
-
       <div className="relative w-full h-[250px] md:h-[400px] flex items-center justify-center overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center transition-transform duration-700"
           style={{
-            backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2070&auto=format&fit=crop")'
+            backgroundImage:
+              'linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=2070&auto=format&fit=crop")',
           }}
         ></div>
         <div className="relative z-10 text-center px-6 max-w-4xl">
@@ -16,18 +14,23 @@ const ContactPage = () => {
             Liên hệ với chúng tôi
           </h1>
           <p className="text-white/90 text-lg md:text-xl font-light max-w-xl mx-auto leading-relaxed">
-            Kết nối với ChoiCoffee để khởi đầu hành trình nhượng quyền bền vững và kiến tạo giá trị văn hóa cà phê Việt.
+            Kết nối với ChoiCoffee để khởi đầu hành trình nhượng quyền bền vững
+            và kiến tạo giá trị văn hóa cà phê Việt.
           </p>
         </div>
       </div>
 
       <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-6 py-10 md:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 items-start">
-
           <div className="flex flex-col order-2 lg:order-1">
             <div className="mb-8 text-center lg:text-left">
-              <h2 className="text-charcoal text-lg md:text-xl font-bold mb-3">Gửi yêu cầu tư vấn</h2>
-              <p className="text-clay text-sm md:text-base">Để lại thông tin, đội ngũ tư vấn chiến lược của chúng tôi sẽ liên hệ với bạn trong vòng 24 giờ làm việc.</p>
+              <h2 className="text-charcoal text-lg md:text-xl font-bold mb-3">
+                Gửi yêu cầu tư vấn
+              </h2>
+              <p className="text-clay text-sm md:text-base">
+                Để lại thông tin, đội ngũ tư vấn chiến lược của chúng tôi sẽ
+                liên hệ với bạn trong vòng 24 giờ làm việc.
+              </p>
             </div>
 
             <form className="space-y-5 md:space-y-6">
@@ -82,37 +85,56 @@ const ContactPage = () => {
 
           <div className="flex flex-col gap-6 order-1 lg:order-2">
             <div className="bg-white p-6 md:p-8 rounded-2xl border border-primary/10 shadow-sm">
-              <h3 className="text-xl md:text-xl font-bold mb-6 text-primary uppercase tracking-wider text-center lg:text-left">Thông tin liên hệ</h3>
+              <h3 className="text-xl md:text-xl font-bold mb-6 text-primary uppercase tracking-wider text-center lg:text-left">
+                Thông tin liên hệ
+              </h3>
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-primary text-xl md:text-2xl">location_on</span>
+                    <span className="material-symbols-outlined text-primary text-xl md:text-2xl">
+                      location_on
+                    </span>
                   </div>
                   <div className="flex flex-col">
-                    <p className="font-bold text-sm md:text-base mb-1">Trụ sở chính</p>
+                    <p className="font-bold text-sm md:text-base mb-1">
+                      Trụ sở chính
+                    </p>
                     <p className="text-clay text-xs md:text-sm leading-relaxed">
-                      FPT Software HCM - Lô T2, Đường D1, Khu Công Nghệ Cao, Quận 9, TP. Hồ Chí Minh
+                      FPT Software HCM - Lô T2, Đường D1, Khu Công Nghệ Cao,
+                      Quận 9, TP. Hồ Chí Minh
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-primary text-xl md:text-2xl">call</span>
+                    <span className="material-symbols-outlined text-primary text-xl md:text-2xl">
+                      call
+                    </span>
                   </div>
                   <div className="flex flex-col">
-                    <p className="font-bold text-sm md:text-base mb-1">Hotline tư vấn</p>
-                    <p className="text-clay text-xs md:text-sm">(+84) 243 768 9048 (24/7)</p>
+                    <p className="font-bold text-sm md:text-base mb-1">
+                      Hotline tư vấn
+                    </p>
+                    <p className="text-clay text-xs md:text-sm">
+                      (+84) 243 768 9048 (24/7)
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-primary text-xl md:text-2xl">mail</span>
+                    <span className="material-symbols-outlined text-primary text-xl md:text-2xl">
+                      mail
+                    </span>
                   </div>
                   <div className="flex flex-col">
-                    <p className="font-bold text-sm md:text-base mb-1">Email hợp tác</p>
-                    <p className="text-clay text-xs md:text-sm">franchise@choicoffee.vn</p>
+                    <p className="font-bold text-sm md:text-base mb-1">
+                      Email hợp tác
+                    </p>
+                    <p className="text-clay text-xs md:text-sm">
+                      franchise@choicoffee.vn
+                    </p>
                   </div>
                 </div>
               </div>

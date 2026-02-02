@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import ROUTER_URL from "../../../routes/router.const";
 import { AdminForgotPasswordSchema } from "./login/schema/AdminForgotReset.schema";
-import { FAKE_ADMIN_USERS } from "../../../consts/dataUser.const";
+import { FAKE_ADMIN_USERS } from "../../../mocks/dataUser.const";
 
 type FormValues = {
   email: string;

@@ -1,18 +1,18 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Settings, 
-  LogOut, 
-  Package, 
-  Users, 
-  Store, 
-  Boxes, 
-  Gift, 
-  ShoppingCart, 
-  CreditCard, 
+import {
+  LayoutDashboard,
+  Settings,
+  LogOut,
+  Package,
+  Users,
+  Store,
+  Boxes,
+  Gift,
+  ShoppingCart,
+  CreditCard,
   ShoppingBag,
   User,
-  Menu
+  Menu,
 } from "lucide-react";
 
 interface MenuItem {
@@ -28,15 +28,16 @@ const menuItems: MenuItem[] = [
     path: "dashboard",
   },
   {
-    icon: <ShoppingBag size={20} />,
-    label: "Products",
-    path: "product",
-  },
-  {
     icon: <Menu size={20} />,
     label: "Menu",
     path: "menu",
   },
+  {
+    icon: <ShoppingBag size={20} />,
+    label: "Products",
+    path: "product",
+  },
+
   {
     icon: <Package size={20} />,
     label: "Categories",
@@ -96,8 +97,9 @@ const AdminSidebar = () => {
     <div className="w-full min-w-0">
       <nav className="space-y-1">
         {menuItems.map((item) => {
-          const isActive = location.pathname === `/admin/${item.path}` || 
-                          (item.path === "dashboard" && location.pathname === "/admin");
+          const isActive =
+            location.pathname === `/admin/${item.path}` ||
+            (item.path === "dashboard" && location.pathname === "/admin");
           return (
             <NavLink
               key={item.path}
@@ -109,12 +111,16 @@ const AdminSidebar = () => {
               }`}
               title={item.label}
             >
-              <span className={`shrink-0 flex items-center justify-center ${isActive ? "text-purple-700" : "text-gray-600"}`}>
+              <span
+                className={`shrink-0 flex items-center justify-center ${isActive ? "text-purple-700" : "text-gray-600"}`}
+              >
                 {item.icon}
               </span>
-              <span className={`font-medium whitespace-nowrap overflow-hidden transition-all duration-300 ${
-                isActive ? "text-purple-700" : "text-gray-700"
-              } hidden group-hover:inline-block`}>
+              <span
+                className={`font-medium whitespace-nowrap overflow-hidden transition-all duration-300 ${
+                  isActive ? "text-purple-700" : "text-gray-700"
+                } hidden group-hover:inline-block`}
+              >
                 {item.label}
               </span>
             </NavLink>

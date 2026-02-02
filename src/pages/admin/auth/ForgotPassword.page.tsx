@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import ROUTER_URL from "../../../routes/router.const";
 import { AdminForgotPasswordSchema } from "./login/schema/AdminForgotReset.schema";
+import { FAKE_ADMIN_USERS } from "../../../consts/dataUser.const";
 
 type FormValues = {
   email: string;
@@ -17,6 +18,7 @@ const ForgotPasswordPage: React.FC = () => {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting, isSubmitSuccessful },
   } = useForm<FormValues>({
     resolver: zodResolver(AdminForgotPasswordSchema),
@@ -25,9 +27,23 @@ const ForgotPasswordPage: React.FC = () => {
   });
 
   const onSubmit = async (values: FormValues) => {
+    const email = values.email.trim().toLowerCase();
+
+    const exists = FAKE_ADMIN_USERS.some(
+      (u) => (u.email ?? "").trim().toLowerCase() === email,
+    );
+
+    if (!exists) {
+      setError("email", {
+        type: "manual",
+        message: "Email không tồn tại trong hệ thống.",
+      });
+      return;
+    }
+
     await new Promise((r) => setTimeout(r, 300));
     // eslint-disable-next-line react-hooks/purity
-    const fakeToken = `reset.${btoa(values.email)}.${Date.now()}`;
+    const fakeToken = `reset.${btoa(email)}.${Date.now()}`;
 
     navigate(
       `${ROUTER_URL.ADMIN_ROUTER.VERIFY_TOKEN}?type=reset&token=${encodeURIComponent(fakeToken)}`,
@@ -57,6 +73,7 @@ const ForgotPasswordPage: React.FC = () => {
           >
             Email
           </label>
+
           <div className="relative flex items-center w-full">
             <span className="absolute left-3">
               <Mail size={20} color="#222" />
@@ -90,7 +107,7 @@ const ForgotPasswordPage: React.FC = () => {
           <span>{isSubmitting ? "Đang gửi..." : "Gửi liên kết"}</span>
         </button>
 
-        {isSubmitSuccessful && (
+        {isSubmitSuccessful && !errors.email && (
           <p className="text-xs text-green-600 mt-2 text-center">
             Liên kết đặt lại mật khẩu đã được gửi đến email của bạn.
           </p>

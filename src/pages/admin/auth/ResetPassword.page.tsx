@@ -24,10 +24,18 @@ const ResetPasswordPage: React.FC = () => {
   const tokenFromSession = (
     getItemInSessionStorage<string>(SESSION_STORAGE.RESET_TOKEN) ?? ""
   ).trim();
-  const token = tokenFromSession || tokenFromUrl;
 
-  const tokenOk = useMemo(() => token.length >= 10, [token]);
+  const [effectiveToken, setEffectiveToken] = useState<string>(
+    () => tokenFromSession || tokenFromUrl,
+  );
+
+  const tokenOk = useMemo(
+    () => effectiveToken.trim().length >= 10,
+    [effectiveToken],
+  );
+
   const [bannerError, setBannerError] = useState("");
+  const [success, setSuccess] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(AdminResetPasswordSchema),
@@ -41,34 +49,43 @@ const ResetPasswordPage: React.FC = () => {
         SESSION_STORAGE.RESET_TOKEN,
         tokenFromUrl,
       );
+      setEffectiveToken(tokenFromUrl);
       navigate(ROUTER_URL.ADMIN_ROUTER.RESET_PASSWORD, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!tokenOk)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (success) {
+      setBannerError("");
+      return;
+    }
+    if (!tokenOk) {
       setBannerError(
         "Thiếu hoặc token không hợp lệ. Vui lòng yêu cầu gửi lại liên kết.",
       );
-    else setBannerError("");
-  }, [tokenOk]);
+    } else {
+      setBannerError("");
+    }
+  }, [tokenOk, success]);
 
   const onSubmit = async (values: FormValues) => {
     if (!tokenOk) {
-      toastError("Phiên reset không hợp lệ.");
+      toastError("Phiên reset không hợp lệ. Vui lòng gửi lại yêu cầu.");
       return;
     }
 
-    const res = await resetPassword(token, values.password);
+    const res = await resetPassword(effectiveToken, values.password);
     if (!res.ok) {
       toastError("Đổi mật khẩu thất bại.");
       return;
     }
 
+    setSuccess(true);
     toastSuccess("Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
-    removeItemInSessionStorage(SESSION_STORAGE.RESET_TOKEN);
+
     setTimeout(() => {
+      removeItemInSessionStorage(SESSION_STORAGE.RESET_TOKEN);
       navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, { replace: true });
     }, 900);
   };
@@ -91,8 +108,10 @@ const ResetPasswordPage: React.FC = () => {
         </div>
 
         <div className="mt-2 text-xs w-full">
-          <span className={tokenOk ? "text-green-600" : "text-red-600"}>
-            {tokenOk ? "Token hợp lệ ✅" : "Token không hợp lệ ❌"}
+          <span
+            className={tokenOk || success ? "text-green-600" : "text-red-600"}
+          >
+            {tokenOk || success ? "Token hợp lệ ✅" : "Token không hợp lệ ❌"}
           </span>
         </div>
 
@@ -119,7 +138,7 @@ const ResetPasswordPage: React.FC = () => {
               placeholder="Nhập mật khẩu mới"
               className="w-full h-10 pl-10 rounded-lg outline-none border border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50 shadow-sm transition-all"
               {...register("password")}
-              disabled={!tokenOk}
+              disabled={!tokenOk || formState.isSubmitting || success}
             />
           </div>
           {formState.errors.password?.message && (
@@ -146,7 +165,7 @@ const ResetPasswordPage: React.FC = () => {
               placeholder="Nhập lại mật khẩu"
               className="w-full h-10 pl-10 rounded-lg outline-none border border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50 shadow-sm transition-all"
               {...register("confirm")}
-              disabled={!tokenOk}
+              disabled={!tokenOk || formState.isSubmitting || success}
             />
           </div>
           {formState.errors.confirm?.message && (
@@ -157,14 +176,17 @@ const ResetPasswordPage: React.FC = () => {
         </div>
 
         <button
-          title="Đặt lại mật khẩu"
           type="submit"
-          disabled={!tokenOk || formState.isSubmitting}
+          disabled={!tokenOk || formState.isSubmitting || success}
           className={`w-full h-10 border-0 rounded-lg outline-none text-white mt-4 font-semibold shadow-lg transition
-            ${!tokenOk || formState.isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:bg-gray-800"}`}
+            ${!tokenOk || formState.isSubmitting || success ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:bg-gray-800"}`}
         >
           <span>
-            {formState.isSubmitting ? "Đang xử lý..." : "Đặt lại mật khẩu"}
+            {success
+              ? "Đã đổi mật khẩu"
+              : formState.isSubmitting
+                ? "Đang xử lý..."
+                : "Đặt lại mật khẩu"}
           </span>
         </button>
 

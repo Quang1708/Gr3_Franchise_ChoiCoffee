@@ -9,6 +9,7 @@ const ROUTER_URL = {
     CLIENT: `/client`,
     CLIENT_ROUTER: {
         PRODUCT_DETAIL: `/client/product/:productId`,
+        CLIENT_ORDER: `/client/order`,
     },
 
 

@@ -10,13 +10,10 @@ import {
   AdminAuthSchema,
   type AdminAuthSchemaType,
 } from "./schema/AdminAuth.schema";
-import {
-  setAdminToken,
-  setItemInLocalStorage,
-} from "../../../../utils/localStorage.util";
-import { LOCAL_STORAGE } from "../../../../consts/localstorage.const";
+
 import { toastSuccess, toastError } from "../../../../utils/toast.util";
 import { FAKE_ADMIN_USERS } from "../../../../mocks/dataUser.const";
+import { useAuthStore } from "../../../../stores/auth.store";
 
 const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -37,12 +34,13 @@ const AdminLoginPage: React.FC = () => {
     );
 
     if (foundUser && foundUser.role === "admin") {
-      setItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_ADMIN, foundUser);
+      
 
       // eslint-disable-next-line react-hooks/purity
       const fakeToken = `demo.${btoa(foundUser.email)}.${Date.now()}`;
-      setAdminToken(fakeToken);
+      useAuthStore.getState().login(foundUser, fakeToken);
 
+      
       toastSuccess("Đăng nhập thành công!");
       setTimeout(() => {
         navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });

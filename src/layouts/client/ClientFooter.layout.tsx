@@ -82,20 +82,20 @@ const ClientFooter = () => {
                 location_on
               </span>
               <span>
-                36 Đường Thanh Hoa, Thành Phố Thủ Đức, TP. Hồ Chí Minh
+                FPT Software HCM - Lô T2, Đường D1, Khu Công Nghệ Cao, Quận 9, TP. Hồ Chí Minh
               </span>
             </li>
             <li className="flex items-center gap-3">
               <span className="material-symbols-outlined text-primary">
                 call
               </span>
-              <span>038286068</span>
+              <span>(+84) 243 768 9048 (24/7)</span>
             </li>
             <li className="flex items-center gap-3">
               <span className="material-symbols-outlined text-primary">
                 mail
               </span>
-              <span>nhuongquyen@choicoffee.vn</span>
+              <span>franchise@choicoffee.vn</span>
             </li>
           </ul>
         </div>

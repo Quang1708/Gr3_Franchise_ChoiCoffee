@@ -1,13 +1,14 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ROUTER_URL from "../../../routes/router.const";
+import { removeItemInLocalStorage } from "../../../utils/localStorage.util";
+import { LOCAL_STORAGE } from "../../../consts/localstorage.const";
 
 const LogoutPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // TODO: Implement logout logic (clear tokens, etc.)
-    // For now, just redirect to home
+    removeItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_ADMIN);
     setTimeout(() => {
       navigate(ROUTER_URL.HOME);
     }, 1000);

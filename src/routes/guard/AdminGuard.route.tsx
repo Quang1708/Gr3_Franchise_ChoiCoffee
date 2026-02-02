@@ -10,7 +10,7 @@ const isAdminAuthenticated = () => {
 };
 
 const AdminGuard: React.FC = () => {
-  return isAdminAuthenticated() ? <Outlet /> : <Navigate to={ROUTER_URL.ADMIN_ROUTER.LOGIN} />;
+  return isAdminAuthenticated() ? <Outlet /> : <Navigate to={ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN} />;
 };
 
 export default AdminGuard;

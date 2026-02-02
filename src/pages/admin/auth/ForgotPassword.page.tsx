@@ -63,7 +63,7 @@ const ForgotPasswordPage: React.FC = () => {
         {sent && <p className="text-xs text-green-600 mt-2 text-center">Liên kết đặt lại mật khẩu đã được gửi đến email của bạn.</p>}
         {error && <p className="text-xs text-red-500 mt-2 text-center">{error}</p>}
         <div className="w-full flex justify-between items-center mt-2">
-          <button type="button" className="text-xs text-gray-400 hover:text-gray-800 cursor-pointer" onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.LOGIN)}>Về đăng nhập</button>
+          <button type="button" className="text-xs text-gray-400 hover:text-gray-800 cursor-pointer" onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN)}>Về đăng nhập</button>
         </div>
       </form>
     </div>

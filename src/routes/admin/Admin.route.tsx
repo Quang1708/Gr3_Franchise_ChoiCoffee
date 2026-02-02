@@ -1,5 +1,6 @@
 import { Route } from "react-router-dom";
 import AdminLayout from "../../layouts/admin/Admin.layout";
+import MenuPage from "../../pages/admin/menu";
 import DashboardPage from "../../pages/admin/dashboard";
 import CategoryPage from "../../pages/admin/category";
 import CustomerPage from "../../pages/admin/customer";
@@ -19,6 +20,7 @@ const AdminRoutes = (
   <Route path={ROUTER_URL.ADMIN} element={<AdminGuard />}>
     <Route element={<AdminLayout />}>
       <Route index element={<DashboardPage />} />
+      <Route path="menu" element={<MenuPage />} />
       <Route path="dashboard" element={<DashboardPage />} />
       <Route path="category" element={<CategoryPage />} />
       <Route path="customer" element={<CustomerPage />} />

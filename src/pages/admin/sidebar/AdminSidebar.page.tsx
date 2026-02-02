@@ -11,7 +11,8 @@ import {
   ShoppingCart, 
   CreditCard, 
   ShoppingBag,
-  User
+  User,
+  Menu
 } from "lucide-react";
 
 interface MenuItem {
@@ -30,6 +31,11 @@ const menuItems: MenuItem[] = [
     icon: <ShoppingBag size={20} />,
     label: "Products",
     path: "product",
+  },
+  {
+    icon: <Menu size={20} />,
+    label: "Menu",
+    path: "menu",
   },
   {
     icon: <Package size={20} />,

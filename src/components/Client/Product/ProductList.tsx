@@ -1,4 +1,4 @@
-import PRODUCTS from "../mock/Mock.Product";
+import PRODUCTS from "../../mock/Mock.Product";
 import ProductCard from "./ProductCard";
 
 type ProductListProps = {

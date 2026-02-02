@@ -8,7 +8,7 @@ import ROUTER_URL from "../../../../routes/router.const";
 import { setItemInLocalStorage } from "../../../../utils/localStorage.util";
 import { LOCAL_STORAGE } from "../../../../consts/localstorage.const";
 import { toastSuccess, toastError } from "../../../../utils/toast.util";
-import { FAKE_ADMIN_USERS } from "../../../../consts/dataUser.const";
+import { FAKE_ADMIN_USERS } from "../../../../mocks/dataUser.const";
 import { ROLE } from "../../../../models/role.model";
 
 const ClientLoginPage: React.FC = () => {
@@ -33,10 +33,9 @@ const ClientLoginPage: React.FC = () => {
     e.preventDefault();
     const result = ClientLoginSchema.safeParse(form);
     if (!result.success) {
-      const fieldErrors: { emailOrPhone?: string; password?: string } = {};
+      const fieldErrors: { email?: string; password?: string } = {};
       result.error.issues.forEach((err) => {
-        if (err.path[0] === "emailOrPhone")
-          fieldErrors.emailOrPhone = err.message;
+        if (err.path[0] === "email") fieldErrors.email = err.message;
         if (err.path[0] === "password") fieldErrors.password = err.message;
       });
       setErrors(fieldErrors);
@@ -192,7 +191,9 @@ const ClientLoginPage: React.FC = () => {
               <div className="flex justify-end">
                 <a
                   className="text-xs font-bold text-primary hover:text-wood-brown transition-colors cursor-pointer"
-                  onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN)}
+                  onClick={() =>
+                    navigate(ROUTER_URL.CLIENT_ROUTER.FORGOT_PASSWORD)
+                  }
                 >
                   Quên mật khẩu?
                 </a>
@@ -222,7 +223,7 @@ const ClientLoginPage: React.FC = () => {
 
             {/* Submit Button */}
             <button
-              className="w-full bg-[#e69019] hover:bg-[#e69019]/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-[#e69019]/20 transition-all flex items-center justify-center gap-3 group active:scale-[0.98]"
+              className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-3 group active:scale-[0.98] cursor-pointer"
               type="submit"
             >
               <span>Đăng nhập</span>

@@ -8,7 +8,12 @@ const ROUTER_URL = {
 
   CLIENT: `/client`,
   CLIENT_ROUTER: {
+    PRODUCT_DETAIL: `/client/product/:productId`,
+    CLIENT_ORDER: `/client/order`,
+    CART: `/client/cart`,
+    CHECKOUT: `/client/checkout`,
     LOGIN: `/client/login`,
+    LOGIN_BY_GOOGLE: `/client/login/google`,
     REGISTER: `/client/register`,
     PROFILE: `/client/profile`,
     FORGOT_PASSWORD: `/client/forgot-password`,
@@ -18,6 +23,7 @@ const ROUTER_URL = {
   ADMIN: `/admin`,
   ADMIN_ROUTER: {
     ADMIN_DASHBOARD: `/admin/dashboard`,
+    ADMIN_MENU: `/admin/menu`,
     ADMIN_CATEGORY: `/admin/category`,
     ADMIN_CUSTOMER: `/admin/customer`,
     ADMIN_FRANCHISE: `/admin/franchise`,
@@ -32,6 +38,7 @@ const ROUTER_URL = {
     ADMIN_LOGIN: `/admin/login`,
     FORGOT_PASSWORD: `/admin/forgot-password`,
     RESET_PASSWORD: `/admin/reset-password`,
+    VERIFY_TOKEN: "/admin/verify",
   },
 };
 

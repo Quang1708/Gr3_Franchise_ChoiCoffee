@@ -205,7 +205,7 @@ const ClientVerifyTokenPage: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-primary text-background-dark text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors mb-6 shadow-lg shadow-primary/20"
+                className="w-full flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-primary text-background-dark text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors mb-6 shadow-lg shadow-primary/20 cursor-pointer"
               >
                 <span className="truncate">Xác thực ngay</span>
               </button>

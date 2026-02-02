@@ -216,7 +216,7 @@ const ClientRegisterPage: React.FC = () => {
             {/* Submit Button */}
             <div className="pt-4">
               <button
-                className="w-full bg-[#e69019] hover:bg-[#e69019]/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-[#e69019]/20 transition-all flex items-center justify-center gap-3 group active:scale-[0.98]"
+                className="w-full bg-[#e69019] hover:bg-[#e69019]/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-[#e69019]/20 transition-all flex items-center justify-center gap-3 group active:scale-[0.98] cursor-pointer"
                 type="submit"
               >
                 <span className="text-sm uppercase tracking-widest">

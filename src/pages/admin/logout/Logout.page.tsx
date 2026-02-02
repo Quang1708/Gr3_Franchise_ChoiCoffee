@@ -1,16 +1,19 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ROUTER_URL from "../../../routes/router.const";
-import { removeItemInLocalStorage } from "../../../utils/localStorage.util";
-import { LOCAL_STORAGE } from "../../../consts/localstorage.const";
+import { clearAdminAuth } from "../../../utils/localStorage.util";
+import { removeItemInSessionStorage } from "../../../utils/sessionStorage.util";
+import { SESSION_STORAGE } from "../../../consts/sessionstorage.const";
 
 const LogoutPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    removeItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_ADMIN);
+    // clear auth + token + reset session
+    clearAdminAuth();
+    removeItemInSessionStorage(SESSION_STORAGE.RESET_TOKEN);
     setTimeout(() => {
-      navigate(ROUTER_URL.HOME);
+      navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN);
     }, 1000);
   }, [navigate]);
 

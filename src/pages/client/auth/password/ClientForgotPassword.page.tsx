@@ -139,7 +139,7 @@ const ClientForgotPasswordPage: React.FC = () => {
             </div>
 
             <button
-              className="w-full h-14 bg-primary hover:bg-primary/90 text-background-dark font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10"
+              className="w-full h-14 bg-primary hover:bg-primary/90 text-background-dark font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10 cursor-pointer"
               type="submit"
             >
               <span>Gửi yêu cầu</span>

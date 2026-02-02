@@ -1,7 +1,3 @@
-// SessionStorage helpers
-// - setItem: luôn stringify để đồng bộ
-// - getItem: nếu parse fail (do dữ liệu là string thuần) -> trả raw
-
 export function setItemInSessionStorage<T>(key: string, value: T): void {
   sessionStorage.setItem(key, JSON.stringify(value));
 }

@@ -3,106 +3,82 @@ import { Lock } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ROUTER_URL from "../../../routes/router.const";
 import { AdminResetPasswordSchema } from "./login/schema/AdminAuth.schema";
-import { ZodError } from "zod";
-import { toastSuccess, toastError } from "../../../utils/toast.util"; // ✅ dùng toast bạn đã có
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { toastError, toastSuccess } from "../../../utils/toast.util";
+import { SESSION_STORAGE } from "../../../consts/sessionstorage.const";
+import {
+  getItemInSessionStorage,
+  removeItemInSessionStorage,
+  setItemInSessionStorage,
+} from "../../../utils/sessionStorage.util";
+import { resetPassword } from "../../../services/adminAuth.service";
 
-const RESET_TOKEN_KEY = "RESET_TOKEN";
-
-// helper: đọc token session an toàn (hỗ trợ cả JSON stringify và raw string)
-function readResetTokenFromSession(): string {
-  const raw = sessionStorage.getItem(RESET_TOKEN_KEY);
-  if (!raw) return "";
-  try {
-    const parsed = JSON.parse(raw);
-    return typeof parsed === "string" ? parsed.trim() : "";
-  } catch {
-    return raw.trim();
-  }
-}
+type FormValues = { password: string; confirm: string };
 
 const ResetPasswordPage: React.FC = () => {
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
-
-  const navigate = useNavigate();
   const [params] = useSearchParams();
+  const navigate = useNavigate();
 
-  // ✅ fallback: nếu user mở thẳng link reset có ?token=...
   const tokenFromUrl = (params.get("token") ?? "").trim();
-
-  // ✅ ưu tiên token trong session
-  const tokenFromSession = readResetTokenFromSession();
-
-  // ✅ token cuối cùng để validate
+  const tokenFromSession = (
+    getItemInSessionStorage<string>(SESSION_STORAGE.RESET_TOKEN) ?? ""
+  ).trim();
   const token = tokenFromSession || tokenFromUrl;
 
-  // Prototype: đủ dài là OK
   const tokenOk = useMemo(() => token.length >= 10, [token]);
+  const [bannerError, setBannerError] = useState("");
 
-  // ✅ Nếu token nằm trên URL (mở link trực tiếp), ta cất vào session rồi làm sạch URL
+  const form = useForm<FormValues>({
+    resolver: zodResolver(AdminResetPasswordSchema),
+    defaultValues: { password: "", confirm: "" },
+    mode: "onSubmit",
+  });
+
   useEffect(() => {
     if (!tokenFromSession && tokenFromUrl.length >= 10) {
-      // lưu theo dạng JSON để thống nhất
-      sessionStorage.setItem(RESET_TOKEN_KEY, JSON.stringify(tokenFromUrl));
+      setItemInSessionStorage<string>(
+        SESSION_STORAGE.RESET_TOKEN,
+        tokenFromUrl,
+      );
       navigate(ROUTER_URL.ADMIN_ROUTER.RESET_PASSWORD, { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ Nếu thiếu token thật sự → báo lỗi (không tự xoá lỗi này khi gõ)
   useEffect(() => {
-    if (!tokenOk) {
-      setSuccess(false);
-      setError(
+    if (!tokenOk)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setBannerError(
         "Thiếu hoặc token không hợp lệ. Vui lòng yêu cầu gửi lại liên kết.",
       );
-    } else {
-      setError("");
-    }
+    else setBannerError("");
   }, [tokenOk]);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
+  const onSubmit = async (values: FormValues) => {
     if (!tokenOk) {
-      toastError("Phiên reset không hợp lệ. Vui lòng yêu cầu link mới.");
+      toastError("Phiên reset không hợp lệ.");
       return;
     }
 
-    try {
-      AdminResetPasswordSchema.parse({ password, confirm });
-
-      setError("");
-      setSuccess(true);
-
-      // ✅ Toast chuẩn (không lộ mật khẩu)
-      toastSuccess("Đổi mật khẩu thành công! Hãy đăng nhập bằng mật khẩu mới.");
-
-      // ✅ Token reset dùng 1 lần -> xoá
-      sessionStorage.removeItem(RESET_TOKEN_KEY);
-
-      setTimeout(() => {
-        navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, { replace: true });
-      }, 1200);
-    } catch (err: unknown) {
-      if (err instanceof ZodError) {
-        const msg = err.issues?.[0]?.message || "Có lỗi xảy ra";
-        setError(msg);
-        toastError(msg);
-      } else {
-        setError("Có lỗi xảy ra");
-        toastError("Có lỗi xảy ra");
-      }
-      setSuccess(false);
+    const res = await resetPassword(token, values.password);
+    if (!res.ok) {
+      toastError("Đổi mật khẩu thất bại.");
+      return;
     }
+
+    toastSuccess("Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
+    removeItemInSessionStorage(SESSION_STORAGE.RESET_TOKEN);
+    setTimeout(() => {
+      navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, { replace: true });
+    }, 900);
   };
 
+  const { register, handleSubmit, formState } = form;
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit(onSubmit)}
         className="w-full max-w-md flex flex-col items-center justify-center gap-2 p-10 bg-white shadow-2xl rounded-2xl font-inter border border-gray-100"
       >
         <div className="flex flex-col items-center gap-1 w-full mb-2">
@@ -112,16 +88,21 @@ const ResetPasswordPage: React.FC = () => {
           <span className="text-sm text-gray-700">
             Đặt lại mật khẩu cho tài khoản quản trị
           </span>
+        </div>
 
-          {/* Gợi ý token status (để demo rõ ràng) */}
-          <span
-            className={`text-xs mt-1 ${tokenOk ? "text-green-600" : "text-red-600"}`}
-          >
+        <div className="mt-2 text-xs w-full">
+          <span className={tokenOk ? "text-green-600" : "text-red-600"}>
             {tokenOk ? "Token hợp lệ ✅" : "Token không hợp lệ ❌"}
           </span>
         </div>
 
-        <div className="w-full flex flex-col gap-0.5 mt-0">
+        {bannerError && (
+          <p className="text-xs text-red-500 mt-2 text-center w-full">
+            {bannerError}
+          </p>
+        )}
+
+        <div className="w-full flex flex-col gap-0.5 mt-2">
           <label
             className="text-xs text-[#8B8E98] font-semibold mb-1"
             htmlFor="password_field"
@@ -129,25 +110,26 @@ const ResetPasswordPage: React.FC = () => {
             Mật khẩu mới
           </label>
           <div className="relative flex items-center w-full">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <span className="absolute left-3">
               <Lock size={20} color="#222" />
             </span>
             <input
-              placeholder="Nhập mật khẩu mới"
-              title="Mật khẩu mới"
-              name="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="input_field w-full h-10 pl-10 rounded-lg outline-none border border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50 shadow-sm transition-all text-gray-900 placeholder:text-gray-400 caret-gray-900"
               id="password_field"
-              required
-              disabled={!tokenOk} // thiếu token thì khóa input luôn cho rõ
+              type="password"
+              placeholder="Nhập mật khẩu mới"
+              className="w-full h-10 pl-10 rounded-lg outline-none border border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50 shadow-sm transition-all"
+              {...register("password")}
+              disabled={!tokenOk}
             />
           </div>
+          {formState.errors.password?.message && (
+            <span className="text-xs text-red-500 mt-1 block">
+              {formState.errors.password.message}
+            </span>
+          )}
         </div>
 
-        <div className="w-full flex flex-col gap-0.5 mt-0">
+        <div className="w-full flex flex-col gap-0.5 mt-2">
           <label
             className="text-xs text-[#8B8E98] font-semibold mb-1"
             htmlFor="confirm_field"
@@ -155,49 +137,38 @@ const ResetPasswordPage: React.FC = () => {
             Nhập lại mật khẩu
           </label>
           <div className="relative flex items-center w-full">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <span className="absolute left-3">
               <Lock size={20} color="#222" />
             </span>
             <input
-              placeholder="Nhập lại mật khẩu"
-              title="Nhập lại mật khẩu"
-              name="confirm"
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              className="input_field w-full h-10 pl-10 rounded-lg outline-none border border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50 shadow-sm transition-all text-gray-900 placeholder:text-gray-400 caret-gray-900"
               id="confirm_field"
-              required
+              type="password"
+              placeholder="Nhập lại mật khẩu"
+              className="w-full h-10 pl-10 rounded-lg outline-none border border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50 shadow-sm transition-all"
+              {...register("confirm")}
               disabled={!tokenOk}
             />
           </div>
-        </div>
-
-        <div className="min-h-[20px]">
-          {error && (
-            <p className="text-xs text-red-500 mt-2 text-center">{error}</p>
+          {formState.errors.confirm?.message && (
+            <span className="text-xs text-red-500 mt-1 block">
+              {formState.errors.confirm.message}
+            </span>
           )}
         </div>
 
         <button
           title="Đặt lại mật khẩu"
           type="submit"
-          disabled={!tokenOk || success}
-          className={`w-full h-10 border-0 rounded-lg outline-none text-white mt-2 font-semibold shadow-lg transition
-            ${!tokenOk || success ? "bg-gray-400 cursor-not-allowed" : "bg-black cursor-pointer hover:bg-gray-800"}`}
+          disabled={!tokenOk || formState.isSubmitting}
+          className={`w-full h-10 border-0 rounded-lg outline-none text-white mt-4 font-semibold shadow-lg transition
+            ${!tokenOk || formState.isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:bg-gray-800"}`}
         >
           <span>
-            {success ? "Đang chuyển về đăng nhập..." : "Đặt lại mật khẩu"}
+            {formState.isSubmitting ? "Đang xử lý..." : "Đặt lại mật khẩu"}
           </span>
         </button>
 
-        {success && (
-          <p className="text-xs text-green-600 mt-2 text-center">
-            Mật khẩu đã được thay đổi thành công!
-          </p>
-        )}
-
-        <div className="w-full flex justify-between items-center mt-2">
+        <div className="w-full flex justify-end items-center mt-2">
           <button
             type="button"
             className="text-xs text-black hover:text-gray-800 cursor-pointer"
@@ -205,16 +176,6 @@ const ResetPasswordPage: React.FC = () => {
           >
             Về đăng nhập
           </button>
-
-          {!tokenOk && (
-            <button
-              type="button"
-              className="text-xs text-black underline hover:text-gray-800"
-              onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.FORGOT_PASSWORD)}
-            >
-              Yêu cầu link mới
-            </button>
-          )}
         </div>
       </form>
     </div>

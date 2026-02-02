@@ -7,12 +7,13 @@ import {
   removeItemInSessionStorage,
   setItemInSessionStorage,
 } from "../../../utils/sessionStorage.util";
+import { verifyToken } from "../../../services/adminAuth.service";
 
 type VerifyStatus = "idle" | "loading" | "success" | "error";
 type VerifyType = "verify" | "reset";
 
 function normalizeType(v: string | null): VerifyType {
-  const t = (v ?? "verify").toLowerCase();
+  const t = (v ?? "verify").toLowerCase().trim();
   return t === "reset" ? "reset" : "verify";
 }
 
@@ -24,12 +25,9 @@ const AdminVerifyTokenPage: React.FC = () => {
   const type = normalizeType(params.get("type"));
 
   const [status, setStatus] = useState<VerifyStatus>("idle");
-  const [message, setMessage] = useState<string>("");
+  const [message, setMessage] = useState("");
 
-  // Prototype: chỉ cần token đủ dài, không ép JWT
   const tokenOk = useMemo(() => token.length >= 10, [token]);
-
-  // React StrictMode (dev) có thể chạy effect 2 lần -> dùng ref để tránh điều hướng 2 lần
   const ranRef = useRef(false);
 
   useEffect(() => {
@@ -48,66 +46,36 @@ const AdminVerifyTokenPage: React.FC = () => {
       setStatus("loading");
       setMessage("Đang xác thực token...");
 
-      try {
-        // PROTOTYPE: giả lập call API
-        await new Promise((r) => setTimeout(r, 800));
-
-        // giả lập token hết hạn nếu chứa chữ "expired"
-        if (token.toLowerCase().includes("expired")) {
-          throw new Error("expired");
-        }
-
-        setStatus("success");
-        setMessage("Xác thực thành công!");
-
-        // Điều hướng theo type
-        if (type === "reset") {
-          // ✅ Lưu token vào sessionStorage để trang Reset đọc (URL sạch)
-          removeItemInSessionStorage(SESSION_STORAGE.RESET_TOKEN);
-
-          // luôn lưu theo util (JSON.stringify)
-          setItemInSessionStorage<string>(SESSION_STORAGE.RESET_TOKEN, token);
-
-          // ✅ đọc lại theo util
-          const fromUtil = getItemInSessionStorage<string>(
-            SESSION_STORAGE.RESET_TOKEN,
-          );
-
-          // ✅ fallback đọc raw (trong trường hợp util bị lỗi hoặc dữ liệu cũ)
-          const raw = sessionStorage.getItem(SESSION_STORAGE.RESET_TOKEN);
-
-          // normalize: bóc ngoặc kép nếu raw là JSON string
-          const normalize = (v: unknown) => {
-            if (typeof v !== "string") return "";
-            const s = v.trim();
-            // nếu s = "\"demo...\"" => JSON.parse sẽ ra "demo..."
-            try {
-              const parsed = JSON.parse(s);
-              return typeof parsed === "string" ? parsed.trim() : s;
-            } catch {
-              return s;
-            }
-          };
-
-          const saved = normalize(fromUtil ?? raw ?? "");
-
-          if (!saved || saved !== token) {
-            setStatus("error");
-            setMessage("Không thể lưu token reset. Vui lòng thử lại.");
-            return;
-          }
-
-          setTimeout(() => {
-            navigate(ROUTER_URL.ADMIN_ROUTER.RESET_PASSWORD, { replace: true });
-          }, 700);
-        } else {
-          setTimeout(() => {
-            navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, { replace: true });
-          }, 900);
-        }
-      } catch {
+      const res = await verifyToken(token);
+      if (!res.ok) {
         setStatus("error");
         setMessage("Token đã hết hạn hoặc không hợp lệ. Vui lòng thử lại.");
+        return;
+      }
+
+      setStatus("success");
+      setMessage("Xác thực thành công!");
+
+      if (type === "reset") {
+        removeItemInSessionStorage(SESSION_STORAGE.RESET_TOKEN);
+        setItemInSessionStorage<string>(SESSION_STORAGE.RESET_TOKEN, token);
+
+        const saved = (
+          getItemInSessionStorage<string>(SESSION_STORAGE.RESET_TOKEN) ?? ""
+        ).trim();
+        if (!saved || saved !== token) {
+          setStatus("error");
+          setMessage("Không thể lưu token reset. Vui lòng thử lại.");
+          return;
+        }
+
+        setTimeout(() => {
+          navigate(ROUTER_URL.ADMIN_ROUTER.RESET_PASSWORD, { replace: true });
+        }, 700);
+      } else {
+        setTimeout(() => {
+          navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, { replace: true });
+        }, 900);
       }
     };
 

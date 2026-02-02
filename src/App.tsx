@@ -4,7 +4,7 @@ import ClientAuthRoutes from "./routes/client/ClientAuth.route";
 import { ClientPublicRoutes } from "./routes/client/ClientPublic.route";
 import NotFoundPage from "./pages/NotFoundPage.page";
 import { Toaster } from "sonner";
-import { AdminAuthRoutes } from "./routes/admin/AdminAuth.route";
+import AdminAuthRoutes from "./routes/admin/AdminAuth.route";
 import AdminRoutes from "./routes/admin/Admin.route";
 
 function App() {

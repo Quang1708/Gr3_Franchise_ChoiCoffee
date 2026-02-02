@@ -10,6 +10,8 @@ const ROUTER_URL = {
     CLIENT_ROUTER: {
         PRODUCT_DETAIL: `/client/product/:productId`,
         CLIENT_ORDER: `/client/order`,
+        CART: `/client/cart`,
+        CHECKOUT: `/client/checkout`,   
     },
 
 

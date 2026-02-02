@@ -6,6 +6,7 @@ import ContactPage from "../../pages/Contact.page";
 import AboutPage from "../../pages/About.page";
 import ClientProductPage from "../../pages/client/product/Product.page";
 import ProductDetailPage from "../../pages/client/product/ProductDetail.page";
+import CartPage from "../../pages/client/cart/Cart.page";
 
 export const ClientPublicRoutes = (
    <Route element = {<ClientLayout/>}>
@@ -14,6 +15,7 @@ export const ClientPublicRoutes = (
       <Route path={ROUTER_URL.CONTACT} element={<ContactPage />} />
       <Route path={ROUTER_URL.MENU} element={<ClientProductPage />} />
       <Route path={ROUTER_URL.CLIENT_ROUTER.PRODUCT_DETAIL} element={<ProductDetailPage />} />
+      <Route path={ROUTER_URL.CLIENT_ROUTER.CART} element={<CartPage />} />
    </Route>
 
 )

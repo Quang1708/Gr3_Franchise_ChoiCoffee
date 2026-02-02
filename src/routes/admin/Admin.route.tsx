@@ -6,6 +6,7 @@ import AdminGuard from "../guard/AdminGuard.route";
 import ROUTER_URL from "../router.const";
 
 const DashboardPage = React.lazy(() => import("../../pages/admin/dashboard"));
+const MenuPage = React.lazy(() => import("../../pages/admin/menu"));
 const CategoryPage = React.lazy(() => import("../../pages/admin/category"));
 const CustomerPage = React.lazy(() => import("../../pages/admin/customer"));
 const FranchisePage = React.lazy(() => import("../../pages/admin/franchise"));
@@ -32,6 +33,14 @@ const AdminRoutes = (
         element={
           <Suspense fallback={null}>
             <DashboardPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="menu"
+        element={
+          <Suspense fallback={null}>
+            <MenuPage />
           </Suspense>
         }
       />

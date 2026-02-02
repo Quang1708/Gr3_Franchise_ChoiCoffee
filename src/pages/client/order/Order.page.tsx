@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
 
     Calendar,
@@ -10,8 +11,11 @@ import {
 } from "lucide-react";
 import ClientHeader from "../../../layouts/client/ClientHeader.layout";
 import ClientFooter from "../../../layouts/client/ClientFooter.layout";
+import ROUTER_URL from "../../../routes/router.const";
+import { FAKE_ORDERS } from "../../../mocks/dataOder.const";
+import type { OrderData } from "../../../mocks/dataOder.const";
 
-// Mock data - thay thế bằng data thực từ API
+// Interface for display
 interface Order {
     id: string;
     orderCode: string;
@@ -21,69 +25,63 @@ interface Order {
     status: "processing" | "delivering" | "completed";
 }
 
-const mockOrders: Order[] = [
-    {
-        id: "1",
-        orderCode: "CC-ORD-99812",
-        orderDate: "24/05/2024",
-        orderTime: "14:30",
-        totalAmount: 5400000,
-        status: "processing"
-    },
-    {
-        id: "2",
-        orderCode: "CC-ORD-99750",
-        orderDate: "22/05/2024",
-        orderTime: "09:15",
-        totalAmount: 12850000,
-        status: "delivering"
-    },
-    {
-        id: "3",
-        orderCode: "CC-ORD-99602",
-        orderDate: "20/05/2024",
-        orderTime: "16:45",
-        totalAmount: 2100000,
-        status: "completed"
-    },
-    {
-        id: "4",
-        orderCode: "CC-ORD-99580",
-        orderDate: "18/05/2024",
-        orderTime: "11:20",
-        totalAmount: 8600000,
-        status: "completed"
-    },
-    {
-        id: "5",
-        orderCode: "CC-ORD-99415",
-        orderDate: "15/05/2024",
-        orderTime: "08:30",
-        totalAmount: 4200000,
-        status: "completed"
-    }
-];
-
 type OrderStatus = "all" | "processing" | "delivering" | "completed";
 
+// Helper function to map OrderData to Order
+const mapOrderDataToOrder = (orderData: OrderData): Order => {
+    const date = new Date(orderData.created_at);
+    const orderDate = date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const orderTime = date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+    // Calculate total amount from items
+    const totalAmount = orderData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    // Map status: Pending/Processing -> processing, Completed -> completed
+    // Note: "Cancelled" orders are filtered out, "Processing" can be considered as "delivering" in some cases
+    let status: "processing" | "delivering" | "completed";
+    if (orderData.status === "Completed") {
+        status = "completed";
+    } else if (orderData.status === "Processing") {
+        status = "processing";
+    } else {
+        status = "processing"; // Pending -> processing
+    }
+
+    return {
+        id: orderData.id,
+        orderCode: orderData.id,
+        orderDate,
+        orderTime,
+        totalAmount,
+        status
+    };
+};
+
+// Filter out cancelled orders and map to display format
+const orders: Order[] = FAKE_ORDERS
+    .filter(order => order.status !== "Cancelled")
+    .map(mapOrderDataToOrder);
+
 const OrderPage = () => {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<OrderStatus>("all");
-    const [searchQuery, setSearchQuery] = useState("");
+    const [searchQuery] = useState("");
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
 
-    // Filter orders based on active tab
-    const filteredOrders = mockOrders.filter(order => {
-        if (activeTab !== "all" && order.status !== activeTab) {
-            return false;
-        }
-        if (searchQuery && !order.orderCode.toLowerCase().includes(searchQuery.toLowerCase())) {
-            return false;
-        }
-        return true;
-    });
+    const filteredOrders = useMemo(() => {
+        return orders.filter(order => {
+            if (activeTab !== "all" && order.status !== activeTab) {
+                return false;
+            }
+            if (searchQuery && !order.orderCode.toLowerCase().includes(searchQuery.toLowerCase())) {
+                return false;
+            }
+            return true;
+        });
+    }, [activeTab, searchQuery]);
 
     // Pagination
     const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
@@ -91,12 +89,14 @@ const OrderPage = () => {
     const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage);
 
     // Calculate statistics
-    const stats = {
-        processing: mockOrders.filter(o => o.status === "processing").length,
-        delivering: mockOrders.filter(o => o.status === "delivering").length,
-        completed: mockOrders.filter(o => o.status === "completed").length,
-        monthlySpending: mockOrders.reduce((sum, o) => sum + o.totalAmount, 0)
-    };
+    const stats = useMemo(() => {
+        return {
+            processing: orders.filter(o => o.status === "processing").length,
+            delivering: orders.filter(o => o.status === "delivering").length,
+            completed: orders.filter(o => o.status === "completed").length,
+            monthlySpending: orders.reduce((sum, o) => sum + o.totalAmount, 0)
+        };
+    }, []);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat("vi-VN", {
@@ -332,7 +332,10 @@ const OrderPage = () => {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <div className="flex items-center">
-                                                            <button className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium">
+                                                            <button
+                                                                onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER_DETAIL.replace(':orderId', order.id))}
+                                                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+                                                            >
                                                                 <Eye size={16} />
                                                                 Xem chi tiết
                                                             </button>
@@ -385,7 +388,7 @@ const OrderPage = () => {
                                 </div>
                             )}
                         </div>
-                       
+
                     </main>
                 </div>
             </div>

@@ -1,92 +1,203 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Lock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ROUTER_URL from "../../../routes/router.const";
 import { AdminResetPasswordSchema } from "./login/schema/AdminAuth.schema";
-import { ZodError } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { toastError, toastSuccess } from "../../../utils/toast.util";
+import { SESSION_STORAGE } from "../../../consts/sessionstorage.const";
+import {
+  getItemInSessionStorage,
+  removeItemInSessionStorage,
+  setItemInSessionStorage,
+} from "../../../utils/sessionStorage.util";
+import { resetPassword } from "../../../services/adminAuth.service";
+
+type FormValues = { password: string; confirm: string };
 
 const ResetPasswordPage: React.FC = () => {
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
-
+  const [params] = useSearchParams();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    try {
-      AdminResetPasswordSchema.parse({ password, confirm });
-      setError("");
-      setSuccess(true);
-    } catch (err: unknown) {
-      if (err instanceof ZodError) {
-        setError(err.issues?.[0]?.message || "Có lỗi xảy ra");
-      } else {
-        setError("Có lỗi xảy ra");
-      }
-      setSuccess(false);
+  const tokenFromUrl = (params.get("token") ?? "").trim();
+  const tokenFromSession = (
+    getItemInSessionStorage<string>(SESSION_STORAGE.RESET_TOKEN) ?? ""
+  ).trim();
+
+  const [effectiveToken, setEffectiveToken] = useState<string>(
+    () => tokenFromSession || tokenFromUrl,
+  );
+
+  const tokenOk = useMemo(
+    () => effectiveToken.trim().length >= 10,
+    [effectiveToken],
+  );
+
+  const [bannerError, setBannerError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(AdminResetPasswordSchema),
+    defaultValues: { password: "", confirm: "" },
+    mode: "onSubmit",
+  });
+
+  useEffect(() => {
+    if (!tokenFromSession && tokenFromUrl.length >= 10) {
+      setItemInSessionStorage<string>(
+        SESSION_STORAGE.RESET_TOKEN,
+        tokenFromUrl,
+      );
+      setEffectiveToken(tokenFromUrl);
+      navigate(ROUTER_URL.ADMIN_ROUTER.RESET_PASSWORD, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (success) {
+      setBannerError("");
+      return;
+    }
+    if (!tokenOk) {
+      setBannerError(
+        "Thiếu hoặc token không hợp lệ. Vui lòng yêu cầu gửi lại liên kết.",
+      );
+    } else {
+      setBannerError("");
+    }
+  }, [tokenOk, success]);
+
+  const onSubmit = async (values: FormValues) => {
+    if (!tokenOk) {
+      toastError("Phiên reset không hợp lệ. Vui lòng gửi lại yêu cầu.");
+      return;
+    }
+
+    const res = await resetPassword(effectiveToken, values.password);
+    if (!res.ok) {
+      toastError("Đổi mật khẩu thất bại.");
+      return;
+    }
+
+    setSuccess(true);
+    toastSuccess("Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
+
+    setTimeout(() => {
+      removeItemInSessionStorage(SESSION_STORAGE.RESET_TOKEN);
+      navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, { replace: true });
+    }, 900);
   };
+
+  const { register, handleSubmit, formState } = form;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white">
-      <form onSubmit={handleSubmit} className="w-full max-w-md flex flex-col items-center justify-center gap-2 p-10 bg-white shadow-2xl rounded-2xl font-inter border border-gray-100">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="w-full max-w-md flex flex-col items-center justify-center gap-2 p-10 bg-white shadow-2xl rounded-2xl font-inter border border-gray-100"
+      >
         <div className="flex flex-col items-center gap-1 w-full mb-2">
-          <h1 className="text-3xl font-extrabold text-black tracking-tight">ChoiCoffee</h1>
-          <span className="text-sm text-gray-700">Đặt lại mật khẩu cho tài khoản quản trị</span>
+          <h1 className="text-3xl font-extrabold text-black tracking-tight">
+            ChoiCoffee
+          </h1>
+          <span className="text-sm text-gray-700">
+            Đặt lại mật khẩu cho tài khoản quản trị
+          </span>
         </div>
-        <div className="w-full flex flex-col gap-0.5 mt-0">
-          <label className="text-xs text-[#8B8E98] font-semibold mb-1" htmlFor="password_field">Mật khẩu mới</label>
+
+        <div className="mt-2 text-xs w-full">
+          <span
+            className={tokenOk || success ? "text-green-600" : "text-red-600"}
+          >
+            {tokenOk || success ? "Token hợp lệ ✅" : "Token không hợp lệ ❌"}
+          </span>
+        </div>
+
+        {bannerError && (
+          <p className="text-xs text-red-500 mt-2 text-center w-full">
+            {bannerError}
+          </p>
+        )}
+
+        <div className="w-full flex flex-col gap-0.5 mt-2">
+          <label
+            className="text-xs text-[#8B8E98] font-semibold mb-1"
+            htmlFor="password_field"
+          >
+            Mật khẩu mới
+          </label>
           <div className="relative flex items-center w-full">
             <span className="absolute left-3">
               <Lock size={20} color="#222" />
             </span>
             <input
-              placeholder="Nhập mật khẩu mới"
-              title="Mật khẩu mới"
-              name="password"
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="input_field w-full h-10 pl-10 rounded-lg outline-none border border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50 shadow-sm transition-all"
               id="password_field"
-              required
+              type="password"
+              placeholder="Nhập mật khẩu mới"
+              className="w-full h-10 pl-10 rounded-lg outline-none border border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50 shadow-sm transition-all"
+              {...register("password")}
+              disabled={!tokenOk || formState.isSubmitting || success}
             />
           </div>
+          {formState.errors.password?.message && (
+            <span className="text-xs text-red-500 mt-1 block">
+              {formState.errors.password.message}
+            </span>
+          )}
         </div>
-        <div className="w-full flex flex-col gap-0.5 mt-0">
-          <label className="text-xs text-[#8B8E98] font-semibold mb-1" htmlFor="confirm_field">Nhập lại mật khẩu</label>
+
+        <div className="w-full flex flex-col gap-0.5 mt-2">
+          <label
+            className="text-xs text-[#8B8E98] font-semibold mb-1"
+            htmlFor="confirm_field"
+          >
+            Nhập lại mật khẩu
+          </label>
           <div className="relative flex items-center w-full">
             <span className="absolute left-3">
               <Lock size={20} color="#222" />
             </span>
             <input
-              placeholder="Nhập lại mật khẩu"
-              title="Nhập lại mật khẩu"
-              name="confirm"
-              type="password"
-              value={confirm}
-              onChange={e => setConfirm(e.target.value)}
-              className="input_field w-full h-10 pl-10 rounded-lg outline-none border border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50 shadow-sm transition-all"
               id="confirm_field"
-              required
+              type="password"
+              placeholder="Nhập lại mật khẩu"
+              className="w-full h-10 pl-10 rounded-lg outline-none border border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50 shadow-sm transition-all"
+              {...register("confirm")}
+              disabled={!tokenOk || formState.isSubmitting || success}
             />
           </div>
+          {formState.errors.confirm?.message && (
+            <span className="text-xs text-red-500 mt-1 block">
+              {formState.errors.confirm.message}
+            </span>
+          )}
         </div>
-        <div className="min-h-[20px]">
-          {error && <p className="text-xs text-red-500 mt-2 text-center">{error}</p>}
-        </div>
+
         <button
-          title="Đặt lại mật khẩu"
           type="submit"
-          className="w-full h-10 border-0 bg-black rounded-lg outline-none text-white cursor-pointer mt-2 font-semibold shadow-lg hover:bg-gray-800 transition"
+          disabled={!tokenOk || formState.isSubmitting || success}
+          className={`w-full h-10 border-0 rounded-lg outline-none text-white mt-4 font-semibold shadow-lg transition
+            ${!tokenOk || formState.isSubmitting || success ? "bg-gray-400 cursor-not-allowed" : "bg-black hover:bg-gray-800"}`}
         >
-          <span>Đặt lại mật khẩu</span>
+          <span>
+            {success
+              ? "Đã đổi mật khẩu"
+              : formState.isSubmitting
+                ? "Đang xử lý..."
+                : "Đặt lại mật khẩu"}
+          </span>
         </button>
-        {success && <p className="text-xs text-green-600 mt-2 text-center">Mật khẩu đã được thay đổi thành công!</p>}
+
         <div className="w-full flex justify-end items-center mt-2">
-          <button type="button" className="text-xs text-black hover:text-gray-800 cursor-pointer" onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN)}>Về đăng nhập</button>
+          <button
+            type="button"
+            className="text-xs text-black hover:text-gray-800 cursor-pointer"
+            onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN)}
+          >
+            Về đăng nhập
+          </button>
         </div>
       </form>
     </div>

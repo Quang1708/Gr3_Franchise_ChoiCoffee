@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import PRODUCTS from "../../../components/mock/Mock.Product";
+import PRODUCTS from "../../../mocks/Mock.Product";
 import ProductSpecification from "../../../components/Client/Product/ProductSpecification";
 import ProductCard from "../../../components/Client/Product/ProductCard";
 

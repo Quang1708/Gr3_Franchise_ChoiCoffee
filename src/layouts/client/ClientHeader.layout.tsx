@@ -1,10 +1,11 @@
 import { ChevronDown, LogOut, UserRound } from "lucide-react";
 import ROUTER_URL from "../../routes/router.const";
 import MenuItemRender from "./partials/MenuItemRender";
-import { useState } from "react";
-
+import { useState} from "react";
+import { useNavigate } from "react-router-dom";
 const ClientHeader = () => {
   const [isProfileOpen, setIsProfileOpen] =  useState<boolean>(false);
+  const navigate = useNavigate();
   const MenuItem = [
     {
       id: "home",
@@ -44,8 +45,12 @@ const ClientHeader = () => {
     <header className="sticky top-0 w-full z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10">
       <div className="max-w mx-auto px-6 h-20 flex items-center justify-between">
         <a className="flex items-center gap-3" href="#">
-          <div className="size-10 rounded-full bg-primary flex items-center justify-center text-background-dark">
-            <span className="material-symbols-outlined font-bold">coffee</span>
+          <div className="size-10 rounded-full flex items-center justify-center text-background-dark">
+            <img
+              className=" rounded-full"
+              src ="src/assets/Logo/Logo.png"
+              alt ="Logo"
+            />
           </div>
           <div className="flex flex-col">
             <h1 className="text-xl font-extrabold tracking-tight text-primary leading-none">
@@ -64,7 +69,9 @@ const ClientHeader = () => {
         </nav>
 
         <div className="flex gap-2 border-l border-charcoal/10 dark:border-white/10 pl-6">
-          <button className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold min-w-0 px-2.5">
+          <button 
+          onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.CART)}
+          className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold min-w-0 px-2.5">
             <span className="material-symbols-outlined text-xl">
               shopping_cart
             </span>

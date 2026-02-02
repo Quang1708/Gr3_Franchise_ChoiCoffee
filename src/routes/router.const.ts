@@ -7,6 +7,11 @@ const ROUTER_URL = {
     FRANCHISE: `/franchise`,
     
     CLIENT: `/client`,
+    CLIENT_ROUTER: {
+        PRODUCT_DETAIL: `/client/product/:productId`,
+        CLIENT_ORDER: `/client/order`,
+    },
+
 
     ADMIN: `/admin`,
     ADMIN_ROUTER: {

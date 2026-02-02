@@ -15,7 +15,7 @@ import {
 } from "../../../../utils/localStorage.util";
 import { LOCAL_STORAGE } from "../../../../consts/localstorage.const";
 import { toastSuccess, toastError } from "../../../../utils/toast.util";
-import { FAKE_ADMIN_USERS } from "../../../../consts/dataUser.const";
+import { FAKE_ADMIN_USERS } from "../../../../mocks/dataUser.const";
 
 const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();

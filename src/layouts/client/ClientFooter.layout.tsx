@@ -5,21 +5,22 @@ const ClientFooter = () => {
       <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12">
         <div className="col-span-2">
           <div className="flex items-center gap-3 mb-6">
-            <div className="size-8 text-primary">
-              <svg
-                fill="none"
-                viewBox="0 0 48 48"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M24 4C25.7818 14.2173 33.7827 22.2182 44 24C33.7827 25.7818 25.7818 33.7827 24 44C22.2182 33.7827 14.2173 25.7818 4 24C14.2173 22.2182 22.2182 14.2173 24 4Z"
-                  fill="currentColor"
-                ></path>
-              </svg>
-            </div>
-            <h2 className="text-xl font-extrabold tracking-tight uppercase">
+            <div className="size-12 rounded-full flex items-center justify-center text-background-dark">
+            <img
+              className=" rounded-full"
+              src ="src/assets/Logo/Logo.png"
+              alt ="Logo"
+            />
+          </div>
+          <div>
+            <h1 className="text-xl text-primary font-extrabold tracking-tight">
               ChoiCoffee
-            </h2>
+            </h1>
+             <p className="text-[10px] text-slate-100 dark:text-[#b8ad9d] uppercase tracking-wider">
+              Heritage Coffee
+            </p>
+          </div>
+            
           </div>
           <p className="text-white/60 max-w-md mb-8 leading-relaxed">
             Hệ thống nhượng quyền cà phê chuyên nghiệp hàng đầu Việt Nam, tập

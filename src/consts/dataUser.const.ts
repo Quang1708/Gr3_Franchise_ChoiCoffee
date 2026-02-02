@@ -1,6 +1,6 @@
 import { ROLE } from "../models/role.model";
 
-// Fake user data for admin login
+
 export const FAKE_ADMIN_USERS = [
   {
     id: 1,

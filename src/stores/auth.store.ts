@@ -1,39 +1,37 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from "zustand";
 import { LOCAL_STORAGE } from "../consts/localstorage.const";
 import { getItemInLocalStorage, setItemInLocalStorage, removeItemInLocalStorage } from "../utils/localStorage.util";
-import type { User } from "../models/user.model";
 
-interface AuthState {
-  user: User | null;
-  isLoggedIn: boolean;
+type AuthState = {
+  user: any | null;
+  token: string | null;
   isInitialized: boolean;
-
-  login: (user: User) => void;
-  logout: () => void;
   hydrate: () => void;
-}
+  login: (user: any, token: string) => void;
+  logout: () => void;
+};
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  isLoggedIn: false,
+  token: null,
   isInitialized: false,
 
-  login: (user) => {
+  hydrate: () => {
+    const user = getItemInLocalStorage<any>(LOCAL_STORAGE.ACCOUNT_ADMIN);
+    const token = getItemInLocalStorage<string>(LOCAL_STORAGE.ADMIN_TOKEN);
+    set({ user: user ?? null, token: token ?? null, isInitialized: true });
+  },
+
+  login: (user, token) => {
     setItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_ADMIN, user);
-    set({ user, isLoggedIn: true });
+    setItemInLocalStorage(LOCAL_STORAGE.ADMIN_TOKEN, token);
+    set({ user, token, isInitialized: true });
   },
 
   logout: () => {
     removeItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_ADMIN);
-    set({ user: null, isLoggedIn: false });
-  },
-
-  hydrate: () => {
-    const user = getItemInLocalStorage<User>(LOCAL_STORAGE.ACCOUNT_ADMIN);
-    if (user) {
-      set({ user, isLoggedIn: true, isInitialized: true });
-    } else {
-      set({ isInitialized: true });
-    }
+    removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_TOKEN);
+    set({ user: null, token: null, isInitialized: true });
   },
 }));

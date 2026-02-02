@@ -20,6 +20,21 @@ export function removeItemInLocalStorage(key: string): void {
   localStorage.removeItem(key);
 }
 
+// ===== Token helpers =====
+// NOTE: token được lưu bằng setItemInLocalStorage -> JSON.stringify
+export function setAdminToken(token: string): void {
+  setItemInLocalStorage<string>(LOCAL_STORAGE.ADMIN_TOKEN, token);
+}
+
+export function getAdminToken(): string | null {
+  return getItemInLocalStorage<string>(LOCAL_STORAGE.ADMIN_TOKEN);
+}
+
+export function clearAdminAuth(): void {
+  removeItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_ADMIN);
+  removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_TOKEN);
+}
+
 export function getCurrentUser(): User | null {
   return getItemInLocalStorage<User>(LOCAL_STORAGE.ACCOUNT_ADMIN);
 }

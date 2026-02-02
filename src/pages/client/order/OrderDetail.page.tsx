@@ -8,7 +8,6 @@ import {
     Coffee,
     Truck,
     Flag,
-    Download,
     RotateCcw
 } from "lucide-react";
 import ClientHeader from "../../../layouts/client/ClientHeader.layout";
@@ -128,7 +127,7 @@ const mapOrderDataToOrderDetail = (orderData: OrderDataType): OrderDetail => {
             trackingNumber: `${orderData.id.slice(-6)}-AX-99`,
             note: orderData.note || "Không có ghi chú"
         },
-        products: orderData.items.map((item, index) => ({
+        products: orderData.items.map((item,) => ({
             id: item.id,
             name: item.name,
             category: "Sản phẩm",

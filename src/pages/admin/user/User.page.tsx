@@ -4,6 +4,7 @@ import { ROLE, type Role } from "../../../models/role.model";
 import { getCurrentUserRole } from "../../../utils/localStorage.util";
 import { toastSuccess, toastError } from "../../../utils/toast.util";
 import { updateUserRole } from "../../../services/user.service";
+import { FAKE_ADMIN_USERS } from "../../../mocks/dataUser.const";
 
 interface UserFormData {
   email: string;
@@ -13,30 +14,22 @@ interface UserFormData {
   avatarUrl?: string;
 }
 
+const initialUsers: User[] = FAKE_ADMIN_USERS.map((user) => ({
+  id: user.id.toString(),
+  email: user.email,
+  password: user.password_hash,
+  name: user.name,
+  role: user.role,
+  avatarUrl: user.avatar_url,
+  createdAt: user.created_at,
+  updatedAt: user.updated_at,
+}));
+
 const UserPage = () => {
   const currentUserRole = getCurrentUserRole();
   const canChangeRole = currentUserRole === ROLE.ADMIN;
 
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: "1",
-      email: "admin@choicoffee.com",
-      password: "********",
-      name: "Admin User",
-      role: ROLE.ADMIN,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: "2",
-      email: "manager@choicoffee.com",
-      password: "********",
-      name: "Manager User",
-      role: ROLE.MANAGER,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ]);
+  const [users, setUsers] = useState<User[]>(initialUsers);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -86,7 +79,7 @@ const UserPage = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (editingUser) {
@@ -125,7 +118,7 @@ const UserPage = () => {
   };
 
   const handleDelete = (userId: string) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa người dùng này?")) {
+    if (globalThis.confirm("Bạn có chắc chắn muốn xóa người dùng này?")) {
       setUsers(users.filter((user) => user.id !== userId));
     }
   };
@@ -187,10 +180,14 @@ const UserPage = () => {
       <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="user-search"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Tìm kiếm
             </label>
             <input
+              id="user-search"
               type="text"
               placeholder="Tìm theo tên hoặc email..."
               value={searchTerm}
@@ -199,10 +196,14 @@ const UserPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="user-role"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Lọc theo vai trò
             </label>
             <select
+              id="user-role"
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value as Role | "all")}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -361,10 +362,14 @@ const UserPage = () => {
             <form onSubmit={handleSubmit}>
               <div className="px-6 py-4 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="user-name"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Tên <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="user-name"
                     type="text"
                     required
                     value={formData.name}
@@ -376,10 +381,14 @@ const UserPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="user-email"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Email <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="user-email"
                     type="email"
                     required
                     value={formData.email}
@@ -391,11 +400,15 @@ const UserPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="user-password"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Mật khẩu {editingUser && "(Để trống nếu không đổi)"}
                     {!editingUser && <span className="text-red-500"> *</span>}
                   </label>
                   <input
+                    id="user-password"
                     type="password"
                     required={!editingUser}
                     value={formData.password}
@@ -411,10 +424,14 @@ const UserPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="user-role-form"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Vai trò <span className="text-red-500">*</span>
                   </label>
                   <select
+                    id="user-role-form"
                     required
                     value={formData.role}
                     onChange={(e) =>
@@ -429,10 +446,14 @@ const UserPage = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="user-avatar"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Avatar URL
                   </label>
                   <input
+                    id="user-avatar"
                     type="url"
                     value={formData.avatarUrl}
                     onChange={(e) =>

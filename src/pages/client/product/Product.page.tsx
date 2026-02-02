@@ -76,7 +76,6 @@ const ClientProductPage = ( ) => {
           </main>
         </div>
       </div>
-      x
     </>
   );
 }

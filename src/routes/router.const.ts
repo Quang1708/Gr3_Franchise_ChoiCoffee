@@ -16,6 +16,7 @@ const ROUTER_URL = {
     ADMIN: `/admin`,
     ADMIN_ROUTER: {
     ADMIN_DASHBOARD: `/admin/dashboard`,
+    ADMIN_MENU: `/admin/menu`,
     ADMIN_CATEGORY: `/admin/category`,
     ADMIN_CUSTOMER: `/admin/customer`,
     ADMIN_FRANCHISE: `/admin/franchise`,

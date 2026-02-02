@@ -1,4 +1,0 @@
-export const LOCAL_STORAGE = {
-  ACCOUNT_ADMIN: "ACCOUNT_ADMIN",
-  ADMIN_TOKEN: "ADMIN_TOKEN",
-} as const;

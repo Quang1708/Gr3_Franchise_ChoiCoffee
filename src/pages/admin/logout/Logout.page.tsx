@@ -13,7 +13,7 @@ const LogoutPage = () => {
     clearAdminAuth();
     removeItemInSessionStorage(SESSION_STORAGE.RESET_TOKEN);
     setTimeout(() => {
-      navigate(ROUTER_URL.HOME);
+      navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN);
     }, 1000);
   }, [navigate]);
 

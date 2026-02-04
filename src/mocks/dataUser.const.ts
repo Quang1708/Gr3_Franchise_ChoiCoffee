@@ -31,7 +31,7 @@ export const FAKE_ADMIN_USERS = [
   {
     id: 3,
     email: "customer@gmail.com",
-    password_hash: "customer123", 
+    password_hash: "123456", 
     name: "Customer ChoiCoffee",
     phone: "0900000003",
     avatar_url: "https://i.pravatar.cc/150?img=3",

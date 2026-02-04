@@ -7,6 +7,8 @@ export const ROLE = {
 
 export type Role = (typeof ROLE)[keyof typeof ROLE];
 
-export const isNonCustomerRole = (role: Role): role is Exclude<Role, "customer"> => {
+export const isNonCustomerRole = (
+  role: Role,
+): role is Exclude<Role, "customer"> => {
   return role !== ROLE.CUSTOMER;
 };

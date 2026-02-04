@@ -9,4 +9,4 @@ export type User = {
   avatarUrl?: string;
   createdAt: string;
   updatedAt: string;
-}
+};

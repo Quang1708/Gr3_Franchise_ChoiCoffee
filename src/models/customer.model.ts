@@ -1,9 +1,8 @@
-export interface User {
+export interface Customer {
   id: number;
-  email: string;
-  passwordHash: string;
-  name: string;
   phone: string;
+  email?: string;
+  name: string;
   avatarUrl?: string;
   isActive: boolean;
   isDeleted: boolean;

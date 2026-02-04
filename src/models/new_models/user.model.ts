@@ -11,12 +11,15 @@ export interface User {
   updatedAt: string;
 }
 
+export type RoleCode = "SUPER_ADMIN" | "FRANCHISE_MANAGER" | "STAFF";
+export type RoleScope = "GLOBAL" | "FRANCHISE";
+
 export interface Role {
   id: number;
-  code: string;
+  code: RoleCode;
   name: string;
   description?: string;
-  scope: "GLOBAL" | "FRANCHISE";
+  scope: RoleScope;
   isDeleted: boolean;
   createdAt: string;
   updatedAt: string;

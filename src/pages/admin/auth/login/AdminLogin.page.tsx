@@ -16,6 +16,40 @@ import {
   MOCK_USER_ROLES,
 } from "../../../../mocks/new_mocks/mockUser";
 import { useAuthStore } from "../../../../stores/auth.store";
+import type { RoleCode } from "../../../../models/new_models/user.model";
+
+const ADMIN_ROLE_CODE: RoleCode = "SUPER_ADMIN";
+
+type MockUser = (typeof MOCK_USERS)[number];
+type MockRole = (typeof MOCK_ROLES)[number];
+type MockUserRole = (typeof MOCK_USER_ROLES)[number];
+
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+const normalizePassword = (password: string) => password.trim();
+
+const isActiveUser = (user: MockUser) => user.isActive && !user.isDeleted;
+
+const isValidUserCredential = (
+  user: MockUser,
+  email: string,
+  password: string,
+) =>
+  normalizeEmail(user.email) === normalizeEmail(email) &&
+  isActiveUser(user) &&
+  user.passwordHash === normalizePassword(password);
+
+const getUserRoles = (userId: string | number) =>
+  MOCK_USER_ROLES.filter(
+    (ur) => String(ur.userId) === String(userId) && !ur.isDeleted,
+  );
+
+const getRoleById = (roleId: string | number): MockRole | undefined =>
+  MOCK_ROLES.find(
+    (role) => String(role.id) === String(roleId) && !role.isDeleted,
+  );
+
+const hasAdminRole = (userRoles: MockUserRole[]) =>
+  userRoles.some((ur) => getRoleById(ur.roleId)?.code === ADMIN_ROLE_CODE);
 
 const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -38,58 +72,42 @@ const AdminLoginPage: React.FC = () => {
       ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200 bg-red-50"
       : "border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50");
 
+  const setAuthError = (message: string) => {
+    setError("email", { type: "manual", message });
+    setError("password", { type: "manual", message });
+  };
+
   const onSubmit = async (values: AdminAuthSchemaType) => {
-    // 1. Find user by email
-    const foundUser = MOCK_USERS.find(
-      (u) =>
-        u.email === values.email &&
-        u.passwordHash === values.password &&
-        u.isActive &&
-        !u.isDeleted,
+    const foundUser = MOCK_USERS.find((user) =>
+      isValidUserCredential(user, values.email, values.password),
     );
 
-    if (foundUser) {
-      // 2. Check if user has SUPER_ADMIN role
-      const userRoles = MOCK_USER_ROLES.filter(
-        (ur) => ur.userId === foundUser.id && !ur.isDeleted,
-      );
-      const hasAdminRole = userRoles.some((ur) => {
-        const role = MOCK_ROLES.find((r) => r.id === ur.roleId && !r.isDeleted);
-        return role && role.code === "SUPER_ADMIN";
-      });
-
-      if (hasAdminRole) {
-        // eslint-disable-next-line react-hooks/purity
-        const fakeToken = `demo.${btoa(foundUser.email)}.${Date.now()}`;
-        useAuthStore.getState().login(foundUser, fakeToken);
-
-        toastSuccess("Đăng nhập thành công!");
-        clearErrors();
-        setTimeout(() => {
-          navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
-        }, 600);
-        return;
-      } else {
-        setError("email", {
-          type: "manual",
-          message: "Tài khoản không có quyền admin",
-        });
-        setError("password", {
-          type: "manual",
-          message: "Tài khoản không có quyền admin",
-        });
-        return;
-      }
+    if (!foundUser) {
+      setAuthError("Email hoặc mật khẩu không đúng");
+      return;
     }
 
-    setError("email", {
-      type: "manual",
-      message: "Email hoặc mật khẩu không đúng",
-    });
-    setError("password", {
-      type: "manual",
-      message: "Email hoặc mật khẩu không đúng",
-    });
+    const userRoles = getUserRoles(foundUser.id);
+    const isAdmin = hasAdminRole(userRoles);
+
+    if (!isAdmin) {
+      setAuthError("Tài khoản không có quyền admin");
+      return;
+    }
+
+    const userWithRole = {
+      ...foundUser,
+      role: "admin",
+      roleCode: ADMIN_ROLE_CODE,
+    };
+
+    // eslint-disable-next-line react-hooks/purity
+    const fakeToken = `demo.${btoa(foundUser.email)}.${Date.now()}`;
+    useAuthStore.getState().login(userWithRole, fakeToken);
+
+    toastSuccess("Đăng nhập thành công!");
+    clearErrors();
+    navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
   };
 
   return (

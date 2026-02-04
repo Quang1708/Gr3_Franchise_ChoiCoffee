@@ -1,23 +1,28 @@
 const ROUTER_URL = {
-    HOME: "/",
-    ABOUT: `/about`,
-    CONTACT: `/contact`,
-    MENU : `/menu`,
-    MEMBER: `/member`,
-    FRANCHISE: `/franchise`,
-    
-    CLIENT: `/client`,
-    CLIENT_ROUTER: {
-        PRODUCT_DETAIL: `/client/product/:productId`,
-        CLIENT_ORDER: `/client/order`,
-        CART: `/client/cart`,
-        CHECKOUT: `/client/checkout`,   
-        CLIENT_ORDER_DETAIL: `/client/order/:orderId`,
-    },
+  HOME: "/",
+  ABOUT: `/about`,
+  CONTACT: `/contact`,
+  MENU: `/menu`,
+  MEMBER: `/member`,
+  FRANCHISE: `/franchise`,
 
+  CLIENT: `/client`,
+  CLIENT_ROUTER: {
+    PRODUCT_DETAIL: `/client/product/:productId`,
+    CLIENT_ORDER: `/client/order`,
+    CART: `/client/cart`,
+    CHECKOUT: `/client/checkout`,
+    CLIENT_ORDER_DETAIL: `/client/order/:orderId`,
+    LOGIN: `/client/login`,
+    LOGIN_BY_GOOGLE: `/client/login/google`,
+    REGISTER: `/client/register`,
+    PROFILE: `/client/profile`,
+    FORGOT_PASSWORD: `/client/forgot-password`,
+    VERIFY: `/client/verify`,
+  },
 
-    ADMIN: `/admin`,
-    ADMIN_ROUTER: {
+  ADMIN: `/admin`,
+  ADMIN_ROUTER: {
     ADMIN_DASHBOARD: `/admin/dashboard`,
     ADMIN_MENU: `/admin/menu`,
     ADMIN_CATEGORY: `/admin/category`,
@@ -35,7 +40,7 @@ const ROUTER_URL = {
     FORGOT_PASSWORD: `/admin/forgot-password`,
     RESET_PASSWORD: `/admin/reset-password`,
     VERIFY_TOKEN: "/admin/verify",
-    }
-}
+  },
+};
 
 export default ROUTER_URL;

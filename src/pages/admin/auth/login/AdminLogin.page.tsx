@@ -10,7 +10,11 @@ import {
   type AdminAuthSchemaType,
 } from "./schema/AdminAuth.schema";
 import { toastSuccess } from "../../../../utils/toast.util";
-import { FAKE_ADMIN_USERS } from "../../../../mocks/dataUser.const";
+import {
+  MOCK_ROLES,
+  MOCK_USERS,
+  MOCK_USER_ROLES,
+} from "../../../../mocks/new_mocks/mockUser";
 import { useAuthStore } from "../../../../stores/auth.store";
 
 const AdminLoginPage: React.FC = () => {
@@ -35,32 +39,57 @@ const AdminLoginPage: React.FC = () => {
       : "border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50");
 
   const onSubmit = async (values: AdminAuthSchemaType) => {
-    const foundUser = FAKE_ADMIN_USERS.find(
-      (u) => u.email === values.email && u.password_hash === values.password,
+    // 1. Find user by email
+    const foundUser = MOCK_USERS.find(
+      (u) =>
+        u.email === values.email &&
+        u.passwordHash === values.password &&
+        u.isActive &&
+        !u.isDeleted,
     );
 
-    if (foundUser && foundUser.role === "admin") {
-      // eslint-disable-next-line react-hooks/purity
-      const fakeToken = `demo.${btoa(foundUser.email)}.${Date.now()}`;
-      useAuthStore.getState().login(foundUser, fakeToken);
-
-      toastSuccess("Đăng nhập thành công!");
-      clearErrors();
-      setTimeout(() => {
-        navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
-      }, 600);
-      return;
-    }
-
     if (foundUser) {
-      setError("email", { type: "manual", message: "Tài khoản không có quyền admin" });
-      setError("password", { type: "manual", message: "Tài khoản không có quyền admin" });
+      // 2. Check if user has SUPER_ADMIN role
+      const userRoles = MOCK_USER_ROLES.filter(
+        (ur) => ur.userId === foundUser.id && !ur.isDeleted,
+      );
+      const hasAdminRole = userRoles.some((ur) => {
+        const role = MOCK_ROLES.find((r) => r.id === ur.roleId && !r.isDeleted);
+        return role && role.code === "SUPER_ADMIN";
+      });
 
-      return;
+      if (hasAdminRole) {
+        // eslint-disable-next-line react-hooks/purity
+        const fakeToken = `demo.${btoa(foundUser.email)}.${Date.now()}`;
+        useAuthStore.getState().login(foundUser, fakeToken);
+
+        toastSuccess("Đăng nhập thành công!");
+        clearErrors();
+        setTimeout(() => {
+          navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
+        }, 600);
+        return;
+      } else {
+        setError("email", {
+          type: "manual",
+          message: "Tài khoản không có quyền admin",
+        });
+        setError("password", {
+          type: "manual",
+          message: "Tài khoản không có quyền admin",
+        });
+        return;
+      }
     }
 
-    setError("email", { type: "manual", message: "Email hoặc mật khẩu không đúng" });
-    setError("password", { type: "manual", message: "Email hoặc mật khẩu không đúng" });
+    setError("email", {
+      type: "manual",
+      message: "Email hoặc mật khẩu không đúng",
+    });
+    setError("password", {
+      type: "manual",
+      message: "Email hoặc mật khẩu không đúng",
+    });
   };
 
   return (

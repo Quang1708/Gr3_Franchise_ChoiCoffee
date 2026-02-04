@@ -4,7 +4,7 @@ const HomePage = () => {
   return (
     <div>
       <section className="relative w-full overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-40 py-8">
+        <div className="max-w mx-auto px-4 sm:px-6 lg:px-40 py-8">
           <div className="relative rounded-2xl overflow-hidden min-h-150 flex items-center bg-cover bg-center"
             data-alt="Interior of a modern ChoiCoffee shop with warm lighting and wooden furniture" 
             style={{backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.6)), url('https://lh3.googleusercontent.com/aida-public/AB6AXuATRRv2ZVajSaGD94NFN2QVtxBuEUc58-hn9bXRn5Ni_2E6sNaeXmI20wRKsopabiRZ0EYu8FdfXlRw_ezrPtr_7Be_iQ0SA0uYXAOV6S9B2GjK6R1af7muXnAVH1CPfcj81HIRa48bWl02CsEcS2ZQVaFEX1nkrVGMoED33cbbWRNXSfPGMGb7qiHGEBl40ikPr0dbjB7oDrihvPsgei4_-tYH9rMhGD0bIiPRqL5BvaF_gKwTmJzjPqBpShcXx49jzfv9rnd9KErT')"}}>
@@ -38,7 +38,7 @@ const HomePage = () => {
         </div>
       </section>
       <section className="py-20 bg-white dark:bg-background-dark">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-40">
+        <div className="max-w mx-auto px-4 sm:px-6 lg:px-40">
           <div className="mb-16">
             <h3 className="text-primary font-bold tracking-widest uppercase text-sm mb-3">Thế mạnh vượt trội</h3>
             <h2 className="text-3xl md:text-4xl font-black text-charcoal dark:text-white">Tại Sao Chọn ChoiCoffee?</h2>
@@ -80,7 +80,7 @@ const HomePage = () => {
       </section>
 
       <section className="py-20 bg-background-light dark:bg-zinc-950">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-40">
+        <div className="max-w mx-auto px-4 sm:px-6 lg:px-40">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-black text-charcoal dark:text-white">Mô Hình Nhượng Quyền</h2>
             <p className="mt-4 text-gray-500 max-w-xl mx-auto">Lựa chọn mô hình phù hợp với ngân sách và vị trí kinh doanh của bạn.</p>
@@ -146,7 +146,7 @@ const HomePage = () => {
         </div>
       </section>
       <section className="py-24 bg-white dark:bg-background-dark">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-40">
+        <div className="max-w mx-auto px-4 sm:px-6 lg:px-40">
           <div className="flex flex-col lg:flex-row items-center gap-16">
             <div className="flex-1">
               <h2 className="text-4xl font-black mb-6 leading-tight">

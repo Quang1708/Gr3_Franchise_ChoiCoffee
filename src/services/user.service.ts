@@ -14,7 +14,7 @@ const USE_MOCK_ROLE_API =
  */
 export async function updateUserRole(
   userId: string,
-  role: Role
+  role: Role,
 ): Promise<UpdateRoleResult> {
   if (USE_MOCK_ROLE_API) {
     await new Promise((r) => setTimeout(r, 300));

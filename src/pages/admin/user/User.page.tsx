@@ -96,8 +96,8 @@ const UserPage = () => {
                 password: formData.password || user.password,
                 updatedAt: new Date().toISOString(),
               }
-            : user
-        )
+            : user,
+        ),
       );
     } else {
       // Create new user
@@ -131,8 +131,8 @@ const UserPage = () => {
         prev.map((u) =>
           u.id === user.id
             ? { ...u, role: newRole, updatedAt: new Date().toISOString() }
-            : u
-        )
+            : u,
+        ),
       );
       toastSuccess("Cập nhật vai trò thành công");
     } else {

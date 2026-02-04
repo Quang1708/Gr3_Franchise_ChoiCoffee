@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 const AboutPage = () => {
   return (
@@ -62,8 +62,8 @@ const AboutPage = () => {
               { icon: 'groups', title: 'Cộng đồng', desc: 'Không gian lý tưởng để kết nối, giao lưu và lan tỏa những giá trị tích cực.' },
               { icon: 'local_cafe', title: 'Trải nghiệm', desc: 'Chăm chút từng chi tiết nhỏ để nâng tầm hành trình thưởng thức của bạn.' }
             ].map((item, idx) => (
-              <div key={idx} className="bg-white p-8 rounded-2xl border border-primary/10 shadow-sm hover:shadow-md transition-all flex items-center justify-center flex-col group">
-                <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <div key={idx} className="bg-white p-8 rounded-2xl border border-primary/10 shadow-sm hover:shadow-md transition-all flex items-center justify-center flex-col group hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-6 transition-transform">
                   <span className="material-symbols-outlined text-3xl">{item.icon}</span>
                 </div>
                 <h3 className="text-charcoal text-sm md:text-lg font-bold mb-3">{item.title}</h3>

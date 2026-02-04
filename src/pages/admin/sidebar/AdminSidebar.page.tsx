@@ -1,18 +1,17 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  Settings, 
-  LogOut, 
-  Package, 
-  Users, 
-  Store, 
-  Boxes, 
-  Gift, 
-  ShoppingCart, 
-  CreditCard, 
+import {
+  LayoutDashboard,
+  LogOut,
+  Package,
+  Users,
+  Store,
+  Boxes,
+  Gift,
+  ShoppingCart,
+  CreditCard,
   ShoppingBag,
   User,
-  Menu
+  Menu,
 } from "lucide-react";
 
 interface MenuItem {
@@ -28,15 +27,16 @@ const menuItems: MenuItem[] = [
     path: "dashboard",
   },
   {
-    icon: <ShoppingBag size={20} />,
-    label: "Products",
-    path: "product",
-  },
-  {
     icon: <Menu size={20} />,
     label: "Menu",
     path: "menu",
   },
+  {
+    icon: <ShoppingBag size={20} />,
+    label: "Products",
+    path: "product",
+  },
+
   {
     icon: <Package size={20} />,
     label: "Categories",
@@ -78,43 +78,49 @@ const menuItems: MenuItem[] = [
     path: "user",
   },
   {
-    icon: <Settings size={20} />,
-    label: "Settings",
-    path: "settings",
-  },
-  {
     icon: <LogOut size={20} />,
     label: "Logout",
     path: "logout",
   },
 ];
 
-const AdminSidebar = () => {
+type AdminSidebarProps = {
+  collapsed?: boolean;
+};
+
+const AdminSidebar = ({ collapsed = false }: AdminSidebarProps) => {
   const location = useLocation();
 
   return (
     <div className="w-full min-w-0">
-      <nav className="space-y-1">
+      <nav className="space-y-1.5">
         {menuItems.map((item) => {
-          const isActive = location.pathname === `/admin/${item.path}` || 
-                          (item.path === "dashboard" && location.pathname === "/admin");
+          const isActive =
+            location.pathname === `/admin/${item.path}` ||
+            (item.path === "dashboard" && location.pathname === "/admin");
           return (
             <NavLink
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-0 group-hover:gap-3 px-2 group-hover:px-4 py-3.5 rounded-lg transition-all justify-center group-hover:justify-start min-w-0 ${
+              className={`flex items-center rounded-lg min-w-0 transition-colors ${
+                collapsed ? "justify-center px-2 h-10" : "justify-start gap-3 px-3 h-10"
+              } ${
                 isActive
                   ? "bg-purple-100 text-purple-700"
-                  : "text-gray-700 hover:bg-gray-50"
+                  : "text-gray-700"
               }`}
               title={item.label}
             >
-              <span className={`shrink-0 flex items-center justify-center ${isActive ? "text-purple-700" : "text-gray-600"}`}>
+              <span
+                className={`shrink-0 flex items-center justify-center ${isActive ? "text-purple-700" : "text-gray-600"}`}
+              >
                 {item.icon}
               </span>
-              <span className={`font-medium whitespace-nowrap overflow-hidden transition-all duration-300 ${
-                isActive ? "text-purple-700" : "text-gray-700"
-              } hidden group-hover:inline-block`}>
+              <span
+                className={`font-medium whitespace-nowrap overflow-hidden transition-all duration-300 ${
+                  isActive ? "text-purple-700" : "text-gray-700"
+                } ${collapsed ? "hidden" : "inline-block"}`}
+              >
                 {item.label}
               </span>
             </NavLink>

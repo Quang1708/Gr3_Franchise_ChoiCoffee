@@ -12,6 +12,7 @@ const ROUTER_URL = {
         CLIENT_ORDER: `/client/order`,
         CART: `/client/cart`,
         CHECKOUT: `/client/checkout`,   
+        CLIENT_ORDER_DETAIL: `/client/order/:orderId`,
     },
 
 

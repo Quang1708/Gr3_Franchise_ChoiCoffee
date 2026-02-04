@@ -1,6 +1,9 @@
 import { useState } from "react";
 import type { User } from "../../../models/user.model";
 import { ROLE, type Role } from "../../../models/role.model";
+import { getCurrentUserRole } from "../../../utils/localStorage.util";
+import { toastSuccess, toastError } from "../../../utils/toast.util";
+import { updateUserRole } from "../../../services/user.service";
 import { FAKE_ADMIN_USERS } from "../../../mocks/dataUser.const";
 
 interface UserFormData {
@@ -23,6 +26,9 @@ const initialUsers: User[] = FAKE_ADMIN_USERS.map((user) => ({
 }));
 
 const UserPage = () => {
+  const currentUserRole = getCurrentUserRole();
+  const canChangeRole = currentUserRole === ROLE.ADMIN;
+
   const [users, setUsers] = useState<User[]>(initialUsers);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -114,6 +120,23 @@ const UserPage = () => {
   const handleDelete = (userId: string) => {
     if (globalThis.confirm("Bạn có chắc chắn muốn xóa người dùng này?")) {
       setUsers(users.filter((user) => user.id !== userId));
+    }
+  };
+
+  const handleRoleChange = async (user: User, newRole: Role) => {
+    if (user.role === newRole) return;
+    const result = await updateUserRole(user.id, newRole);
+    if (result.ok) {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id
+            ? { ...u, role: newRole, updatedAt: new Date().toISOString() }
+            : u
+        )
+      );
+      toastSuccess("Cập nhật vai trò thành công");
+    } else {
+      toastError(result.message);
     }
   };
 
@@ -250,13 +273,28 @@ const UserPage = () => {
                       <div className="text-sm text-gray-900">{user.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeColor(
-                          user.role
-                        )}`}
+                      <select
+                        value={user.role}
+                        disabled={!canChangeRole}
+                        onChange={(e) =>
+                          handleRoleChange(user, e.target.value as Role)
+                        }
+                        className={`min-w-[100px] px-2 py-1 text-xs font-semibold rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          canChangeRole
+                            ? "bg-white border-gray-300 cursor-pointer"
+                            : "bg-gray-100 border-gray-200 cursor-not-allowed opacity-75"
+                        } ${getRoleBadgeColor(user.role)}`}
+                        title={
+                          canChangeRole
+                            ? "Phân quyền (Change Role)"
+                            : "Chỉ admin mới có quyền đổi vai trò"
+                        }
                       >
-                        {user.role}
-                      </span>
+                        <option value={ROLE.ADMIN}>Admin</option>
+                        <option value={ROLE.MANAGER}>Manager</option>
+                        <option value={ROLE.STAFF}>Staff</option>
+                        <option value={ROLE.CUSTOMER}>Customer</option>
+                      </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(user.createdAt).toLocaleDateString("vi-VN")}
@@ -264,13 +302,33 @@ const UserPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => handleOpenModal(user)}
-                        className="text-blue-600 hover:text-blue-900 mr-4"
+                        disabled={!canChangeRole}
+                        title={
+                          canChangeRole
+                            ? "Sửa thông tin user"
+                            : "Chỉ admin mới có quyền sửa"
+                        }
+                        className={`mr-4 ${
+                          canChangeRole
+                            ? "text-blue-600 hover:text-blue-900"
+                            : "text-gray-400 cursor-not-allowed"
+                        }`}
                       >
                         Sửa
                       </button>
                       <button
                         onClick={() => handleDelete(user.id)}
-                        className="text-red-600 hover:text-red-900"
+                        disabled={!canChangeRole}
+                        title={
+                          canChangeRole
+                            ? "Xóa user"
+                            : "Chỉ admin mới có quyền xóa"
+                        }
+                        className={
+                          canChangeRole
+                            ? "text-red-600 hover:text-red-900"
+                            : "text-gray-400 cursor-not-allowed"
+                        }
                       >
                         Xóa
                       </button>

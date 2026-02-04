@@ -6,7 +6,7 @@ interface ProductMenuProps {
 }
 
 const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
-    
+
     const categories = [
         {
             id: 1,

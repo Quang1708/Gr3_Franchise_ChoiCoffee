@@ -169,7 +169,9 @@ const CartPage: React.FC = () => {
           <div className="w-full lg:w-1/3">
             <div className="bg-white border border-slate-100 rounded-lg shadow-sm p-6 sticky top-4">
               <h3 className="text-lg font-bold text-slate-800 mb-6 border-b pb-2 flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">receipt_long</span>
+                <span className="material-symbols-outlined text-primary">
+                  receipt_long
+                </span>
                 Thông tin đơn hàng
               </h3>
               <div className="space-y-4 mb-8">

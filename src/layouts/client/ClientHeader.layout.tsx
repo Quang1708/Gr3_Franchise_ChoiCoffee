@@ -1,10 +1,10 @@
 import { ChevronDown, LogOut, UserRound } from "lucide-react";
 import ROUTER_URL from "../../routes/router.const";
 import MenuItemRender from "./partials/MenuItemRender";
-import { useState} from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 const ClientHeader = () => {
-  const [isProfileOpen, setIsProfileOpen] =  useState<boolean>(false);
+  const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const MenuItem = [
     {
@@ -39,8 +39,6 @@ const ClientHeader = () => {
     },
   ];
 
-    
-    
   return (
     <header className="sticky top-0 w-full z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10">
       <div className="max-w mx-auto px-6 h-20 flex items-center justify-between">
@@ -48,8 +46,8 @@ const ClientHeader = () => {
           <div className="size-10 rounded-full flex items-center justify-center text-background-dark">
             <img
               className=" rounded-full"
-              src ="src/assets/Logo/Logo.png"
-              alt ="Logo"
+              src="src/assets/Logo/Logo.png"
+              alt="Logo"
             />
           </div>
           <div className="flex flex-col">
@@ -69,9 +67,10 @@ const ClientHeader = () => {
         </nav>
 
         <div className="flex gap-2 border-l border-charcoal/10 dark:border-white/10 pl-6">
-          <button 
-          onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.CART)}
-          className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold min-w-0 px-2.5">
+          <button
+            onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.CART)}
+            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold min-w-0 px-2.5"
+          >
             <span className="material-symbols-outlined text-xl">
               shopping_cart
             </span>
@@ -83,9 +82,10 @@ const ClientHeader = () => {
             <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
           </button>
           <div className="relative">
-            <button 
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="cursor-pointer flex items-center gap-2 p-1 pl-2 pr-1 rounded-full hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all">
+            <button
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className="cursor-pointer flex items-center gap-2 p-1 pl-2 pr-1 rounded-full hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all"
+            >
               <img
                 src={"https://i.pravatar.cc/300"}
                 alt="Avatar"
@@ -97,39 +97,39 @@ const ClientHeader = () => {
               />
             </button>
             {isProfileOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 animate-in fade-in slide-in-from-top-2">
-                  <div className="px-4 py-2 border-b border-gray-100 mb-1">
-                    <p className="text-sm font-semibold text-gray-800">
-                      A Nguyễn
-                    </p>
-                    <p className="text-xs text-gray-500 capitalize">
-                      {"Nguyễn Văn A"}
-                    </p>
-                  </div>
-
-                  <a
-                    href="/profile"
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#F27125]"
-                  >
-                    <UserRound size={16} /> Hồ sơ cá nhân
-                  </a>
-                                    <a
-                    href="/client/order"
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#F27125]"
-                  >
-                    <UserRound size={16} /> Đơn hàng
-                  </a>
-
-                  <div className="border-t border-gray-100 mt-1 pt-1">
-                    <button
-                      // onClick={() => navigate("/login")}
-                      className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                    >
-                      <LogOut size={16} /> Đăng xuất
-                    </button>
-                  </div>
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 animate-in fade-in slide-in-from-top-2">
+                <div className="px-4 py-2 border-b border-gray-100 mb-1">
+                  <p className="text-sm font-semibold text-gray-800">
+                    A Nguyễn
+                  </p>
+                  <p className="text-xs text-gray-500 capitalize">
+                    {"Nguyễn Văn A"}
+                  </p>
                 </div>
-              )}
+
+                <a
+                  onClick={() => navigate("/profile")}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#F27125]"
+                >
+                  <UserRound size={16} /> Hồ sơ cá nhân
+                </a>
+                <a
+                  onClick={() => navigate("/client/order")}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#F27125]"
+                >
+                  <UserRound size={16} /> Đơn hàng
+                </a>
+
+                <div className="border-t border-gray-100 mt-1 pt-1">
+                  <button
+                    // onClick={() => navigate("/login")}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut size={16} /> Đăng xuất
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <button className="md:hidden text-slate-900 dark:text-white">

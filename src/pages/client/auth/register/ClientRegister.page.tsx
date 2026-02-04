@@ -12,13 +12,14 @@ const ClientRegisterPage: React.FC = () => {
     fullName: "",
     phone: "",
     email: "",
-    region: "",
     password: "",
     confirmPassword: "",
   });
   const [errors, setErrors] = useState<
     Partial<Record<keyof ClientRegisterSchemaType, string>>
   >({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (
@@ -127,18 +128,18 @@ const ClientRegisterPage: React.FC = () => {
           </div>
 
           {/* Header */}
-          <div className="mb-10">
+          <div className="mb-2 text-center">
             <h1 className="text-3xl font-bold text-slate-900 mb-3">
               Đăng ký tài khoản
             </h1>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 text-sm text-left">
               Điền thông tin bên dưới để được chuyên viên tư vấn hỗ trợ sớm
               nhất.
             </p>
           </div>
 
           {/* Form */}
-          <form className="space-y-5" onSubmit={handleSubmit}>
+          <form noValidate className="space-y-3" onSubmit={handleSubmit}>
             {/* Full Name */}
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-[0.1em] text-gray-700 mb-2">
@@ -213,6 +214,62 @@ const ClientRegisterPage: React.FC = () => {
               )}
             </div>
 
+            {/* Password */}
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-[0.1em] text-gray-700 mb-2">
+                Mật khẩu
+              </label>
+              <div className="relative group">
+                <input
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-sm text-slate-900 focus:ring-1 focus:ring-[#e69019] focus:border-[#e69019] outline-none transition-all placeholder:text-gray-400"
+                  placeholder="Nhập mật khẩu của bạn"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                />
+                <span
+                  className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 text-[20px] group-focus-within:text-[#e69019] transition-colors cursor-pointer hover:text-[#e69019]"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? "visibility" : "visibility_off"}
+                </span>
+              </div>
+              {errors.password && (
+                <span className="text-xs text-red-500 ml-1 mt-1 block">
+                  {errors.password}
+                </span>
+              )}
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-[0.1em] text-gray-700 mb-2">
+                Xác nhận mật khẩu
+              </label>
+              <div className="relative group">
+                <input
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-sm text-slate-900 focus:ring-1 focus:ring-[#e69019] focus:border-[#e69019] outline-none transition-all placeholder:text-gray-400"
+                  placeholder="Nhập lại mật khẩu"
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                />
+                <span
+                  className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 text-[20px] group-focus-within:text-[#e69019] transition-colors cursor-pointer hover:text-[#e69019]"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? "visibility" : "visibility_off"}
+                </span>
+              </div>
+              {errors.confirmPassword && (
+                <span className="text-xs text-red-500 ml-1 mt-1 block">
+                  {errors.confirmPassword}
+                </span>
+              )}
+            </div>
+
             {/* Submit Button */}
             <div className="pt-4">
               <button
@@ -229,7 +286,7 @@ const ClientRegisterPage: React.FC = () => {
             </div>
 
             {/* Login Link */}
-            <div className="text-center pt-6">
+            <div className="text-center">
               <p className="text-sm text-gray-500">
                 Đã là thành viên?{" "}
                 <a

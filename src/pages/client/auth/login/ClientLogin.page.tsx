@@ -139,36 +139,34 @@ const ClientLoginPage: React.FC = () => {
           </div>
 
           {/* Form */}
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form noValidate className="space-y-4" onSubmit={handleSubmit}>
             {/* Email or Phone */}
-            <div className="space-y-6">
-              <label className="text-sm font-bold tracking-widest text-charcoal/80 ml-1">
+            <div>
+              <label className="block text-sm font-bold tracking-widest text-charcoal/80 ml-1 mb-2">
                 Email
               </label>
               <div className="relative group">
                 <input
                   className="w-full pl-4 pr-10 py-3 bg-neutral-soft border border-gray-100 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all text-charcoal font-medium shadow-sm text-sm"
                   placeholder="partner@example.com"
-                  type="text"
+                  type="email"
                   name="email"
                   value={form.email}
                   onChange={handleChange}
                 />
               </div>
               {errors.email && (
-                <span className="text-xs text-red-500 ml-1">
+                <span className="text-xs text-red-500 ml-1 mt-1 block">
                   {errors.email}
                 </span>
               )}
             </div>
 
             {/* Password */}
-            <div className="space-y-2">
-              <div className="ml-1">
-                <label className="text-sm font-bold tracking-widest text-charcoal/80 ml-1">
-                  Mật khẩu
-                </label>
-              </div>
+            <div>
+              <label className="block text-sm font-bold tracking-widest text-charcoal/80 ml-1 mb-2">
+                Mật khẩu
+              </label>
               <div className="relative group">
                 <input
                   className="w-full pl-4 pr-10 py-3 bg-neutral-soft border border-gray-100 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all text-charcoal font-medium shadow-sm text-sm"
@@ -184,11 +182,16 @@ const ClientLoginPage: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   <span className="material-symbols-outlined">
-                    {showPassword ? "visibility_off" : "visibility"}
+                    {showPassword ? "visibility" : "visibility_off"}
                   </span>
                 </button>
               </div>
-              <div className="flex justify-end">
+              {errors.password && (
+                <span className="text-xs text-red-500 ml-1 mt-1 block">
+                  {errors.password}
+                </span>
+              )}
+              <div className="flex justify-end mt-2">
                 <a
                   className="text-xs font-bold text-primary hover:text-wood-brown transition-colors cursor-pointer"
                   onClick={() =>
@@ -198,11 +201,6 @@ const ClientLoginPage: React.FC = () => {
                   Quên mật khẩu?
                 </a>
               </div>
-              {errors.password && (
-                <span className="text-xs text-red-500 ml-1">
-                  {errors.password}
-                </span>
-              )}
             </div>
 
             {/* Remember */}

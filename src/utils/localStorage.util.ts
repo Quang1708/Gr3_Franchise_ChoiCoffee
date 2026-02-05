@@ -1,4 +1,4 @@
-import type { User } from "../models/user.model";
+// import type { User } from "../models/user.model";
 import { LOCAL_STORAGE } from "../consts/localstorage.const";
 
 export function setItemInLocalStorage<T>(key: string, value: T): void {
@@ -20,31 +20,39 @@ export function removeItemInLocalStorage(key: string): void {
   localStorage.removeItem(key);
 }
 
-// ===== Token helpers =====
-// NOTE: token được lưu bằng setItemInLocalStorage -> JSON.stringify
 export function setAdminToken(token: string): void {
-  setItemInLocalStorage<string>(LOCAL_STORAGE.ADMIN_TOKEN, token);
+  setItemInLocalStorage<string>(LOCAL_STORAGE.CMS_TOKEN, token);
 }
 
 export function getAdminToken(): string | null {
-  return getItemInLocalStorage<string>(LOCAL_STORAGE.ADMIN_TOKEN);
+  return getItemInLocalStorage<string>(LOCAL_STORAGE.CMS_TOKEN);
 }
 
 export function clearAdminAuth(): void {
-  removeItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_ADMIN);
-  removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_TOKEN);
+  removeItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_CMS);
+  removeItemInLocalStorage(LOCAL_STORAGE.CMS_TOKEN);
 }
 
-export function getCurrentUser(): User | null {
-  return getItemInLocalStorage<User>(LOCAL_STORAGE.ACCOUNT_ADMIN);
+type UserWithRole = {
+  id: number;
+  email: string;
+  name: string;
+  phone: string;
+  avatar_url: string | null;
+  roles: { role_code: string; scope: string; franchise_id: number | null }[];
+};
+
+export function getCurrentUser(): UserWithRole | null {
+  return getItemInLocalStorage<UserWithRole>(LOCAL_STORAGE.ACCOUNT_CMS);
 }
 
-export function getCurrentUserId(): string | null {
+export function getCurrentUserId(): number | null {
   return getCurrentUser()?.id ?? null;
 }
 
 export function getCurrentUserRole(): string | null {
-  return getCurrentUser()?.role ?? null;
+  const user = getCurrentUser();
+  return user?.roles?.[0]?.role_code ?? null;
 }
 
 export function isUserLoggedIn(): boolean {
@@ -52,16 +60,17 @@ export function isUserLoggedIn(): boolean {
 }
 
 // Client functions
-export function getCurrentClient(): User | null {
-  return getItemInLocalStorage<User>(LOCAL_STORAGE.ACCOUNT_CLIENT);
+export function getCurrentClient(): UserWithRole | null {
+  return getItemInLocalStorage<UserWithRole>(LOCAL_STORAGE.ACCOUNT_CLIENT);
 }
 
-export function getCurrentClientId(): string | null {
+export function getCurrentClientId(): number | null {
   return getCurrentClient()?.id ?? null;
 }
 
 export function getCurrentClientRole(): string | null {
-  return getCurrentClient()?.role ?? null;
+  const user = getCurrentClient();
+  return user?.roles?.[0]?.role_code ?? null;
 }
 
 export function isClientLoggedIn(): boolean {

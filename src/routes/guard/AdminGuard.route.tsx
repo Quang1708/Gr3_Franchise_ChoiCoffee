@@ -12,7 +12,12 @@ const AdminGuard = () => {
 
   if (!isInitialized) return null;
 
-  if (!user || !token || user.role !== "admin") {
+  const roleCode =
+    typeof user?.role === "string"
+      ? user.role
+      : user?.role?.code ?? user?.roleCode;
+
+  if (!user || !token || (roleCode !== "admin" && roleCode !== "SUPER_ADMIN")) {
     return <Navigate to={ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN} replace />;
   }
 

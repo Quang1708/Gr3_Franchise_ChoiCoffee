@@ -5,7 +5,7 @@ export interface Franchise {
   logoUrl?: string;
   address: string;
   openedAt: string;
-  closedAt: string;
+  closedAt?: string;
   isActive: boolean;
   isDeleted: boolean;
   createdAt: string;

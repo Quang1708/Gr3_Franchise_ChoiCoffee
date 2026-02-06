@@ -3,7 +3,7 @@ import {
   CRUDTable,
   type Column,
 } from "../../../components/Admin/template/CRUD.template";
-import PRODUCTS from "../../../mocks/Mock.Product";
+import { PRODUCT_SEED_DATA } from "../../../mocks/product.seed";
 import type { Product } from "../../../models/product.model";
 import { toast } from "sonner";
 import {
@@ -14,7 +14,7 @@ import {
 
 const ProductPage = () => {
   // --- State ---
-  const [data, setData] = useState<Product[]>(PRODUCTS);
+  const [data, setData] = useState<Product[]>(PRODUCT_SEED_DATA);
 
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -34,21 +34,21 @@ const ProductPage = () => {
 
   const handleCreateSubmit = (newData: Partial<Product>) => {
     // Generate simple mock ID
-    const newId = `PROD-${Math.floor(Math.random() * 10000)}`;
+    const nextId = data.length > 0 ? Math.max(...data.map((p) => p.id)) + 1 : 1;
 
     const product: Product = {
-      id: newId,
+      id: nextId,
+      SKU: newData.SKU || `PROD-${nextId}`,
       name: newData.name!,
-      category: newData.category || "coffee-beans",
-      price: newData.price || 0,
-      originalPrice: newData.originalPrice || null,
-      unit: newData.unit || "unit",
-      stock: newData.stock || 0,
-      badge: null,
       image: newData.image || "",
-      isOutOfStock: newData.isOutOfStock || false,
       description: newData.description,
-      specifications: newData.specifications,
+      content: newData.content,
+      minPrice: newData.minPrice || 0,
+      maxPrice: newData.maxPrice || 0,
+      isActive: newData.isActive ?? true,
+      isDeleted: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     setData((prev) => [product, ...prev]);
@@ -71,11 +71,7 @@ const ProductPage = () => {
           ? {
               ...p,
               ...updatedData,
-              // Ensure specs are merged correctly if needed, or just replaced
-              specifications: {
-                ...p.specifications,
-                ...updatedData.specifications,
-              },
+              updatedAt: new Date().toISOString(),
             }
           : p,
       ),
@@ -101,18 +97,37 @@ const ProductPage = () => {
     setDeletingProduct(null);
   };
 
+  const handleStatusChange = (item: Product, newStatus: boolean) => {
+    setData((prev) =>
+      prev.map((p) =>
+        p.id === item.id
+          ? { ...p, isActive: newStatus, updatedAt: new Date().toISOString() }
+          : p,
+      ),
+    );
+    toast.success(
+      `Đã cập nhật trạng thái: ${newStatus ? "Hoạt động" : "Ngưng hoạt động"}`,
+    );
+  };
+
   // --- Configuration ---
   const columns: Column<Product>[] = [
     {
+      header: "SKU",
+      accessor: "SKU",
+      sortable: true,
+      className: "w-24 font-mono text-xs text-gray-500",
+    },
+    {
       header: "Sản phẩm",
       accessor: "name",
-      className: "min-w-[300px]",
+      className: "min-w-[250px]",
       sortable: true,
       render: (item) => (
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-lg border border-gray-100 overflow-hidden shrink-0">
+          <div className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden shrink-0 bg-gray-50 flex items-center justify-center text-xs text-gray-400">
             <img
-              src={item.image}
+              src={item.image || "https://placehold.co/100?text=No+Image"}
               alt={item.name}
               className="w-full h-full object-cover"
               onError={(e) => {
@@ -125,80 +140,58 @@ const ProductPage = () => {
             <div className="font-medium text-gray-900 line-clamp-1">
               {item.name}
             </div>
-            <div className="text-xs text-gray-500 flex items-center gap-2">
-              <span className="uppercase tracking-wider font-semibold text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">
-                {item.id}
-              </span>
-              <span>{item.category}</span>
-            </div>
           </div>
         </div>
       ),
     },
     {
-      header: "Giá bán",
-      accessor: "price",
+      header: "Giá tối thiểu",
+      accessor: "minPrice",
+      className: "w-32",
       sortable: true,
       render: (item) => (
-        <div className="flex flex-col">
-          <span className="font-semibold text-primary">
-            {new Intl.NumberFormat("vi-VN", {
-              style: "currency",
-              currency: "VND",
-            }).format(item.price)}
-          </span>
-          {item.originalPrice && (
-            <span className="text-xs text-gray-400 line-through">
-              {new Intl.NumberFormat("vi-VN", {
-                style: "currency",
-                currency: "VND",
-              }).format(item.originalPrice)}
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      header: "Tồn kho",
-      accessor: "stock",
-      sortable: true,
-      render: (item) => (
-        <div className="flex items-center gap-1">
-          <span
-            className={`font-medium ${
-              item.stock === 0 ? "text-red-500" : "text-gray-700"
-            }`}
-          >
-            {item.stock}
-          </span>
-          <span className="text-xs text-gray-500">{item.unit}</span>
-        </div>
-      ),
-    },
-    {
-      header: "Phân loại",
-      accessor: "category",
-      className: "hidden md:table-cell text-gray-500 capitalize",
-    },
-    {
-      header: "Trạng thái",
-      accessor: "isOutOfStock",
-      render: (item) => (
-        <span
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
-            !item.isOutOfStock
-              ? "bg-green-50 text-green-700 border-green-200"
-              : "bg-red-50 text-red-700 border-red-200"
-          }`}
-        >
-          {!item.isOutOfStock ? "Còn hàng" : "Hết hàng"}
+        <span className="font-medium text-gray-900">
+          {new Intl.NumberFormat("vi-VN", {
+            style: "currency",
+            currency: "VND",
+          }).format(item.minPrice)}
         </span>
       ),
+    },
+    {
+      header: "Giá tối đa",
+      accessor: "maxPrice",
+      className: "w-32",
+      sortable: true,
+      render: (item) => (
+        <span className="font-medium text-gray-900">
+          {new Intl.NumberFormat("vi-VN", {
+            style: "currency",
+            currency: "VND",
+          }).format(item.maxPrice)}
+        </span>
+      ),
+    },
+    {
+      header: "Mô tả",
+      accessor: "description",
+      className: "min-w-[200px] max-w-xs",
+      render: (item) => (
+        <p className="text-sm text-gray-500 truncate" title={item.description}>
+          {item.description || "---"}
+        </p>
+      ),
+    },
+    {
+      header: "Ngày cập nhật",
+      accessor: (item) => new Date(item.updatedAt).toLocaleDateString("vi-VN"),
+      sortable: true,
+      className: "text-gray-500 text-sm",
     },
   ];
 
   return (
-    <div className="p-6 transition-all animate-fade-in">
+    <div className="p-6 h-auto max-h-[calc(100vh-4rem)] flex flex-col transition-all animate-fade-in">
       <CRUDTable<Product>
         title="Quản lý Sản phẩm"
         data={data}
@@ -208,25 +201,18 @@ const ProductPage = () => {
         onAdd={handleAdd}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        // Status
+        statusField="isActive"
+        onStatusChange={handleStatusChange}
         // Search & Filter
-        searchKeys={["name", "category", "id"]}
+        searchKeys={["name", "SKU"]}
         filters={[
           {
-            key: "category",
-            label: "Danh mục",
-            options: [
-              { value: "coffee-beans", label: "Cà phê hạt" },
-              { value: "machines", label: "Máy móc" },
-              { value: "tools", label: "Dụng cụ" },
-              { value: "supplies", label: "Vật tư" },
-            ],
-          },
-          {
-            key: "isOutOfStock",
+            key: "isActive",
             label: "Trạng thái",
             options: [
-              { value: "false", label: "Còn hàng" },
-              { value: "true", label: "Hết hàng" },
+              { value: "true", label: "Hoạt động" },
+              { value: "false", label: "Ngưng hoạt động" },
             ],
           },
         ]}

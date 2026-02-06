@@ -90,7 +90,7 @@ const AdminLoginPage: React.FC = () => {
               </span>
               <input
                 type="text"
-                placeholder="name@example.com"
+                placeholder="Email"
                 className={getInputClass(Boolean(errors.email))}
                 {...register("email")}
               />

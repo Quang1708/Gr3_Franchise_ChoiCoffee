@@ -3,17 +3,19 @@ import {
   CRUDTable,
   type Column,
 } from "../../../components/Admin/template/CRUD.template";
-import { CATEGORIES } from "../../../mocks/dataCate.mock";
+
 import { toast } from "sonner";
 import type { Category } from "../../../models/category.model";
 import {
   CreateCategoryModal,
   EditCategoryModal,
   DeleteCategoryModal,
+  type CategoryFormData,
 } from "../../../components/Admin/category/CategoryModals";
+import { CATEGORY_SEED_DATA } from "@/mocks/category.seed";
 
 const CategoryPage = () => {
-  const [data, setData] = useState<Category[]>(CATEGORIES);
+  const [data, setData] = useState<Category[]>(CATEGORY_SEED_DATA);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -37,13 +39,13 @@ const CategoryPage = () => {
       className: "font-semibold",
     },
     {
-      header: "Mô tả",
-      accessor: "description",
-      className: "truncate max-w-xs text-gray-500 italic",
+      header: "Ngày tạo",
+      accessor: (item) => new Date(item.createdAt).toLocaleDateString("vi-VN"),
+      sortable: true,
     },
     {
-      header: "Ngày tạo",
-      accessor: (item) => new Date(item.created_at).toLocaleDateString("vi-VN"),
+      header: "Ngày cập nhật",
+      accessor: (item) => new Date(item.updatedAt).toLocaleDateString("vi-VN"),
       sortable: true,
     },
   ];
@@ -51,16 +53,20 @@ const CategoryPage = () => {
   // Create
   const handleCreateOpen = () => setIsCreateOpen(true);
 
-  const handleCreateSubmit = (newData: Partial<Category>) => {
+  const handleCreateSubmit = (newData: CategoryFormData) => {
+    // Determine the next ID
+    const nextId = data.length > 0 ? Math.max(...data.map((c) => c.id)) + 1 : 1;
+
     const category: Category = {
-      id: Math.max(...data.map((c) => c.id)) + 1,
-      code: newData.code!,
-      name: newData.name!,
+      id: nextId,
+      code: newData.code,
+      name: newData.name,
       description: newData.description || "",
-      is_active: newData.is_active || true,
-      is_deleted: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      // Map form's is_active to model's isActive
+      isActive: newData.is_active ?? true,
+      isDeleted: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     setData((prev) => [category, ...prev]);
@@ -74,13 +80,19 @@ const CategoryPage = () => {
     setIsEditOpen(true);
   };
 
-  const handleEditSubmit = (updatedData: Partial<Category>) => {
+  const handleEditSubmit = (updatedData: Partial<CategoryFormData>) => {
     if (!editingCategory) return;
 
     setData((prev) =>
       prev.map((c) =>
         c.id === editingCategory.id
-          ? { ...c, ...updatedData, updated_at: new Date().toISOString() }
+          ? {
+              ...c,
+              ...updatedData,
+              // Check specifically for undefined to allow false
+              isActive: updatedData.is_active ?? c.isActive,
+              updatedAt: new Date().toISOString(),
+            }
           : c,
       ),
     );
@@ -110,7 +122,7 @@ const CategoryPage = () => {
     setData((prev) =>
       prev.map((c) =>
         c.id === item.id
-          ? { ...c, is_active: newStatus, updated_at: new Date().toISOString() }
+          ? { ...c, isActive: newStatus, updatedAt: new Date().toISOString() }
           : c,
       ),
     );
@@ -120,7 +132,7 @@ const CategoryPage = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 h-auto max-h-[calc(100vh-4rem)] flex flex-col">
       <CRUDTable<Category>
         title="Quản lý Danh mục"
         data={data}
@@ -129,12 +141,12 @@ const CategoryPage = () => {
         onAdd={handleCreateOpen}
         onEdit={handleEditOpen}
         onDelete={handleDeleteOpen}
-        statusField="is_active"
+        statusField="isActive"
         onStatusChange={handleStatusChange}
         searchKeys={["name", "code", "description"]}
         filters={[
           {
-            key: "is_active",
+            key: "isActive",
             label: "Trạng thái",
             options: [
               { value: "true", label: "Hoạt động" },

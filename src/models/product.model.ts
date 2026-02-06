@@ -4,6 +4,7 @@ export interface Product {
   name: string;
   description?: string;
   content?: string;
+  image?: string;
   minPrice: number;
   maxPrice: number;
   isActive: boolean;

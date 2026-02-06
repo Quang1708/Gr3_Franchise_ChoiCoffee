@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Modal } from "../../UI/Modal";
@@ -9,33 +9,12 @@ import { Trash2 } from "lucide-react";
 // --- Schema ---
 const productSchema = z.object({
   name: z.string().min(1, "Tên sản phẩm là bắt buộc"),
-  category: z.string().min(1, "Danh mục là bắt buộc"),
-  price: z.number({ message: "Giá phải là số" }).min(0, "Giá không được âm"),
-  originalPrice: z
-    .number()
-    .min(0, "Giá gốc không được âm")
-    .optional()
-    .nullable()
-    .or(z.nan()),
-  unit: z.string().min(1, "Đơn vị tính là bắt buộc"),
-  stock: z
-    .number({ message: "Tồn kho phải là số" })
-    .int()
-    .min(0, "Tồn kho không được âm"),
-  image: z
-    .string()
-    .url("URL hình ảnh không hợp lệ")
-    .optional()
-    .or(z.literal("")),
+  SKU: z.string().min(1, "SKU là bắt buộc"),
+  image: z.string().optional(),
+  minPrice: z.number({ message: "Giá phải là số" }).min(0, "Giá không được âm"),
+  maxPrice: z.number({ message: "Giá phải là số" }).min(0, "Giá không được âm"),
   description: z.string().optional(),
-  isOutOfStock: z.boolean(),
-  specifications: z
-    .object({
-      origin: z.string().optional(),
-      material: z.string().optional(),
-      warranty: z.string().optional(),
-    })
-    .optional(),
+  content: z.string().optional(),
 });
 
 type ProductFormData = z.input<typeof productSchema>;
@@ -60,15 +39,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
     handleSubmit,
     formState: { errors },
     reset,
-    control,
-    setValue,
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      isOutOfStock: false,
-      price: 0,
-      stock: 0,
-      category: "coffee-beans",
+      minPrice: 0,
+      maxPrice: 0,
       ...defaultValues,
     },
   });
@@ -76,23 +51,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
   useEffect(() => {
     if (defaultValues) {
       reset({
-        isOutOfStock: false,
-        price: 0,
-        stock: 0,
+        minPrice: 0,
+        maxPrice: 0,
         ...defaultValues,
       });
     }
   }, [defaultValues, reset]);
-
-  // Auto-update status based on stock
-  const stockValue = useWatch({ control, name: "stock" });
-  useEffect(() => {
-    if (stockValue === 0) {
-      setValue("isOutOfStock", true);
-    } else if (stockValue > 0) {
-      setValue("isOutOfStock", false);
-    }
-  }, [stockValue, setValue]);
 
   return (
     <form
@@ -100,7 +64,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
       className="space-y-4 max-h-[70vh] overflow-y-auto px-1"
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="md:col-span-2">
+        {/* Name */}
+        <div className="md:col-span-1">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Tên sản phẩm <span className="text-red-500">*</span>
           </label>
@@ -117,174 +82,105 @@ const ProductForm: React.FC<ProductFormProps> = ({
           )}
         </div>
 
-        {/* Category */}
+        {/* SKU */}
+        <div className="md:col-span-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Mã SKU <span className="text-red-500">*</span>
+          </label>
+          <input
+            {...register("SKU")}
+            type="text"
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
+              ${errors.SKU ? "border-red-500 bg-red-50" : "border-gray-300"}
+            `}
+            placeholder="VD: CF-001"
+          />
+          {errors.SKU && (
+            <p className="text-red-500 text-xs mt-1">{errors.SKU.message}</p>
+          )}
+        </div>
+
+        {/* Image URL (New Field) */}
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            URL Hình ảnh
+          </label>
+          <input
+            {...register("image")}
+            type="text"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+            placeholder="https://example.com/image.jpg"
+          />
+        </div>
+      </div>
+
+      {/* Pricing Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Min Price */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Danh mục <span className="text-red-500">*</span>
+            Giá tối thiểu (VNĐ) <span className="text-red-500">*</span>
           </label>
-          <select
-            {...register("category")}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none bg-white"
-          >
-            <option value="coffee-beans">Cà phê hạt</option>
-            <option value="machines">Máy móc</option>
-            <option value="tools">Dụng cụ</option>
-            <option value="supplies">Vật tư</option>
-          </select>
-          {errors.category && (
+          <input
+            {...register("minPrice", { valueAsNumber: true })}
+            type="number"
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
+              ${errors.minPrice ? "border-red-500 bg-red-50" : "border-gray-300"}
+            `}
+            min="0"
+          />
+          {errors.minPrice && (
             <p className="text-red-500 text-xs mt-1">
-              {errors.category.message}
+              {errors.minPrice.message}
             </p>
           )}
         </div>
 
-        {/* Unit */}
+        {/* Max Price */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Đơn vị tính <span className="text-red-500">*</span>
+            Giá tối đa (VNĐ) <span className="text-red-500">*</span>
           </label>
           <input
-            {...register("unit")}
-            type="text"
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
-              ${errors.unit ? "border-red-500 bg-red-50" : "border-gray-300"}
-            `}
-            placeholder="VD: túi, cái..."
-          />
-          {errors.unit && (
-            <p className="text-red-500 text-xs mt-1">{errors.unit.message}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Pricing & Stock Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Price */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Giá bán (VNĐ) <span className="text-red-500">*</span>
-          </label>
-          <input
-            {...register("price", { valueAsNumber: true })}
+            {...register("maxPrice", { valueAsNumber: true })}
             type="number"
             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
-              ${errors.price ? "border-red-500 bg-red-50" : "border-gray-300"}
+              ${errors.maxPrice ? "border-red-500 bg-red-50" : "border-gray-300"}
             `}
             min="0"
           />
-          {errors.price && (
-            <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>
+          {errors.maxPrice && (
+            <p className="text-red-500 text-xs mt-1">
+              {errors.maxPrice.message}
+            </p>
           )}
         </div>
-
-        {/* Original Price */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Giá gốc (VNĐ)
-          </label>
-          <input
-            {...register("originalPrice", { valueAsNumber: true })}
-            type="number"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-            placeholder="Không bắt buộc"
-            min="0"
-          />
-        </div>
-
-        {/* Stock */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Tồn kho <span className="text-red-500">*</span>
-          </label>
-          <input
-            {...register("stock", { valueAsNumber: true })}
-            type="number"
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
-              ${errors.stock ? "border-red-500 bg-red-50" : "border-gray-300"}
-            `}
-            min="0"
-          />
-          {errors.stock && (
-            <p className="text-red-500 text-xs mt-1">{errors.stock.message}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Image URL */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          URL Hình ảnh
-        </label>
-        <input
-          {...register("image")}
-          type="text"
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
-              ${errors.image ? "border-red-500 bg-red-50" : "border-gray-300"}
-            `}
-          placeholder="https://example.com/image.jpg"
-        />
-        {errors.image && (
-          <p className="text-red-500 text-xs mt-1">{errors.image.message}</p>
-        )}
       </div>
 
       {/* Description */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Mô tả
+          Mô tả ngắn
         </label>
         <textarea
           {...register("description")}
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none"
-          placeholder="Mô tả chi tiết về sản phẩm..."
+          placeholder="Mô tả sơ lược về sản phẩm..."
         />
       </div>
 
-      {/* Basic Specs */}
-      <h3 className="text-sm font-medium text-gray-900 pt-2 pb-1 border-b border-gray-100">
-        Thông số kỹ thuật (Tùy chọn)
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">
-            Xuất xứ
-          </label>
-          <input
-            {...register("specifications.origin")}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">
-            Chất liệu / Bảo hành
-          </label>
-          <input
-            {...register("specifications.material")}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-            placeholder="VD: Thép không gỉ, 12 tháng..."
-          />
-        </div>
-      </div>
-
-      {/* Status (Inversed vs Category: Here Checkbox 'Active' means 'In Stock' usually? 
-          User asked for CRUD modals. Let's make it simple: 
-          "Hết hàng" Checkbox => if checked, isOutOfStock = true
-      */}
-      <div className="flex items-center gap-2 pt-2">
-        <input
-          {...register("isOutOfStock")}
-          type="checkbox"
-          id="isOutOfStock"
-          className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
-        />
-        <label
-          htmlFor="isOutOfStock"
-          className="text-sm text-gray-700 select-none cursor-pointer"
-        >
-          Đánh dấu là{" "}
-          <span className="font-semibold text-red-600">Đã hết hàng</span>
+      {/* Content */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Nội dung chi tiết
         </label>
+        <textarea
+          {...register("content")}
+          rows={5}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none"
+          placeholder="Nội dung đầy đủ..."
+        />
       </div>
 
       {/* Actions */}
@@ -292,14 +188,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
         >
           Hủy bỏ
         </button>
         <button
           type="submit"
           disabled={isLoading}
-          className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
         >
           {isLoading ? (
             <>
@@ -372,14 +268,15 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
     onClose();
   };
 
-  // Map specifications correctly
+  // Map product to form data
   const defaultValues: Partial<ProductFormData> = {
-    ...product,
-    specifications: {
-      origin: product.specifications?.origin,
-      material: product.specifications?.material,
-      warranty: product.specifications?.warranty,
-    },
+    name: product.name,
+    SKU: product.SKU,
+    image: product.image || "",
+    minPrice: product.minPrice,
+    maxPrice: product.maxPrice,
+    description: product.description || "",
+    content: product.content || "",
   };
 
   return (
@@ -437,7 +334,7 @@ export const DeleteProductModal: React.FC<DeleteProductModalProps> = ({
         <div className="flex gap-3 w-full">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
           >
             Hủy bỏ
           </button>
@@ -446,7 +343,7 @@ export const DeleteProductModal: React.FC<DeleteProductModalProps> = ({
               onConfirm();
               onClose();
             }}
-            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
+            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 cursor-pointer"
           >
             Xóa sản phẩm
           </button>

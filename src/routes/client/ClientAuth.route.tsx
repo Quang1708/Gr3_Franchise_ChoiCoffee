@@ -6,6 +6,8 @@ import OrderDetailPage from "../../pages/client/order/OrderDetail.index";
 import ROUTER_URL from "../router.const";
 import CartPage from "@/pages/client/cart/Cart.page";
 import CheckoutPage from "@/pages/client/checkout/Checkout.page";
+import LoyaltyPage from "@/pages/client/loyalty/Loyalty.page";
+import ClientHistoryPage from "../../pages/client/history";
 
 const ClientLoginPage = React.lazy(
   () => import("@/pages/client/auth/login/ClientLogin.page"),
@@ -40,10 +42,14 @@ const ClientAuthRoutes = (
       element={<ClientVerifyTokenPage />}
     />
     <Route element={<ClientLayout />}>
-      {" "}
       <Route path={`${ROUTER_URL.CLIENT}/order`} element={<OrderPage />} />
+      <Route
+        path={ROUTER_URL.CLIENT_ROUTER.HISTORY}
+        element={<ClientHistoryPage />}
+      />
       <Route path={ROUTER_URL.CLIENT_ROUTER.CART} element={<CartPage />} />
       <Route path={ROUTER_URL.CLIENT_ROUTER.CHECKOUT} element={<CheckoutPage />} />
+      <Route path={ROUTER_URL.CLIENT_ROUTER.LOYALTY} element={<LoyaltyPage />} />
       <Route
         path={ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER_DETAIL}
         element={<OrderDetailPage />}

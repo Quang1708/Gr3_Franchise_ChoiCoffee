@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CRUDTable,
   type Column,
@@ -12,7 +12,21 @@ import {
   DeleteCategoryModal,
 } from "../../../components/Admin/category/CategoryModals";
 
+// ✅ RBAC
+import { useAuthStore } from "@/stores/auth.store";
+import { useAdminContextStore } from "@/stores/adminContext.store";
+import { can } from "@/auth/rbac";
+import { PERM } from "@/auth/rbac.permissions";
+
 const CategoryPage = () => {
+  const user = useAuthStore((s) => s.user);
+  const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
+
+  const canWrite = useMemo(
+    () => can(user, PERM.CATEGORY_WRITE, franchiseId ?? undefined),
+    [user, franchiseId],
+  );
+
   const [data, setData] = useState<Category[]>(CATEGORIES);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -49,15 +63,20 @@ const CategoryPage = () => {
   ];
 
   // Create
-  const handleCreateOpen = () => setIsCreateOpen(true);
+  const handleCreateOpen = () => {
+    if (!canWrite) return;
+    setIsCreateOpen(true);
+  };
 
   const handleCreateSubmit = (newData: Partial<Category>) => {
+    if (!canWrite) return;
+
     const category: Category = {
       id: Math.max(...data.map((c) => c.id)) + 1,
       code: newData.code!,
       name: newData.name!,
       description: newData.description || "",
-      is_active: newData.is_active || true,
+      is_active: newData.is_active ?? true,
       is_deleted: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -70,12 +89,13 @@ const CategoryPage = () => {
 
   // Edit
   const handleEditOpen = (item: Category) => {
+    if (!canWrite) return;
     setEditingCategory(item);
     setIsEditOpen(true);
   };
 
   const handleEditSubmit = (updatedData: Partial<Category>) => {
-    if (!editingCategory) return;
+    if (!canWrite || !editingCategory) return;
 
     setData((prev) =>
       prev.map((c) =>
@@ -92,12 +112,13 @@ const CategoryPage = () => {
 
   // Delete
   const handleDeleteOpen = (item: Category) => {
+    if (!canWrite) return;
     setDeletingCategory(item);
     setIsDeleteOpen(true);
   };
 
   const handleDeleteConfirm = () => {
-    if (!deletingCategory) return;
+    if (!canWrite || !deletingCategory) return;
 
     setData((prev) => prev.filter((c) => c.id !== deletingCategory.id));
     toast.success("Đã xóa danh mục thành công");
@@ -107,6 +128,8 @@ const CategoryPage = () => {
 
   // Status
   const handleStatusChange = (item: Category, newStatus: boolean) => {
+    if (!canWrite) return;
+
     setData((prev) =>
       prev.map((c) =>
         c.id === item.id
@@ -126,11 +149,13 @@ const CategoryPage = () => {
         data={data}
         columns={columns}
         pageSize={5}
-        onAdd={handleCreateOpen}
-        onEdit={handleEditOpen}
-        onDelete={handleDeleteOpen}
+        // ✅ RBAC: STAFF không thấy Add/Edit/Delete
+        onAdd={canWrite ? handleCreateOpen : undefined}
+        onEdit={canWrite ? handleEditOpen : undefined}
+        onDelete={canWrite ? handleDeleteOpen : undefined}
+        // ✅ Status vẫn hiển thị nhưng sẽ disable (nhờ CRUD.template.tsx đã sửa)
         statusField="is_active"
-        onStatusChange={handleStatusChange}
+        onStatusChange={canWrite ? handleStatusChange : undefined}
         searchKeys={["name", "code", "description"]}
         filters={[
           {
@@ -144,31 +169,36 @@ const CategoryPage = () => {
         ]}
       />
 
-      <CreateCategoryModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onSubmit={handleCreateSubmit}
-      />
+      {/* ✅ STAFF không render modal write */}
+      {canWrite ? (
+        <>
+          <CreateCategoryModal
+            isOpen={isCreateOpen}
+            onClose={() => setIsCreateOpen(false)}
+            onSubmit={handleCreateSubmit}
+          />
 
-      <EditCategoryModal
-        isOpen={isEditOpen}
-        onClose={() => {
-          setIsEditOpen(false);
-          setEditingCategory(null);
-        }}
-        category={editingCategory}
-        onSubmit={handleEditSubmit}
-      />
+          <EditCategoryModal
+            isOpen={isEditOpen}
+            onClose={() => {
+              setIsEditOpen(false);
+              setEditingCategory(null);
+            }}
+            category={editingCategory}
+            onSubmit={handleEditSubmit}
+          />
 
-      <DeleteCategoryModal
-        isOpen={isDeleteOpen}
-        onClose={() => {
-          setIsDeleteOpen(false);
-          setDeletingCategory(null);
-        }}
-        category={deletingCategory}
-        onConfirm={handleDeleteConfirm}
-      />
+          <DeleteCategoryModal
+            isOpen={isDeleteOpen}
+            onClose={() => {
+              setIsDeleteOpen(false);
+              setDeletingCategory(null);
+            }}
+            category={deletingCategory}
+            onConfirm={handleDeleteConfirm}
+          />
+        </>
+      ) : null}
     </div>
   );
 };

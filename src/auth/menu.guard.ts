@@ -1,0 +1,42 @@
+import { can, type CmsUser } from "./rbac";
+import { PERM } from "./rbac.permissions";
+
+export type MenuPath =
+  | "dashboard"
+  | "franchise"
+  | "menu"
+  | "product"
+  | "category"
+  | "customer"
+  | "order"
+  | "payment"
+  | "inventory"
+  | "loyalty"
+  | "user"
+  | "logout"
+  | string;
+
+export function isMenuVisible(
+  user: CmsUser | null,
+  franchiseId: number | null,
+  path: MenuPath,
+) {
+  // Always
+  if (path === "dashboard" || path === "logout") return true;
+
+  const fid = franchiseId ?? undefined;
+
+  if (path === "franchise") return can(user, PERM.FRANCHISE_MGMT, fid);
+  if (path === "user") return can(user, PERM.USER_MANAGE, fid);
+  if (path === "payment") return can(user, PERM.PAYMENT_READ, fid);
+
+  if (path === "menu") return can(user, PERM.MENU_READ, fid);
+  if (path === "product") return can(user, PERM.PRODUCT_READ, fid);
+  if (path === "category") return can(user, PERM.CATEGORY_READ, fid);
+  if (path === "customer") return can(user, PERM.CUSTOMER_READ, fid);
+  if (path === "order") return can(user, PERM.ORDER_READ, fid);
+  if (path === "inventory") return can(user, PERM.INVENTORY_READ, fid);
+  if (path === "loyalty") return can(user, PERM.LOYALTY_READ, fid);
+
+  return true;
+}

@@ -3,7 +3,9 @@ import { Route } from "react-router-dom";
 
 import AdminLayout from "../../layouts/admin/Admin.layout";
 import AdminGuard from "../guard/AdminGuard.route";
+import RequirePermission from "../guard/RequirePermission.route";
 import ROUTER_URL from "../router.const";
+import { PERM } from "@/auth/rbac.permissions";
 
 const DashboardPage = React.lazy(() => import("../../pages/admin/dashboard"));
 const MenuPage = React.lazy(() => import("../../pages/admin/menu"));
@@ -18,6 +20,7 @@ const FranchiseDetailPage = React.lazy(
 const InventoryPage = React.lazy(
   () => import("../../pages/admin/inventory/Inventory.page"),
 );
+
 const LoyaltyPage = React.lazy(() => import("../../pages/admin/loyalty"));
 const OrderPage = React.lazy(() => import("../../pages/admin/order"));
 const PaymentPage = React.lazy(() => import("../../pages/admin/payment"));
@@ -43,14 +46,7 @@ const AdminRoutes = (
           </Suspense>
         }
       />
-      <Route
-        path="menu"
-        element={
-          <Suspense fallback={null}>
-            <MenuPage />
-          </Suspense>
-        }
-      />
+
       <Route
         path="dashboard"
         element={
@@ -59,87 +55,129 @@ const AdminRoutes = (
           </Suspense>
         }
       />
-      <Route
-        path="category"
-        element={
-          <Suspense fallback={null}>
-            <CategoryPage />
-          </Suspense>
-        }
-      />
-      <Route
-        path="customer"
-        element={
-          <Suspense fallback={null}>
-            <CustomerPage />
-          </Suspense>
-        }
-      />
-      <Route
-        path="franchise"
-        element={
-          <Suspense fallback={null}>
-            <FranchisePage />
-          </Suspense>
-        }
-      />
 
-      <Route
-        path="franchise/:id"
-        element={
-          <Suspense fallback={null}>
-            <FranchiseDetailPage />
-          </Suspense>
-        }
-      />
-      <Route
-        path="inventory"
-        element={
-          <Suspense fallback={null}>
-            <InventoryPage />
-          </Suspense>
-        }
-      />
-      <Route
-        path="loyalty"
-        element={
-          <Suspense fallback={null}>
-            <LoyaltyPage />
-          </Suspense>
-        }
-      />
-      <Route
-        path="order"
-        element={
-          <Suspense fallback={null}>
-            <OrderPage />
-          </Suspense>
-        }
-      />
-      <Route
-        path="payment"
-        element={
-          <Suspense fallback={null}>
-            <PaymentPage />
-          </Suspense>
-        }
-      />
-      <Route
-        path="product"
-        element={
-          <Suspense fallback={null}>
-            <ProductPage />
-          </Suspense>
-        }
-      />
-      <Route
-        path="user"
-        element={
-          <Suspense fallback={null}>
-            <UserPage />
-          </Suspense>
-        }
-      />
+      {/* READ access routes */}
+      <Route element={<RequirePermission perm={PERM.MENU_READ} />}>
+        <Route
+          path="menu"
+          element={
+            <Suspense fallback={null}>
+              <MenuPage />
+            </Suspense>
+          }
+        />
+      </Route>
+
+      <Route element={<RequirePermission perm={PERM.PRODUCT_READ} />}>
+        <Route
+          path="product"
+          element={
+            <Suspense fallback={null}>
+              <ProductPage />
+            </Suspense>
+          }
+        />
+      </Route>
+
+      <Route element={<RequirePermission perm={PERM.CATEGORY_READ} />}>
+        <Route
+          path="category"
+          element={
+            <Suspense fallback={null}>
+              <CategoryPage />
+            </Suspense>
+          }
+        />
+      </Route>
+
+      <Route element={<RequirePermission perm={PERM.CUSTOMER_READ} />}>
+        <Route
+          path="customer"
+          element={
+            <Suspense fallback={null}>
+              <CustomerPage />
+            </Suspense>
+          }
+        />
+      </Route>
+
+      <Route element={<RequirePermission perm={PERM.ORDER_READ} />}>
+        <Route
+          path="order"
+          element={
+            <Suspense fallback={null}>
+              <OrderPage />
+            </Suspense>
+          }
+        />
+      </Route>
+
+      <Route element={<RequirePermission perm={PERM.INVENTORY_READ} />}>
+        <Route
+          path="inventory"
+          element={
+            <Suspense fallback={null}>
+              <InventoryPage />
+            </Suspense>
+          }
+        />
+      </Route>
+
+      <Route element={<RequirePermission perm={PERM.LOYALTY_READ} />}>
+        <Route
+          path="loyalty"
+          element={
+            <Suspense fallback={null}>
+              <LoyaltyPage />
+            </Suspense>
+          }
+        />
+      </Route>
+
+      {/* Admin-only */}
+      <Route element={<RequirePermission perm={PERM.FRANCHISE_MGMT} />}>
+        <Route
+          path="franchise"
+          element={
+            <Suspense fallback={null}>
+              <FranchisePage />
+            </Suspense>
+          }
+        />
+
+        {/* ✅ THÊM ROUTE DETAIL */}
+        <Route
+          path="franchise/:id"
+          element={
+            <Suspense fallback={null}>
+              <FranchiseDetailPage />
+            </Suspense>
+          }
+        />
+      </Route>
+
+      <Route element={<RequirePermission perm={PERM.PAYMENT_READ} />}>
+        <Route
+          path="payment"
+          element={
+            <Suspense fallback={null}>
+              <PaymentPage />
+            </Suspense>
+          }
+        />
+      </Route>
+
+      <Route element={<RequirePermission perm={PERM.USER_MANAGE} />}>
+        <Route
+          path="user"
+          element={
+            <Suspense fallback={null}>
+              <UserPage />
+            </Suspense>
+          }
+        />
+      </Route>
+
       <Route
         path="settings"
         element={

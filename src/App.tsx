@@ -8,10 +8,12 @@ import AdminAuthRoutes from "./routes/admin/AdminAuth.route";
 import AdminRoutes from "./routes/admin/Admin.route";
 import { ToastContainer } from "react-toastify";
 import { useAuthStore } from "./stores/auth.store";
+import { useAdminContextStore } from "./stores/adminContext.store";
 
 function App() {
   useEffect(() => {
     useAuthStore.getState().hydrate();
+    useAdminContextStore.getState().hydrate();
   }, []);
 
   return (

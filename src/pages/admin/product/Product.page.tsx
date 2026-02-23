@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CRUDTable,
   type Column,
@@ -12,11 +12,23 @@ import {
   DeleteProductModal,
 } from "../../../components/Admin/product/ProductModals";
 
+// ✅ RBAC
+import { useAuthStore } from "@/stores/auth.store";
+import { useAdminContextStore } from "@/stores/adminContext.store";
+import { can } from "@/auth/rbac";
+import { PERM } from "@/auth/rbac.permissions";
+
 const ProductPage = () => {
-  // --- State ---
+  const user = useAuthStore((s) => s.user);
+  const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
+
+  const canWrite = useMemo(
+    () => can(user, PERM.PRODUCT_WRITE, franchiseId ?? undefined),
+    [user, franchiseId],
+  );
+
   const [data, setData] = useState<Product[]>(PRODUCTS);
 
-  // Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -25,15 +37,15 @@ const ProductPage = () => {
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  // --- Handlers ---
-
   // Create
   const handleAdd = () => {
+    if (!canWrite) return;
     setIsCreateOpen(true);
   };
 
   const handleCreateSubmit = (newData: Partial<Product>) => {
-    // Generate simple mock ID
+    if (!canWrite) return;
+
     const newId = `PROD-${Math.floor(Math.random() * 10000)}`;
 
     const product: Product = {
@@ -58,12 +70,13 @@ const ProductPage = () => {
 
   // Edit
   const handleEdit = (item: Product) => {
+    if (!canWrite) return;
     setEditingProduct(item);
     setIsEditOpen(true);
   };
 
   const handleEditSubmit = (updatedData: Partial<Product>) => {
-    if (!editingProduct) return;
+    if (!canWrite || !editingProduct) return;
 
     setData((prev) =>
       prev.map((p) =>
@@ -71,7 +84,6 @@ const ProductPage = () => {
           ? {
               ...p,
               ...updatedData,
-              // Ensure specs are merged correctly if needed, or just replaced
               specifications: {
                 ...p.specifications,
                 ...updatedData.specifications,
@@ -88,12 +100,13 @@ const ProductPage = () => {
 
   // Delete
   const handleDelete = (item: Product) => {
+    if (!canWrite) return;
     setDeletingProduct(item);
     setIsDeleteOpen(true);
   };
 
   const handleDeleteConfirm = () => {
-    if (!deletingProduct) return;
+    if (!canWrite || !deletingProduct) return;
 
     setData((prev) => prev.filter((p) => p.id !== deletingProduct.id));
     toast.success("Đã xóa sản phẩm");
@@ -101,7 +114,6 @@ const ProductPage = () => {
     setDeletingProduct(null);
   };
 
-  // --- Configuration ---
   const columns: Column<Product>[] = [
     {
       header: "Sản phẩm",
@@ -204,11 +216,10 @@ const ProductPage = () => {
         data={data}
         columns={columns}
         pageSize={5}
-        // Actions
-        onAdd={handleAdd}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        // Search & Filter
+        // ✅ RBAC: STAFF sẽ không thấy nút Add/Edit/Delete
+        onAdd={canWrite ? handleAdd : undefined}
+        onEdit={canWrite ? handleEdit : undefined}
+        onDelete={canWrite ? handleDelete : undefined}
         searchKeys={["name", "category", "id"]}
         filters={[
           {
@@ -232,32 +243,36 @@ const ProductPage = () => {
         ]}
       />
 
-      {/* --- Modals --- */}
-      <CreateProductModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onSubmit={handleCreateSubmit}
-      />
+      {/* ✅ STAFF không render modal write */}
+      {canWrite ? (
+        <>
+          <CreateProductModal
+            isOpen={isCreateOpen}
+            onClose={() => setIsCreateOpen(false)}
+            onSubmit={handleCreateSubmit}
+          />
 
-      <EditProductModal
-        isOpen={isEditOpen}
-        onClose={() => {
-          setIsEditOpen(false);
-          setEditingProduct(null);
-        }}
-        product={editingProduct}
-        onSubmit={handleEditSubmit}
-      />
+          <EditProductModal
+            isOpen={isEditOpen}
+            onClose={() => {
+              setIsEditOpen(false);
+              setEditingProduct(null);
+            }}
+            product={editingProduct}
+            onSubmit={handleEditSubmit}
+          />
 
-      <DeleteProductModal
-        isOpen={isDeleteOpen}
-        onClose={() => {
-          setIsDeleteOpen(false);
-          setDeletingProduct(null);
-        }}
-        product={deletingProduct}
-        onConfirm={handleDeleteConfirm}
-      />
+          <DeleteProductModal
+            isOpen={isDeleteOpen}
+            onClose={() => {
+              setIsDeleteOpen(false);
+              setDeletingProduct(null);
+            }}
+            product={deletingProduct}
+            onConfirm={handleDeleteConfirm}
+          />
+        </>
+      ) : null}
     </div>
   );
 };

@@ -1,160 +1,158 @@
-import React, { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Modal } from "../../UI/Modal";
+import { useEffect, useMemo, useState } from "react";
+import { Modal } from "@/components/UI/Modal";
 import { AlertTriangle } from "lucide-react";
 
-export type InventoryUpdateForm = {
+export const LowStockHint = ({ text }: { text: string }) => {
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-amber-900 flex items-start gap-3">
+      <div className="mt-0.5">
+        <AlertTriangle size={18} />
+      </div>
+      <div className="text-sm leading-5">
+        <div className="font-semibold">Low stock alert</div>
+        <div className="text-amber-800">{text}</div>
+      </div>
+    </div>
+  );
+};
+
+type UpdatePayload = {
   quantity: number;
   alertThreshold: number;
   isActive: boolean;
 };
 
-const schema = z.object({
-  quantity: z.coerce
-    .number()
-    .min(0, "Số lượng phải >= 0")
-    .finite("Số lượng không hợp lệ"),
-  alertThreshold: z.coerce
-    .number()
-    .min(0, "Ngưỡng cảnh báo phải >= 0")
-    .finite("Ngưỡng cảnh báo không hợp lệ"),
-  isActive: z.coerce.boolean(),
-});
-
-type FormData = z.infer<typeof schema>;
-
-export const UpdateInventoryModal: React.FC<{
+export const UpdateInventoryModal = ({
+  isOpen,
+  onClose,
+  title,
+  subtitle,
+  defaultValues,
+  onSubmit,
+  readOnly,
+}: {
   isOpen: boolean;
   onClose: () => void;
-  title?: string;
+  title: string;
   subtitle?: string;
-  defaultValues?: Partial<FormData>;
-  onSubmit: (data: InventoryUpdateForm) => void;
-}> = ({ isOpen, onClose, title, subtitle, defaultValues, onSubmit }) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      quantity: defaultValues?.quantity ?? 0,
-      alertThreshold: defaultValues?.alertThreshold ?? 0,
-      isActive: defaultValues?.isActive ?? true,
-    },
-  });
+  defaultValues: UpdatePayload;
+  onSubmit: (payload: UpdatePayload) => void;
+  readOnly?: boolean;
+}) => {
+  const [quantity, setQuantity] = useState<number>(defaultValues.quantity);
+  const [alertThreshold, setAlertThreshold] = useState<number>(
+    defaultValues.alertThreshold,
+  );
+  const [isActive, setIsActive] = useState<boolean>(defaultValues.isActive);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    reset({
-      quantity: defaultValues?.quantity ?? 0,
-      alertThreshold: defaultValues?.alertThreshold ?? 0,
-      isActive: defaultValues?.isActive ?? true,
-    });
-  }, [defaultValues, reset]);
+    setQuantity(defaultValues.quantity);
+    setAlertThreshold(defaultValues.alertThreshold);
+    setIsActive(defaultValues.isActive);
+    setErr(null);
+  }, [defaultValues, isOpen]);
+
+  const low = useMemo(
+    () => quantity <= (alertThreshold || 0),
+    [quantity, alertThreshold],
+  );
+
+  const validate = () => {
+    if (!Number.isFinite(quantity) || quantity < 0) return "Số lượng phải ≥ 0";
+    if (!Number.isFinite(alertThreshold) || alertThreshold < 0)
+      return "Ngưỡng cảnh báo phải ≥ 0";
+    return null;
+  };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={title ?? "Cập nhật tồn kho"}
-      description={subtitle ?? "Chỉnh số lượng và ngưỡng cảnh báo"}
-      size="sm"
-    >
-      <form
-        onSubmit={handleSubmit((d) =>
-          onSubmit({
-            quantity: Number(d.quantity),
-            alertThreshold: Number(d.alertThreshold),
-            isActive: Boolean(d.isActive),
-          }),
-        )}
-        className="space-y-4"
-      >
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Số lượng <span className="text-red-500">*</span>
-          </label>
-          <input
-            {...register("quantity")}
-            type="number"
-            step="1"
-            className={`w-full px-3 py-2 border rounded-xl outline-none transition
-              ${errors.quantity ? "border-rose-400 bg-rose-50" : "border-gray-200 bg-white"}
-              focus:ring-2 focus:ring-primary focus:border-primary`}
-            placeholder="0"
-          />
-          {errors.quantity && (
-            <p className="text-rose-600 text-xs mt-1">
-              {errors.quantity.message}
-            </p>
-          )}
+    <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-lg">
+      {subtitle ? (
+        <div className="text-sm text-gray-600 mb-4">{subtitle}</div>
+      ) : null}
+
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-medium text-gray-700">
+              Số lượng
+            </label>
+            <input
+              type="number"
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value))}
+              disabled={readOnly}
+              className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">
+              Ngưỡng cảnh báo
+            </label>
+            <input
+              type="number"
+              value={alertThreshold}
+              onChange={(e) => setAlertThreshold(Number(e.target.value))}
+              disabled={readOnly}
+              className="mt-1 w-full h-10 px-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Ngưỡng cảnh báo <span className="text-red-500">*</span>
-          </label>
-          <input
-            {...register("alertThreshold")}
-            type="number"
-            step="1"
-            className={`w-full px-3 py-2 border rounded-xl outline-none transition
-              ${errors.alertThreshold ? "border-rose-400 bg-rose-50" : "border-gray-200 bg-white"}
-              focus:ring-2 focus:ring-primary focus:border-primary`}
-            placeholder="0"
-          />
-          {errors.alertThreshold && (
-            <p className="text-rose-600 text-xs mt-1">
-              {errors.alertThreshold.message}
-            </p>
-          )}
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 p-3">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-gray-900">
+              Trạng thái
+            </div>
+            <div className="text-xs text-gray-500">
+              {isActive ? "AVAILABLE" : "OUT_OF_STOCK"}
+              {low ? " • Low stock" : ""}
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={readOnly}
+            onClick={() => setIsActive((v) => !v)}
+            className={`h-9 px-3 rounded-xl border text-sm font-medium transition ${
+              isActive
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-rose-200 bg-rose-50 text-rose-800"
+            } ${readOnly ? "opacity-60 cursor-not-allowed" : "hover:opacity-90"}`}
+          >
+            {isActive ? "Đang bật" : "Đang tắt"}
+          </button>
         </div>
 
-        <div className="flex items-center gap-2 pt-1">
-          <input
-            {...register("isActive")}
-            id="isActive"
-            type="checkbox"
-            className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-          />
-          <label htmlFor="isActive" className="text-sm text-gray-700">
-            AVAILABLE (đang bán)
-          </label>
-        </div>
+        {err ? <div className="text-sm text-rose-700">{err}</div> : null}
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex items-center justify-end gap-2 pt-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition"
+            className="h-10 px-4 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-800 hover:bg-gray-50 transition"
           >
-            Hủy
+            Đóng
           </button>
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-xl bg-primary text-white hover:opacity-90 transition"
-          >
-            Lưu
-          </button>
+
+          {!readOnly ? (
+            <button
+              type="button"
+              onClick={() => {
+                const e = validate();
+                if (e) {
+                  setErr(e);
+                  return;
+                }
+                onSubmit({ quantity, alertThreshold, isActive });
+              }}
+              className="h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 transition"
+            >
+              Lưu thay đổi
+            </button>
+          ) : null}
         </div>
-      </form>
+      </div>
     </Modal>
   );
 };
-
-export const LowStockHint: React.FC<{ text?: string }> = ({ text }) => (
-  <div className="flex items-start gap-3 p-3 rounded-2xl border border-amber-200 bg-amber-50">
-    <div className="p-2 rounded-full bg-amber-100">
-      <AlertTriangle size={18} className="text-amber-700" />
-    </div>
-    <div className="text-sm">
-      <div className="font-medium text-amber-900">Low stock alert</div>
-      <div className="text-amber-800 mt-0.5">
-        {text ?? "Các dòng có số lượng <= ngưỡng cảnh báo sẽ được đánh dấu."}
-      </div>
-    </div>
-  </div>
-);

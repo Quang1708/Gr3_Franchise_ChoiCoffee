@@ -23,6 +23,10 @@ const ClientVerifyTokenPage = React.lazy(
   () => import("@/pages/client/auth/verify/ClientVerifyToken.page"),
 );
 
+const PaymentStatusPage = React.lazy(
+  () => import("@/pages/client/checkout/CheckoutStatus.page"),
+);
+
 const ClientAuthRoutes = (
   <>
     <Route
@@ -41,6 +45,7 @@ const ClientAuthRoutes = (
       path={ROUTER_URL.CLIENT_ROUTER.VERIFY}
       element={<ClientVerifyTokenPage />}
     />
+    <Route path={ROUTER_URL.CLIENT_ROUTER.PAYMENT_STATUS} element={<PaymentStatusPage />} />
     <Route element={<ClientLayout />}>
       <Route path={`${ROUTER_URL.CLIENT}/order`} element={<OrderPage />} />
       <Route

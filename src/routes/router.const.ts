@@ -10,6 +10,7 @@ const ROUTER_URL = {
   CLIENT_ROUTER: {
     PRODUCT_DETAIL: `/client/product/:productId`,
     CLIENT_ORDER: `/client/order`,
+    HISTORY: `/client/history`,
     CART: `/client/cart`,
     CHECKOUT: `/client/checkout`,
     CLIENT_ORDER_DETAIL: `/client/order/:orderId`,
@@ -19,6 +20,7 @@ const ROUTER_URL = {
     PROFILE: `/client/profile`,
     FORGOT_PASSWORD: `/client/forgot-password`,
     VERIFY: `/client/verify`,
+    LOYALTY: `/client/loyalty`,
   },
 
   ADMIN: `/admin`,

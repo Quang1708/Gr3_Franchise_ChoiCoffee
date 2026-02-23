@@ -1,4 +1,8 @@
+import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
+import { useNavigate } from "react-router-dom";
+
 const AboutPage = () => {
+  const navigate = useNavigate();
   return (
     <div className="flex-1 flex flex-col bg-white font-display overflow-x-hidden">
       <div className="w-full">
@@ -135,9 +139,12 @@ const AboutPage = () => {
             tỏa văn hóa cà phê Việt.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-6">
-            <button className="w-full sm:w-auto bg-primary text-white font-bold px-12 py-3.5 rounded-lg shadow-xl shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all">
-              Liên hệ nhượng quyền
-            </button>
+            <ButtonSubmit
+              label="Liên hệ nhượng quyền"
+              icon="arrow_forward"
+              className="sm:w-auto px-12 !rounded-lg"
+              onClick={() => navigate('/contact')} 
+            />
           </div>
         </div>
       </div>

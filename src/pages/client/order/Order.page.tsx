@@ -11,8 +11,8 @@ import {
 // import ClientHeader from "../../../layouts/client/ClientHeader.layout";
 // import ClientFooter from "../../../layouts/client/ClientFooter.layout";
 import ROUTER_URL from "../../../routes/router.const";
-import { FAKE_ORDERS } from "../../../mocks/dataOder.const";
-import type { OrderData } from "../../../mocks/dataOder.const";
+import { ORDER_SEED_DATA } from "../../../mocks/order.seed";
+import type { Order as OrderModel } from "../../../models/order.model";
 
 // Interface for display
 interface Order {
@@ -26,9 +26,9 @@ interface Order {
 
 type OrderStatus = "all" | "processing" | "delivering" | "completed";
 
-// Helper function to map OrderData to Order
-const mapOrderDataToOrder = (orderData: OrderData): Order => {
-  const date = new Date(orderData.created_at);
+// Helper function to map OrderModel to Order
+const mapOrderDataToOrder = (orderData: OrderModel): Order => {
+  const date = new Date(orderData.createdAt);
   const orderDate = date.toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -39,36 +39,30 @@ const mapOrderDataToOrder = (orderData: OrderData): Order => {
     minute: "2-digit",
   });
 
-  // Calculate total amount from items
-  const totalAmount = orderData.items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0,
-  );
-
-  // Map status: Pending/Processing -> processing, Completed -> completed
-  // Note: "Cancelled" orders are filtered out, "Processing" can be considered as "delivering" in some cases
+  // Map status from OrderModel to display status
   let status: "processing" | "delivering" | "completed";
-  if (orderData.status === "Completed") {
+  if (orderData.status === "COMPLETED") {
     status = "completed";
-  } else if (orderData.status === "Processing") {
-    status = "processing";
+  } else if (orderData.status === "PREPARING") {
+    status = "delivering";
   } else {
-    status = "processing"; // Pending -> processing
+    // DRAFT, CONFIRMED -> processing
+    status = "processing";
   }
 
   return {
-    id: orderData.id,
-    orderCode: orderData.id,
+    id: orderData.id.toString(),
+    orderCode: orderData.code,
     orderDate,
     orderTime,
-    totalAmount,
+    totalAmount: orderData.totalAmount,
     status,
   };
 };
 
-// Filter out cancelled orders and map to display format
-const orders: Order[] = FAKE_ORDERS.filter(
-  (order) => order.status !== "Cancelled",
+// Filter out cancelled and deleted orders, then map to display format
+const orders: Order[] = ORDER_SEED_DATA.filter(
+  (order) => order.status !== "CANCELLED" && !order.isDeleted,
 ).map(mapOrderDataToOrder);
 
 const OrderPage = () => {
@@ -266,11 +260,10 @@ const OrderPage = () => {
                         setActiveTab(tab.key as OrderStatus);
                         setCurrentPage(1);
                       }}
-                      className={`pb-4 px-2 font-medium transition-colors relative ${
-                        activeTab === tab.key
-                          ? "text-primary"
-                          : "text-gray-600 hover:text-charcoal"
-                      }`}
+                      className={`pb-4 px-2 font-medium transition-colors relative ${activeTab === tab.key
+                        ? "text-primary"
+                        : "text-gray-600 hover:text-charcoal"
+                        }`}
                     >
                       {tab.label}
                       {activeTab === tab.key && (
@@ -430,11 +423,10 @@ const OrderPage = () => {
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        className={`px-4 py-2 rounded-lg transition-colors ${
-                          currentPage === page
-                            ? "bg-primary text-white"
-                            : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-                        }`}
+                        className={`px-4 py-2 rounded-lg transition-colors ${currentPage === page
+                          ? "bg-primary text-white"
+                          : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                          }`}
                       >
                         {page}
                       </button>

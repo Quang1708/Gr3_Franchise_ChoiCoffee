@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import ProductTable from '@components/Client/ProductTable/ProductTable';
 import ButtonSubmit from '@components/Client/Button/ButtonSubmit';
 import VoucherModal from '@/components/Client/Modal/VoucherModal';
+import ROUTER_URL from '@/routes/router.const';
 
 const CheckoutPage: React.FC = () => {
     const location = useLocation();
@@ -249,7 +250,11 @@ const CheckoutPage: React.FC = () => {
                             disabled={isLoading}
                             onClick={() => {
                                 setIsLoading(true);
-                                setTimeout(() => { setIsLoading(false); alert("Đặt hàng thành công!"); }, 2000);
+
+                                setTimeout(() => {
+                                    setIsLoading(false);
+                                    navigate(`${ROUTER_URL.CLIENT_ROUTER.PAYMENT_STATUS}?success=true`);
+                                }, 2000);
                             }}
                         />
                     </div>
@@ -307,10 +312,6 @@ const CheckoutPage: React.FC = () => {
                                     </span>
                                 </label>
                             ))}
-                        </div>
-
-                        <div className="p-4 border-t border-slate-50 flex justify-end bg-slate-50/50 text-[10px] text-slate-400 uppercase font-bold tracking-tighter">
-                            Vận chuyển bởi ChoiCoffee Logistic
                         </div>
                     </div>
                 </div>

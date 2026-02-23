@@ -4,6 +4,7 @@ import ProductTable from '@components/Client/ProductTable/ProductTable';
 import type { ProductItem } from '@/models/product_item';
 import ButtonSubmit from '@components/Client/Button/ButtonSubmit';
 import VoucherModal from '@/components/Client/Modal/VoucherModal';
+import ROUTER_URL from '@/routes/router.const';
 
 const CartPage: React.FC = () => {
   const navigate = useNavigate();
@@ -149,14 +150,14 @@ const CartPage: React.FC = () => {
                       );
 
                       // Chuyển trang và gửi kèm dữ liệu
-                      navigate('/client/checkout', {
+                      navigate(ROUTER_URL.CLIENT_ROUTER.CHECKOUT, {
                         state: {
                           products: selectedProducts,
                           subtotal: subtotal
                         }
                       });
                     }}
-                    className="!w-full md:!w-[210px] uppercase font-bold tracking-wider !rounded-sm cursor-pointer"
+                    className="!w-full md:!w-[210px] uppercase font-bold tracking-wider cursor-pointer"
                   />
                 </div>
               </div>

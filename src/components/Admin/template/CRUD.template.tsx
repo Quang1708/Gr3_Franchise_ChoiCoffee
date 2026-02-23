@@ -10,6 +10,7 @@ import {
   Plus,
   Edit,
   Trash2,
+  Eye,
 } from "lucide-react";
 
 // --- Types ---
@@ -41,6 +42,7 @@ export interface CRUDTableProps<T> {
 
   // Actions
   onAdd?: () => void;
+  onView?: (item: T) => void;
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
 
@@ -98,6 +100,7 @@ export function CRUDTable<T extends { id?: string | number }>({
   columns,
   pageSize = 5,
   onAdd,
+  onView,
   onEdit,
   onDelete,
   statusField,
@@ -319,7 +322,7 @@ export function CRUDTable<T extends { id?: string | number }>({
               )}
 
               {/* Actions Column */}
-              {(onEdit || onDelete) && (
+              {(onView || onEdit || onDelete) && (
                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">
                   Hành động
                 </th>
@@ -335,13 +338,16 @@ export function CRUDTable<T extends { id?: string | number }>({
                   className="bg-white hover:bg-primary/5 transition-colors group"
                 >
                   {/* Index */}
-                  <td className="px-6 py-4 text-sm text-gray-500 font-medium">
+                  <td className="px-6 py-5 text-base text-gray-500 font-medium align-middle">
                     {(currentPage - 1) * pageSize + index + 1}
                   </td>
 
                   {/* Data Cells */}
                   {columns.map((col, idx) => (
-                    <td key={idx} className="px-6 py-4 text-sm text-gray-700">
+                    <td
+                      key={idx}
+                      className="px-6 py-5 text-base text-gray-700 align-middle"
+                    >
                       {col.render
                         ? col.render(item)
                         : typeof col.accessor === "function"
@@ -352,7 +358,7 @@ export function CRUDTable<T extends { id?: string | number }>({
 
                   {/* Status Switch */}
                   {statusField && (
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-6 py-5 text-center align-middle">
                       <div className="flex flex-col items-center justify-center gap-1">
                         <ToggleSwitch
                           checked={!!item[statusField]}
@@ -368,16 +374,25 @@ export function CRUDTable<T extends { id?: string | number }>({
                   )}
 
                   {/* Actions */}
-                  {(onEdit || onDelete) && (
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {(onView || onEdit || onDelete) && (
+                    <td className="px-6 py-5 text-right align-middle">
+                      <div className="flex items-center justify-end gap-2">
+                        {onView && (
+                          <button
+                            onClick={() => onView(item)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Xem chi tiết"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                        )}
                         {onEdit && (
                           <button
                             onClick={() => onEdit(item)}
                             className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors tooltip"
                             title="Chỉnh sửa"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="w-5 h-5" />
                           </button>
                         )}
                         {onDelete && (
@@ -386,7 +401,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Xóa"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         )}
                       </div>

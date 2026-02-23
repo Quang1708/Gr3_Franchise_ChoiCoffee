@@ -9,8 +9,15 @@ const DashboardPage = React.lazy(() => import("../../pages/admin/dashboard"));
 const MenuPage = React.lazy(() => import("../../pages/admin/menu"));
 const CategoryPage = React.lazy(() => import("../../pages/admin/category"));
 const CustomerPage = React.lazy(() => import("../../pages/admin/customer"));
-const FranchisePage = React.lazy(() => import("../../pages/admin/franchise"));
-const InventoryPage = React.lazy(() => import("../../pages/admin/inventory"));
+const FranchisePage = React.lazy(
+  () => import("../../pages/admin/franchise/Franchise.page"),
+);
+const FranchiseDetailPage = React.lazy(
+  () => import("../../pages/admin/franchise/FranchiseDetail.page"),
+);
+const InventoryPage = React.lazy(
+  () => import("../../pages/admin/inventory/Inventory.page"),
+);
 const LoyaltyPage = React.lazy(() => import("../../pages/admin/loyalty"));
 const OrderPage = React.lazy(() => import("../../pages/admin/order"));
 const PaymentPage = React.lazy(() => import("../../pages/admin/payment"));
@@ -73,6 +80,15 @@ const AdminRoutes = (
         element={
           <Suspense fallback={null}>
             <FranchisePage />
+          </Suspense>
+        }
+      />
+
+      <Route
+        path="franchise/:id"
+        element={
+          <Suspense fallback={null}>
+            <FranchiseDetailPage />
           </Suspense>
         }
       />

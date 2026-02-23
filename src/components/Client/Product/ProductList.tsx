@@ -1,8 +1,14 @@
-import PRODUCTS from "../../../mocks/Mock.Product";
+import { PRODUCT_SEED_DATA } from "@/mocks/product.seed";
 import ProductCard from "./ProductCard";
+import type { ProductCategoryFranchise } from "@/models/product_category_franchise.model";
+import { useEffect, useState } from "react";
+import { PRODUCT_CATEGORY_FRANCHISE_SEED_DATA } from "@/mocks/product_category_franchise.seed";
+import type { Product } from "./../../../models/product.model";
+import { PRODUCT_FRANCHISE_SEED_DATA } from "@/mocks/product_franchise.seed";
+import type { ProductFranchise } from "@/models/product_franchise.model";
 
 type ProductListProps = {
-  category: string;
+  category: number;
   currentPage: number;
   onPageChange: (page: number) => void;
 };
@@ -10,18 +16,74 @@ type ProductListProps = {
 
 
 const ProductList = ({ category, currentPage, onPageChange }: ProductListProps) => {
-  const ITEMS_PER_PAGE = 12;
+  const ITEMS_PER_PAGE = 8;
+  const [productCategory, setProductCategory] = useState<ProductCategoryFranchise[]>([]);
+  const [product, setProduct] = useState<Product[]>([]);
+  const [franchiseid, setFranchiseid] = useState<string | null>(
+    localStorage.getItem("selectedFranchise")
+  );
+  const [currentFranchiseProduct, setCurrentFranchiseProduct] = useState<ProductFranchise[]>();
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setFranchiseid(localStorage.getItem("selectedFranchise"));
+    };
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("franchiseChanged" as string, handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("franchiseChanged" as string, handleStorageChange);
+    };
+  }, []);
+
+  useEffect(() => {
+  if (!franchiseid) return;
+
+  const current = PRODUCT_FRANCHISE_SEED_DATA.filter(
+    pf => pf.franchiseId === Number(franchiseid)
+  );
+
+  setCurrentFranchiseProduct(current);
+}, [franchiseid]);
+
+  console.log("category",category);
 
 
-  const products = PRODUCTS;
+  useEffect(() => {
+  const productCt = PRODUCT_CATEGORY_FRANCHISE_SEED_DATA.filter(
+    pc => pc.categoryFranchiseId === category
+  );
 
-  const filteredProducts = products.filter(product => product.category === category);
-  
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  setProductCategory(productCt);
+}, [category]);
+
+
+  useEffect(() => {
+  if (!currentFranchiseProduct || productCategory.length === 0) return;
+
+  const validProductFranchiseIds = productCategory.map(
+    pc => pc.productFranchiseId
+  );
+
+  const productIds = currentFranchiseProduct
+    .filter(pf => validProductFranchiseIds.includes(pf.id))
+    .map(pf => pf.productId);
+
+  const result = PRODUCT_SEED_DATA.filter(p =>
+    productIds.includes(p.id)
+  );
+
+  setProduct(result);
+}, [currentFranchiseProduct, productCategory]);
+  // console.log("currentFranchiseProducts", currentFranchiseProduct);
+  // console.log("productCategory", productCategory);
+  // const filteredProducts = product.filter(product => product.id === productCategory.find(pc => pc.productFranchiseId === product.id)?.productFranchiseId);
+  const totalPages = Math.ceil(product.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentProducts = filteredProducts.slice(startIndex, endIndex);
-
+  const currentProducts = product.slice(startIndex, endIndex);
+  // console.log("product",product);
   const handlePrevPage = () => {
     if (currentPage > 1) {
       onPageChange(currentPage - 1);

@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import PRODUCTS from "../../../mocks/Mock.Product";
 import ProductSpecification from "../../../components/Client/Product/ProductSpecification";
-import ProductCard from "../../../components/Client/Product/ProductCard";
+// import ProductCard from "../../../components/Client/Product/ProductCard";
 
 const ProductDetailPage = () => {
     const { productId } = useParams<{ productId: string }>();
@@ -110,9 +110,9 @@ console.log("object", product?.isOutOfStock);
             </a>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            {PRODUCTS.slice(0,4).map((item) => (
+            {/* {PRODUCTS.slice(0,4).map((item) => (
                 <ProductCard key={item.id} item={item} />
-            ))}
+            ))} */}
         </div>
       </section>
     </div>

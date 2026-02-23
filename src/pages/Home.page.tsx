@@ -1,6 +1,58 @@
-import { CheckCircle, Mail, PhoneCall, Verified } from "lucide-react"
+import ProductCard from "@/components/Client/Product/ProductCard"
+import type { Product } from "@/models/product.model";
+import { PRODUCT_SEED_DATA } from "@/mocks/product.seed"
+import { PRODUCT_FRANCHISE_SEED_DATA } from "@/mocks/product_franchise.seed"
+// import type { ProductFranchise } from "@/models/product_franchise.model";
+import { CheckCircle, Mail, PhoneCall} from "lucide-react"
+import { useEffect, useState } from "react";
 
 const HomePage = () => {
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [franchiseid, setFranchiseid] = useState<string | null>(
+    localStorage.getItem("selectedFranchise")
+  );
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setFranchiseid(localStorage.getItem("selectedFranchise"));
+    };
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("franchiseChanged" as string, handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("franchiseChanged" as string, handleStorageChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (franchiseid) {
+      // Lọc sản phẩm theo franchiseId
+      const franchiseProducts = PRODUCT_FRANCHISE_SEED_DATA.filter(
+        (pf) => pf.franchiseId === parseInt(franchiseid) && pf.isActive && !pf.isDeleted
+      );
+
+      // Map với product để lấy thông tin đầy đủ
+      const fullProducts = franchiseProducts
+        .map((pf) => {
+          const product = PRODUCT_SEED_DATA.find((p) => p.id === pf.productId);
+          if (product && product.isActive && !product.isDeleted) {
+            return {
+              ...product,
+              priceBase: pf.priceBase, // Giá của chi nhánh cụ thể
+            };
+          }
+          return null;
+        })
+        .filter((p): p is Product & { priceBase: number } => p !== null);
+
+      setProducts(fullProducts);
+    } else {
+      // Nếu không có franchise được chọn, hiển thị tất cả sản phẩm
+      setProducts(PRODUCT_SEED_DATA.filter((p) => p.isActive && !p.isDeleted));
+    }
+  }, [franchiseid]);
   return (
     <div>
       <section className="relative w-full overflow-hidden">
@@ -40,41 +92,12 @@ const HomePage = () => {
       <section className="py-20 bg-white dark:bg-background-dark">
         <div className="max-w mx-auto px-4 sm:px-6 lg:px-40">
           <div className="mb-16">
-            <h3 className="text-primary font-bold tracking-widest uppercase text-sm mb-3">Thế mạnh vượt trội</h3>
-            <h2 className="text-3xl md:text-4xl font-black text-charcoal dark:text-white">Tại Sao Chọn ChoiCoffee?</h2>
-            <p className="mt-4 text-gray-500 max-w-2xl text-lg">
-              Chúng tôi mang đến giải pháp kinh doanh tối ưu, giúp đối tác tối thiểu hóa rủi ro và tối đa hóa lợi nhuận bền vững.
-            </p>
+            <h2 className="text-3xl md:text-4xl font-black text-center text-charcoal dark:text-white">Sản phẩm nổi bật</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-2xl border border-gray-100 dark:border-gray-800 bg-background-light dark:bg-zinc-900 transition-all hover:shadow-xl hover:-translate-y-1">
-              <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center text-primary mb-6">
-                <span className=" text-3xl"><Verified/></span>                  
-              </div>
-                <h4 className="text-xl font-bold mb-3">Thương hiệu uy tín</h4>
-                  <p className="text-gray-500 leading-relaxed">
-                    Nền tảng thương hiệu vững chắc với hàng ngàn khách hàng trung thành và độ nhận diện cao trên thị trường.
-                  </p>           
-            </div>
-            <div className="p-8 rounded-2xl border border-gray-100 dark:border-gray-800 bg-background-light dark:bg-zinc-900 transition-all hover:shadow-xl hover:-translate-y-1">
-                <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center text-primary mb-6">
-                  <span className="material-symbols-outlined text-3xl">precision_manufacturing</span>
-                </div>
-                <h4 className="text-xl font-bold mb-3">Chuỗi Cung Ứng Farm-to-Cup</h4>
-                <p className="text-gray-500 leading-relaxed">
-                  Kiểm soát chất lượng hạt cà phê tuyệt đối từ nông trường tại Đắk Lắk đến tận tay người tiêu dùng.
-                </p>
-            </div>
-
-            <div className="p-8 rounded-2xl border border-gray-100 dark:border-gray-800 bg-background-light dark:bg-zinc-900 transition-all hover:shadow-xl hover:-translate-y-1">
-              <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center text-primary mb-6">
-                <span className="material-symbols-outlined text-3xl">campaign</span>
-              </div>
-              <h4 className="text-xl font-bold mb-3">Hỗ Trợ Marketing 360</h4>
-              <p className="text-gray-500 leading-relaxed">
-                Đồng hành cùng đối tác trong các chiến dịch truyền thông đa kênh để thu hút và giữ chân khách hàng.
-              </p>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            {products.slice(0, 4).map((item) => (
+              <ProductCard key={item.id} item={item} />
+            ))}
           </div>
         </div>
       </section>

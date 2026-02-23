@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import ClientAuthRoutes from "./routes/client/ClientAuth.route";
 import { ClientPublicRoutes } from "./routes/client/ClientPublic.route";
@@ -7,8 +7,13 @@ import { Toaster } from "sonner";
 import AdminAuthRoutes from "./routes/admin/AdminAuth.route";
 import AdminRoutes from "./routes/admin/Admin.route";
 import { ToastContainer } from "react-toastify";
+import { useAuthStore } from "./stores/auth.store";
 
 function App() {
+  useEffect(() => {
+    useAuthStore.getState().hydrate();
+  }, []);
+
   return (
     <BrowserRouter>
       <Toaster richColors position="top-right" />

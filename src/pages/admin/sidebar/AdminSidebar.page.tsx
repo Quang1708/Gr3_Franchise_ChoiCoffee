@@ -27,6 +27,11 @@ const menuItems: MenuItem[] = [
     path: "dashboard",
   },
   {
+    icon: <Store size={20} />,
+    label: "Franchise",
+    path: "franchise",
+  },
+  {
     icon: <Menu size={20} />,
     label: "Menu",
     path: "menu",
@@ -61,11 +66,6 @@ const menuItems: MenuItem[] = [
     icon: <Boxes size={20} />,
     label: "Inventory",
     path: "inventory",
-  },
-  {
-    icon: <Store size={20} />,
-    label: "Franchise",
-    path: "franchise",
   },
   {
     icon: <Gift size={20} />,
@@ -103,11 +103,11 @@ const AdminSidebar = ({ collapsed = false }: AdminSidebarProps) => {
               key={item.path}
               to={item.path}
               className={`flex items-center rounded-lg min-w-0 transition-colors ${
-                collapsed ? "justify-center px-2 h-10" : "justify-start gap-3 px-3 h-10"
+                collapsed
+                  ? "justify-center px-2 h-10"
+                  : "justify-start gap-3 px-3 h-10"
               } ${
-                isActive
-                  ? "bg-purple-100 text-purple-700"
-                  : "text-gray-700"
+                isActive ? "bg-purple-100 text-purple-700" : "text-gray-700"
               }`}
               title={item.label}
             >

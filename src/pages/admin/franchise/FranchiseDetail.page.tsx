@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Users, Package, Boxes } from "lucide-react";
 
@@ -101,9 +102,53 @@ const Panel = ({
   </div>
 );
 
+type TabKey = "staff" | "product" | "inventory";
+
+const TabPill = ({
+  active,
+  icon,
+  label,
+  count,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  count: string;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={[
+      "inline-flex items-center gap-2",
+      "px-3 py-2 rounded-full border text-sm font-semibold transition",
+      active
+        ? "bg-primary/10 border-primary/20 text-primary"
+        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50",
+    ].join(" ")}
+  >
+    <span className={active ? "text-primary" : "text-gray-500"}>{icon}</span>
+    <span>{label}</span>
+    <span
+      className={[
+        "ml-1 text-xs font-bold px-2 py-0.5 rounded-full border",
+        active
+          ? "bg-white border-primary/20 text-primary"
+          : "bg-gray-50 border-gray-200 text-gray-600",
+      ].join(" ")}
+    >
+      {count}
+    </span>
+  </button>
+);
+
 const FranchiseDetailPage = () => {
   const { id } = useParams();
   const franchiseId = Number(id);
+
+  // ✅ Tabs: mặc định mở "Nhân sự"
+  const [tab, setTab] = useState<TabKey>("staff");
 
   const franchise = useMemo(
     () => FRANCHISE_SEED_DATA.find((f) => f.id === franchiseId),
@@ -199,9 +244,8 @@ const FranchiseDetailPage = () => {
   const statusTone: PillTone = franchise.isActive ? "success" : "danger";
 
   return (
-    // 1) khóa chiều cao màn hình, 2) ngăn page scroll
     <div className="p-6 h-[calc(100vh-64px)] overflow-hidden flex flex-col gap-4">
-      {/* Header (gọn, không chiếm nhiều) */}
+      {/* Header */}
       <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <Link
@@ -244,7 +288,6 @@ const FranchiseDetailPage = () => {
           </div>
         </div>
 
-        {/* điểm nhấn */}
         <div className="hidden md:flex items-center gap-2">
           <Pill text={franchise.code} tone="info" />
           <Pill
@@ -255,160 +298,201 @@ const FranchiseDetailPage = () => {
         </div>
       </div>
 
-      {/* Body: 1 hàng 3 cột, mỗi cột scroll riêng */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Panel
-          title="Nhân sự"
-          icon={<Users size={18} />}
-          count={`${staffRows.length} người`}
-        >
-          <div className="min-w-full">
-            <table className="w-full table-fixed">
-              <thead>
-                <tr>
-                  {/* Cột gộp: tên + role + contact (mobile friendly) */}
-                  <Th>Thông tin</Th>
+      <div className="flex flex-wrap items-center gap-2">
+        <TabPill
+          active={tab === "staff"}
+          icon={<Users size={16} />}
+          label="Nhân sự"
+          count={`${staffRows.length}`}
+          onClick={() => setTab("staff")}
+        />
+        <TabPill
+          active={tab === "product"}
+          icon={<Package size={16} />}
+          label="Sản phẩm"
+          count={`${productRows.length}`}
+          onClick={() => setTab("product")}
+        />
+        <TabPill
+          active={tab === "inventory"}
+          icon={<Boxes size={16} />}
+          label="Tồn kho"
+          count={`${inventoryRows.length}`}
+          onClick={() => setTab("inventory")}
+        />
+      </div>
 
-                  {/* Ẩn bớt trên màn hình nhỏ để tránh rộng */}
-                  <th className="hidden xl:table-cell py-2.5 pr-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Email
-                  </th>
-                  <th className="hidden xl:table-cell py-2.5 pr-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    SĐT
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="border-t border-gray-100">
-                {staffRows.map((s) => (
-                  <tr key={s.id} className="border-b border-gray-100">
-                    <td className="py-3 pr-4 align-top text-sm text-gray-700">
-                      <div className="flex flex-col gap-1 min-w-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-medium text-gray-900 truncate">
-                            {s.userName}
-                          </span>
-                          <Pill text={s.scope} />
-                        </div>
-
-                        <div className="text-gray-700">
-                          <span className="font-medium">{s.role}</span>
-                        </div>
-
-                        {/* Contact (hiện ở mobile/tablet) */}
-                        <div className="xl:hidden text-xs text-gray-600 space-y-0.5">
-                          <div className="break-words">
-                            <span className="text-gray-400">Email:</span>{" "}
-                            {s.email}
-                          </div>
-                          <div className="break-words">
-                            <span className="text-gray-400">SĐT:</span>{" "}
-                            {s.phone}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Desktop: email/phone riêng cột */}
-                    <td className="hidden xl:table-cell py-3 pr-4 align-top text-sm text-gray-600 break-words">
-                      {s.email}
-                    </td>
-                    <td className="hidden xl:table-cell py-3 pr-4 align-top text-sm text-gray-600 break-words">
-                      {s.phone}
-                    </td>
+      <div className="flex-1 min-h-0">
+        {tab === "staff" ? (
+          <Panel
+            title="Nhân sự"
+            icon={<Users size={18} />}
+            count={`${staffRows.length} người`}
+          >
+            <div className="min-w-full">
+              <table className="w-full table-fixed">
+                <thead>
+                  <tr>
+                    <Th>Thông tin</Th>
+                    <th className="hidden xl:table-cell py-2.5 pr-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Email
+                    </th>
+                    <th className="hidden xl:table-cell py-2.5 pr-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      SĐT
+                    </th>
                   </tr>
-                ))}
+                </thead>
 
-                {staffRows.length === 0 && (
-                  <EmptyRow
-                    colSpan={3}
-                    text="Chưa có nhân sự gắn với chi nhánh này."
-                  />
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-
-        <Panel
-          title="Sản phẩm"
-          icon={<Package size={18} />}
-          count={`${productRows.length} món`}
-        >
-          <div className="min-w-full">
-            <table className="min-w-full">
-              <thead>
-                <tr>
-                  <Th>Tên</Th>
-                  <Th>SKU</Th>
-                  <Th>Size</Th>
-                  <Th>Giá</Th>
-                  <Th>Trạng thái</Th>
-                </tr>
-              </thead>
-              <tbody className="border-t border-gray-100">
-                {productRows.map((p) => (
-                  <tr key={p.id} className="border-b border-gray-100">
-                    <Td strong>{p.productName}</Td>
-                    <Td className="text-gray-600">{p.sku}</Td>
-                    <Td className="text-gray-600">{p.size}</Td>
-                    <Td>{Number(p.priceBase).toLocaleString("vi-VN")}đ</Td>
-                    <Td>
-                      <Pill
-                        text={p.isActive ? "Hoạt động" : "Tắt"}
-                        tone={p.isActive ? "success" : "danger"}
-                      />
-                    </Td>
-                  </tr>
-                ))}
-                {productRows.length === 0 && (
-                  <EmptyRow
-                    colSpan={5}
-                    text="Chưa có sản phẩm gắn với chi nhánh này."
-                  />
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-
-        <Panel
-          title="Tồn kho"
-          icon={<Boxes size={18} />}
-          count={`${inventoryRows.length} dòng`}
-        >
-          <div className="min-w-full">
-            <table className="w-full table-fixed">
-              <thead>
-                <tr>
-                  <Th>Thông tin</Th>
-                  {/* Ẩn bớt 1 cột trên màn hình nhỏ */}
-                  <th className="hidden xl:table-cell py-2.5 pr-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Cảnh báo
-                  </th>
-                  <Th>Trạng thái</Th>
-                </tr>
-              </thead>
-
-              <tbody className="border-t border-gray-100">
-                {inventoryRows.map((i) => {
-                  const low =
-                    Number(i.quantity) <= Number(i.alertThreshold || 0);
-
-                  return (
-                    <tr key={i.id} className="border-b border-gray-100">
+                <tbody className="border-t border-gray-100">
+                  {staffRows.map((s) => (
+                    <tr key={s.id} className="border-b border-gray-100">
                       <td className="py-3 pr-4 align-top text-sm text-gray-700">
                         <div className="flex flex-col gap-1 min-w-0">
-                          <div className="font-medium text-gray-900 truncate">
-                            {i.productName}
-                          </div>
-                          <div className="text-xs text-gray-600 break-words">
-                            SKU: {i.sku}
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-medium text-gray-900 truncate">
+                              {s.userName}
+                            </span>
+                            <Pill text={s.scope} />
                           </div>
 
-                          {/* Quantity + alert (mobile/tablet) */}
-                          <div className="xl:hidden text-xs text-gray-600">
-                            <div>
+                          <div className="text-gray-700">
+                            <span className="font-medium">{s.role}</span>
+                          </div>
+
+                          <div className="xl:hidden text-xs text-gray-600 space-y-0.5">
+                            <div className="break-words">
+                              <span className="text-gray-400">Email:</span>{" "}
+                              {s.email}
+                            </div>
+                            <div className="break-words">
+                              <span className="text-gray-400">SĐT:</span>{" "}
+                              {s.phone}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="hidden xl:table-cell py-3 pr-4 align-top text-sm text-gray-600 break-words">
+                        {s.email}
+                      </td>
+                      <td className="hidden xl:table-cell py-3 pr-4 align-top text-sm text-gray-600 break-words">
+                        {s.phone}
+                      </td>
+                    </tr>
+                  ))}
+
+                  {staffRows.length === 0 && (
+                    <EmptyRow
+                      colSpan={3}
+                      text="Chưa có nhân sự gắn với chi nhánh này."
+                    />
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        ) : null}
+
+        {tab === "product" ? (
+          <Panel
+            title="Sản phẩm"
+            icon={<Package size={18} />}
+            count={`${productRows.length} món`}
+          >
+            <div className="min-w-full">
+              <table className="min-w-full">
+                <thead>
+                  <tr>
+                    <Th>Tên</Th>
+                    <Th>SKU</Th>
+                    <Th>Size</Th>
+                    <Th>Giá</Th>
+                    <Th>Trạng thái</Th>
+                  </tr>
+                </thead>
+                <tbody className="border-t border-gray-100">
+                  {productRows.map((p) => (
+                    <tr key={p.id} className="border-b border-gray-100">
+                      <Td strong>{p.productName}</Td>
+                      <Td className="text-gray-600">{p.sku}</Td>
+                      <Td className="text-gray-600">{p.size}</Td>
+                      <Td>{Number(p.priceBase).toLocaleString("vi-VN")}đ</Td>
+                      <Td>
+                        <Pill
+                          text={p.isActive ? "Hoạt động" : "Tắt"}
+                          tone={p.isActive ? "success" : "danger"}
+                        />
+                      </Td>
+                    </tr>
+                  ))}
+                  {productRows.length === 0 && (
+                    <EmptyRow
+                      colSpan={5}
+                      text="Chưa có sản phẩm gắn với chi nhánh này."
+                    />
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        ) : null}
+
+        {tab === "inventory" ? (
+          <Panel
+            title="Tồn kho"
+            icon={<Boxes size={18} />}
+            count={`${inventoryRows.length} dòng`}
+          >
+            <div className="min-w-full">
+              <table className="w-full table-fixed">
+                <thead>
+                  <tr>
+                    <Th>Thông tin</Th>
+                    <th className="hidden xl:table-cell py-2.5 pr-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Cảnh báo
+                    </th>
+                    <Th>Trạng thái</Th>
+                  </tr>
+                </thead>
+
+                <tbody className="border-t border-gray-100">
+                  {inventoryRows.map((i) => {
+                    const low =
+                      Number(i.quantity) <= Number(i.alertThreshold || 0);
+
+                    return (
+                      <tr key={i.id} className="border-b border-gray-100">
+                        <td className="py-3 pr-4 align-top text-sm text-gray-700">
+                          <div className="flex flex-col gap-1 min-w-0">
+                            <div className="font-medium text-gray-900 truncate">
+                              {i.productName}
+                            </div>
+                            <div className="text-xs text-gray-600 break-words">
+                              SKU: {i.sku}
+                            </div>
+
+                            <div className="xl:hidden text-xs text-gray-600">
+                              <div>
+                                SL:{" "}
+                                <span
+                                  className={
+                                    low
+                                      ? "text-rose-700 font-semibold"
+                                      : "text-gray-900"
+                                  }
+                                >
+                                  {Number(i.quantity).toLocaleString("vi-VN")}
+                                </span>
+                              </div>
+                              <div>
+                                Cảnh báo:{" "}
+                                {Number(i.alertThreshold).toLocaleString(
+                                  "vi-VN",
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="hidden xl:block text-sm">
                               SL:{" "}
                               <span
                                 className={
@@ -420,53 +504,34 @@ const FranchiseDetailPage = () => {
                                 {Number(i.quantity).toLocaleString("vi-VN")}
                               </span>
                             </div>
-                            <div>
-                              Cảnh báo:{" "}
-                              {Number(i.alertThreshold).toLocaleString("vi-VN")}
-                            </div>
                           </div>
+                        </td>
 
-                          {/* Quantity (desktop) */}
-                          <div className="hidden xl:block text-sm">
-                            SL:{" "}
-                            <span
-                              className={
-                                low
-                                  ? "text-rose-700 font-semibold"
-                                  : "text-gray-900"
-                              }
-                            >
-                              {Number(i.quantity).toLocaleString("vi-VN")}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
+                        <td className="hidden xl:table-cell py-3 pr-4 align-top text-sm text-gray-600">
+                          {Number(i.alertThreshold).toLocaleString("vi-VN")}
+                        </td>
 
-                      {/* Alert (desktop) */}
-                      <td className="hidden xl:table-cell py-3 pr-4 align-top text-sm text-gray-600">
-                        {Number(i.alertThreshold).toLocaleString("vi-VN")}
-                      </td>
+                        <td className="py-3 pr-0 align-top text-sm">
+                          <Pill
+                            text={i.isActive ? "AVAILABLE" : "OUT_OF_STOCK"}
+                            tone={i.isActive ? "success" : "danger"}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
 
-                      <td className="py-3 pr-0 align-top text-sm">
-                        <Pill
-                          text={i.isActive ? "AVAILABLE" : "OUT_OF_STOCK"}
-                          tone={i.isActive ? "success" : "danger"}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                {inventoryRows.length === 0 && (
-                  <EmptyRow
-                    colSpan={3}
-                    text="Chưa có dữ liệu tồn kho cho chi nhánh này."
-                  />
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
+                  {inventoryRows.length === 0 && (
+                    <EmptyRow
+                      colSpan={3}
+                      text="Chưa có dữ liệu tồn kho cho chi nhánh này."
+                    />
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        ) : null}
       </div>
     </div>
   );

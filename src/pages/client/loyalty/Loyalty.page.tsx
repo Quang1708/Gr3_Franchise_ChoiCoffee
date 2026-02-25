@@ -229,24 +229,21 @@ const LoyaltyPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-white">
-            <div className="p-6">
-                {/* Breadcrumb */}
-                <nav className="mb-4 text-sm text-gray-600">
-                    <span 
-                        className="hover:text-primary cursor-pointer"
-                        onClick={() => navigate(ROUTER_URL.HOME)}
-                    >
-                        Trang chủ
-                    </span>
-                    <span className="mx-2">/</span>
-                    <span className="text-gray-800 font-medium">Loyalty Program</span>
-                </nav>
+    <div className="min-h-screen bg-white font-sans">
+            <div className="p-4 max-w-6xl mx-auto">               
 
                 {/* Header with Tabs */}
+                <div className="mb-4">
+                <div className="flex items-center justify-between mb-3">
                 <div className="mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h1 className="text-2xl font-bold text-gray-900">Điểm tích lũy</h1>
+                <h2 className="text-charcoal dark:text-white text-3xl font-black tracking-tight">
+                  Điểm tích lũy của tôi
+                </h2>
+                <p className="text-wood-brown text-sm font-normal">
+                  Theo dõi và quản lý điểm tích lũy của hệ thống
+                  ChoiCoffee
+                </p>
+              </div>
                         <div className="flex items-center gap-4">
                             <div className="relative">
                                 <input
@@ -257,7 +254,7 @@ const LoyaltyPage = () => {
                                         setSearchQuery(e.target.value);
                                         setCurrentPage(1);
                                     }}
-                                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm w-64"
+                                    className="pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-xs w-64"
                                 />
                                 <Search
                                     className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -268,12 +265,12 @@ const LoyaltyPage = () => {
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex gap-6 border-b border-gray-200">
+                    <div className="flex gap-5 border-b border-gray-200">
                         {["Điểm tích lũy", "Tổng quan", "Kho quà tặng", "Chính sách"].map(
                             (tab, index) => (
                                 <button
                                     key={tab}
-                                    className={`pb-4 px-2 font-medium transition-colors relative ${index === 1
+                                    className={`pb-3 px-2 font-medium transition-colors relative text-sm ${index === 1
                                             ? "text-primary"
                                             : "text-gray-600 hover:text-gray-900"
                                         }`}
@@ -289,90 +286,89 @@ const LoyaltyPage = () => {
                 </div>
 
                 {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
                     {/* Card 1: Partner Member Info */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm relative">
-                        <div className="absolute top-4 right-4">
-                            <Star className="text-yellow-500" size={24} />
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm relative">
+                        <div className="absolute top-3 right-3">
+                            <Star className="text-yellow-500" size={20} />
                         </div>
-                        <div className="mb-4">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
+                        <div className="mb-3">
+                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
                                 THÀNH VIÊN ĐỐI TÁC
                             </p>
                             <h2 className="text-2xl font-bold text-gray-900 mb-4">
                                 {getTierLabel(currentCustomerFranchise?.loyaltyTier || "Gold")}
                             </h2>
-                            <div className="space-y-2">
+                            <div className="space-y-1">
                                 <div>
                                     <p className="text-xs text-gray-500">Tên chủ sở hữu</p>
-                                    <p className="text-sm font-medium text-gray-900">
+                                    <p className="text-xs font-bold text-charcoal text-base">
                                         {currentCustomer?.name}
                                     </p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500">ID ĐỐI TÁC</p>
-                                    <p className="text-sm font-medium text-gray-900">
+                                    <p className="text-xs font-bold text-charcoal text-base">
                                         CHOI - {currentPartnerId.toString().padStart(4, "0")} - 2024
                                     </p>
                                 </div>
                             </div>
                         </div>
                         <button 
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+                            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-primary/90 transition-colors font-medium"
                             onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.PROFILE)}
                         >
-                            <Gift size={16} />
+                            <Gift size={14} />
                             Đổi quà ngay
                         </button>
                     </div>
 
                     {/* Card 2: Total Accumulated Points */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                        <p className="text-sm text-gray-600 mb-2">Tổng điểm tích lũy</p>
-                        <p className="text-3xl font-bold text-gray-900 mb-2">
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <p className="text-xs text-gray-600 mb-2">Tổng điểm tích lũy</p>
+                        <p className="text-2xl font-bold text-gray-900 mb-2">
                             {stats.totalAccumulated.toLocaleString("vi-VN")}
                         </p>
-                        <div className="flex items-center gap-1 mb-4">
-                            <ArrowUp className="text-green-500" size={14} />
-                            <span className="text-sm text-green-500">+12%</span>
+                        <div className="flex items-center gap-1 mb-2">
+                            <ArrowUp className="text-green-500" size={12} />
+                            <span className="text-xs text-green-500">+12%</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
                             <div
-                                className="bg-primary h-2 rounded-full transition-all"
+                                className="bg-primary h-1.5 rounded-full transition-all"
                                 style={{ width: `${stats.progress}%` }}
                             ></div>
                         </div>
                         <p className="text-xs text-gray-500">
-                            Còn {stats.pointsToNextTier.toLocaleString("vi-VN")} điểm để lên
-                            hạng Kim Cương
+                            Còn {stats.pointsToNextTier.toLocaleString("vi-VN")} điểm để lên hạng Kim Cương
                         </p>
                     </div>
 
                     {/* Card 3: Available Points */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                        <p className="text-sm text-gray-600 mb-2">Điểm khả dụng</p>
-                        <p className="text-3xl font-bold text-gray-900 mb-4">
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <p className="text-xs text-gray-600 mb-2">Điểm khả dụng</p>
+                        <p className="text-2xl font-bold text-gray-900 mb-4">
                             {stats.availablePoints.toLocaleString("vi-VN")}
                         </p>
-                        <button className="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700">
+                        <button className="w-full px-3 py-1.5 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 transition-colors">
                             Có thể đổi {stats.vouchersCanRedeem} voucher
                         </button>
                     </div>
 
                     {/* Card 4: Points Used */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                        <p className="text-sm text-gray-600 mb-2">Điểm đã sử dụng</p>
-                        <p className="text-3xl font-bold text-gray-900">
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <p className="text-xs text-gray-600 mb-1">Điểm đã sử dụng</p>
+                        <p className="text-2xl font-bold text-gray-900">
                             {stats.totalUsed.toLocaleString("vi-VN")}
                         </p>
                     </div>
 
                     {/* Card 5: Expiring Soon */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                        <p className="text-sm text-gray-600 mb-2">
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <p className="text-xs text-gray-600 mb-1">
                             Sắp hết hạn (30 ngày)
                         </p>
-                        <p className="text-3xl font-bold text-gray-900">
+                        <p className="text-2xl font-bold text-gray-900">
                             {stats.expiringSoon.toLocaleString("vi-VN")} điểm
                         </p>
                     </div>
@@ -381,13 +377,13 @@ const LoyaltyPage = () => {
                 {/* Transaction History Section */}
                 <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
                     {/* Section Header */}
-                    <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-gray-900">
+                    <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                        <h2 className="text-base font-bold text-charcoal">
                             Lịch sử giao dịch điểm
                         </h2>
-                        <div className="flex items-center gap-3">
-                            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700">
-                                <Filter size={16} />
+                        <div className="flex items-center gap-2">
+                            <button className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium text-gray-700">
+                                <Filter size={14} />
                                 Bộ lọc
                             </button>
                         </div>
@@ -398,19 +394,19 @@ const LoyaltyPage = () => {
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b border-gray-200 bg-gray-50">
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th className="px-4 py-3 text-left text-xs font-bold text-charcoal uppercase tracking-wider bg-gray-50">
                                         NGÀY GIAO DỊCH
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th className="px-4 py-3 text-left text-xs font-bold text-charcoal uppercase tracking-wider bg-gray-50">
                                         NỘI DUNG
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th className="px-4 py-3 text-left text-xs font-bold text-charcoal uppercase tracking-wider bg-gray-50">
                                         PHÂN LOẠI
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th className="px-4 py-3 text-left text-xs font-bold text-charcoal uppercase tracking-wider bg-gray-50">
                                         SỐ ĐIỂM
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th className="px-4 py-3 text-left text-xs font-bold text-charcoal uppercase tracking-wider bg-gray-50">
                                         TRẠNG THÁI
                                     </th>
                                 </tr>
@@ -422,22 +418,22 @@ const LoyaltyPage = () => {
                                             key={transaction.id}
                                             className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
                                         >
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className="text-sm text-gray-600">
+                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                <span className="text-xs text-gray-600">
                                                     {transaction.date} {transaction.time}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-sm text-gray-900">
+                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                <span className="text-xs text-gray-900">
                                                     {transaction.content}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
+                                            <td className="px-4 py-4 whitespace-nowrap">
                                                 {getCategoryBadge(transaction.category)}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
+                                            <td className="px-4 py-4 whitespace-nowrap">
                                                 <span
-                                                    className={`text-sm font-semibold ${transaction.points > 0
+                                                    className={`text-xs font-semibold ${transaction.points > 0
                                                             ? "text-green-600"
                                                             : "text-red-600"
                                                         }`}
@@ -446,19 +442,19 @@ const LoyaltyPage = () => {
                                                     {transaction.points.toLocaleString("vi-VN")}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
+                                            <td className="px-4 py-4 whitespace-nowrap">
                                                 <div className="flex items-center gap-2">
                                                     {transaction.status === "success" ? (
                                                         <>
-                                                            <CheckCircle2 className="text-green-500" size={16} />
-                                                            <span className="text-sm text-gray-600">
+                                                            <CheckCircle2 className="text-green-500" size={14} />
+                                                            <span className="text-xs text-gray-600">
                                                                 Thành công
                                                             </span>
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <Clock className="text-orange-500" size={16} />
-                                                            <span className="text-sm text-gray-600">
+                                                            <Clock className="text-orange-500" size={14} />
+                                                            <span className="text-xs text-gray-600">
                                                                 Đang xử lý
                                                             </span>
                                                         </>
@@ -482,8 +478,8 @@ const LoyaltyPage = () => {
                     </div>
 
                     {/* Pagination */}
-                    <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                        <div className="text-sm text-gray-600">
+                    <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+                        <div className="text-xs text-gray-600">
                             Hiển thị {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredTransactions.length)} của{" "}
                             {filteredTransactions.length} giao dịch
                         </div>
@@ -491,7 +487,7 @@ const LoyaltyPage = () => {
                             <button
                                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                                 disabled={currentPage === 1}
-                                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                                className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs"
                             >
                                 &lt;
                             </button>
@@ -502,7 +498,7 @@ const LoyaltyPage = () => {
                                     <button
                                         key={pageNum}
                                         onClick={() => setCurrentPage(pageNum)}
-                                        className={`px-4 py-2 rounded-lg transition-colors text-sm ${currentPage === pageNum
+                                        className={`px-3 py-1.5 rounded-lg transition-colors text-xs ${currentPage === pageNum
                                                 ? "bg-primary text-white"
                                                 : "border border-gray-300 text-gray-700 hover:bg-gray-50"
                                             }`}
@@ -517,7 +513,7 @@ const LoyaltyPage = () => {
                                     <span className="px-2 text-gray-500">...</span>
                                     <button
                                         onClick={() => setCurrentPage(totalPages)}
-                                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm text-gray-700"
+                                        className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs text-gray-700"
                                     >
                                         {totalPages}
                                     </button>
@@ -529,7 +525,7 @@ const LoyaltyPage = () => {
                                     setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                                 }
                                 disabled={currentPage === totalPages}
-                                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                                className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs"
                             >
                                 &gt;
                             </button>
@@ -538,7 +534,7 @@ const LoyaltyPage = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="mt-6 text-center text-sm text-gray-500">
+                <div className="mt-4 text-center text-xs text-gray-500">
                     <p>©2024 ChoiCoffee Franchise Management System. Premium Partner Program.</p>
                 </div>
             </div>

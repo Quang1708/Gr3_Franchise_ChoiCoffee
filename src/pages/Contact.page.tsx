@@ -1,3 +1,4 @@
+import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
 
 
 const ContactPage = () => {
@@ -75,13 +76,7 @@ const ContactPage = () => {
                 />
               </div>
 
-              <button
-                type="submit"
-                className="w-full bg-primary text-white font-bold py-3.5 md:py-4 rounded-xl shadow-xl shadow-primary/20 hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4"
-              >
-                <span>Gửi yêu cầu ngay</span>
-                <span className="material-symbols-outlined text-xl">send</span>
-              </button>
+              <ButtonSubmit label="Gửi yêu cầu ngay" icon="send" />
             </form>
           </div>
 

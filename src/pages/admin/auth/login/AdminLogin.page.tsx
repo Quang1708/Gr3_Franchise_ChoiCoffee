@@ -1,5 +1,5 @@
-import React from "react";
-import { Mail, Lock } from "lucide-react";
+import React, { useState } from "react";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +15,7 @@ import { loginAdmin } from "@/services/adminAuth.service";
 
 const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -90,7 +91,7 @@ const AdminLoginPage: React.FC = () => {
               </span>
               <input
                 type="text"
-                placeholder="name@example.com"
+                placeholder="Email"
                 className={getInputClass(Boolean(errors.email))}
                 {...register("email")}
               />
@@ -111,11 +112,18 @@ const AdminLoginPage: React.FC = () => {
                 <Lock size={18} />
               </span>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="********"
                 className={getInputClass(Boolean(errors.password))}
                 {...register("password")}
               />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
             {errors.password?.message && (
               <span className="text-xs text-red-500 font-medium">

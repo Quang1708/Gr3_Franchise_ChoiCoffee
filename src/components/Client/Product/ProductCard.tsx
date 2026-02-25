@@ -1,16 +1,22 @@
 import type { Product } from "@/models/product.model";
+import { useState } from "react";
 import { toast } from "react-toastify";
+import ToppingModal from "./Topping.Modal";
 
 type ProductCardProps = {
   item: Product;
 };
 
 const ProductCard = ({ item }: ProductCardProps) => {
-  const addProduct = (product: Product) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const handleAddToCart = (product: Product) => {    
     toast.success(`${product.name} đã được thêm vào giỏ hàng!`);
+    setIsModalOpen(false); 
   };
 
   return (
+    <>
+    
     <div className="swiper-slide h-full">
       <div className="group h-full bg-white border border-charcoal rounded-xl overflow-hidden flex flex-col relative">
 
@@ -45,7 +51,7 @@ const ProductCard = ({ item }: ProductCardProps) => {
             </div>
           </div>
           <button
-            onClick={() => addProduct(item)}
+            onClick={() => setIsModalOpen(true)}
             disabled={!item.isActive}
             className={`
               cursor-pointer
@@ -66,7 +72,14 @@ const ProductCard = ({ item }: ProductCardProps) => {
           </button>
         </div>
       </div>
+      <ToppingModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handleAddToCart}
+        product={item}
+      />
     </div>
+    </>
   );
 };
 

@@ -340,6 +340,7 @@ const ClientHeader = () => {
                   </button>
                 </div>
               </div>
+              </div>
             </nav>
           </div>
         )}

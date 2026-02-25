@@ -61,7 +61,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-4 max-h-[70vh] overflow-y-auto px-1"
+      className="space-y-4 max-h-[70vh] overflow-y-auto pr-1"
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Name */}
@@ -272,7 +272,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   const defaultValues: Partial<ProductFormData> = {
     name: product.name,
     SKU: product.SKU,
-    image: product.image || "",
+    image: product.img || "",
     minPrice: product.minPrice,
     maxPrice: product.maxPrice,
     description: product.description || "",

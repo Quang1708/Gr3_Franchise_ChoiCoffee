@@ -11,6 +11,8 @@ import {
   Edit,
   Trash2,
   Eye,
+  Check,
+  ChevronDown,
 } from "lucide-react";
 
 // --- Types ---
@@ -39,6 +41,7 @@ export interface CRUDTableProps<T> {
   data: T[];
   columns: Column<T>[];
   pageSize?: number;
+  tableMaxHeightClass?: string;
 
   onAdd?: () => void;
   onView?: (item: T) => void;
@@ -202,6 +205,7 @@ export function CRUDTable<T extends { id?: string | number }>({
   data,
   columns,
   pageSize = 5,
+  tableMaxHeightClass,
   onAdd,
   onView,
   onEdit,
@@ -300,14 +304,14 @@ export function CRUDTable<T extends { id?: string | number }>({
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden font-sans">
       {/* Header */}
-      <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:flex-nowrap sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800 uppercase">{title}</h2>
         </div>
         {onAdd && (
           <button
             onClick={onAdd}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md active:scale-[0.98]"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md active:scale-[0.98] cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Thêm mới</span>
@@ -316,7 +320,7 @@ export function CRUDTable<T extends { id?: string | number }>({
       </div>
 
       {/* Tools */}
-      <div className="p-4 bg-gray-50/50 flex flex-col md:flex-row gap-4 items-center justify-between border-b border-gray-100">
+      <div className="p-4 bg-gray-50/50 flex flex-col md:flex-row md:flex-nowrap gap-3 items-center justify-between border-b border-gray-100">
         {/* Search + slot */}
         <div className="w-full md:w-auto flex items-center gap-3">
           <div className="relative w-full md:w-72 group">
@@ -364,18 +368,20 @@ export function CRUDTable<T extends { id?: string | number }>({
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div
+        className={`overflow-x-auto overflow-y-auto ${tableMaxHeightClass || ""}`}
+      >
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 border-b border-gray-100">
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-16">
+              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap">
                 #
               </th>
 
               {columns.map((col, idx) => (
                 <th
                   key={idx}
-                  className={`px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider ${
+                  className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap ${
                     col.className || ""
                   } ${
                     col.sortable
@@ -398,13 +404,13 @@ export function CRUDTable<T extends { id?: string | number }>({
               ))}
 
               {statusField && (
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center whitespace-nowrap">
                   Trạng thái
                 </th>
               )}
 
               {(onView || onEdit || onDelete) && (
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right whitespace-nowrap">
                   Hành động
                 </th>
               )}
@@ -418,14 +424,14 @@ export function CRUDTable<T extends { id?: string | number }>({
                   key={item.id || index}
                   className="bg-white hover:bg-primary/5 transition-colors group"
                 >
-                  <td className="px-6 py-5 text-base text-gray-500 font-medium align-middle">
+                  <td className="px-4 py-3 text-sm text-gray-500 font-medium align-middle whitespace-nowrap">
                     {(currentPage - 1) * itemsPerPage + index + 1}
                   </td>
 
                   {columns.map((col, idx) => (
                     <td
                       key={idx}
-                      className="px-6 py-5 text-base text-gray-700 align-middle"
+                      className="px-4 py-3 text-sm text-gray-700 align-middle whitespace-nowrap"
                     >
                       {col.render
                         ? col.render(item)
@@ -436,7 +442,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                   ))}
 
                   {statusField && (
-                    <td className="px-6 py-5 text-center align-middle">
+                    <td className="px-4 py-3 text-center align-middle whitespace-nowrap">
                       <div className="flex flex-col items-center justify-center gap-1">
                         {/* ✅ DISABLE khi không có onStatusChange */}
                         <ToggleSwitch
@@ -456,12 +462,12 @@ export function CRUDTable<T extends { id?: string | number }>({
                   )}
 
                   {(onView || onEdit || onDelete) && (
-                    <td className="px-6 py-5 text-right align-middle">
+                    <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         {onView && (
                           <button
                             onClick={() => onView(item)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                             title="Xem chi tiết"
                           >
                             <Eye className="w-5 h-5" />
@@ -470,7 +476,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                         {onEdit && (
                           <button
                             onClick={() => onEdit(item)}
-                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
                             title="Chỉnh sửa"
                           >
                             <Edit className="w-5 h-5" />
@@ -580,6 +586,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                             ? "bg-primary text-white shadow-sm"
                             : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
                         }
+                        cursor-pointer
                       `}
                     >
                       {p}

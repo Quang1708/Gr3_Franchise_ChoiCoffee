@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   CRUDTable,
   type Column,
@@ -12,23 +12,11 @@ import {
   DeleteProductModal,
 } from "../../../components/Admin/product/ProductModals";
 
-// ✅ RBAC
-import { useAuthStore } from "@/stores/auth.store";
-import { useAdminContextStore } from "@/stores/adminContext.store";
-import { can } from "@/auth/rbac";
-import { PERM } from "@/auth/rbac.permissions";
-
 const ProductPage = () => {
-  const user = useAuthStore((s) => s.user);
-  const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
+  // --- State ---
+  const [data, setData] = useState<Product[]>(PRODUCT_SEED_DATA);
 
-  const canWrite = useMemo(
-    () => can(user, PERM.PRODUCT_WRITE, franchiseId ?? undefined),
-    [user, franchiseId],
-  );
-
-  const [data, setData] = useState<Product[]>(PRODUCTS);
-
+  // Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -37,22 +25,22 @@ const ProductPage = () => {
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
+  // --- Handlers ---
+
   // Create
   const handleAdd = () => {
-    if (!canWrite) return;
     setIsCreateOpen(true);
   };
 
   const handleCreateSubmit = (newData: Partial<Product>) => {
-    if (!canWrite) return;
-
-    const newId = `PROD-${Math.floor(Math.random() * 10000)}`;
+    // Generate simple mock ID
+    const nextId = data.length > 0 ? Math.max(...data.map((p) => p.id)) + 1 : 1;
 
     const product: Product = {
       id: nextId,
       SKU: newData.SKU || `PROD-${nextId}`,
       name: newData.name!,
-      image: newData.image || "",
+      img: newData.img || "",
       description: newData.description,
       content: newData.content,
       minPrice: newData.minPrice || 0,
@@ -70,13 +58,12 @@ const ProductPage = () => {
 
   // Edit
   const handleEdit = (item: Product) => {
-    if (!canWrite) return;
     setEditingProduct(item);
     setIsEditOpen(true);
   };
 
   const handleEditSubmit = (updatedData: Partial<Product>) => {
-    if (!canWrite || !editingProduct) return;
+    if (!editingProduct) return;
 
     setData((prev) =>
       prev.map((p) =>
@@ -84,10 +71,7 @@ const ProductPage = () => {
           ? {
               ...p,
               ...updatedData,
-              specifications: {
-                ...p.specifications,
-                ...updatedData.specifications,
-              },
+              updatedAt: new Date().toISOString(),
             }
           : p,
       ),
@@ -100,13 +84,12 @@ const ProductPage = () => {
 
   // Delete
   const handleDelete = (item: Product) => {
-    if (!canWrite) return;
     setDeletingProduct(item);
     setIsDeleteOpen(true);
   };
 
   const handleDeleteConfirm = () => {
-    if (!canWrite || !deletingProduct) return;
+    if (!deletingProduct) return;
 
     setData((prev) => prev.filter((p) => p.id !== deletingProduct.id));
     toast.success("Đã xóa sản phẩm");
@@ -114,6 +97,20 @@ const ProductPage = () => {
     setDeletingProduct(null);
   };
 
+  const handleStatusChange = (item: Product, newStatus: boolean) => {
+    setData((prev) =>
+      prev.map((p) =>
+        p.id === item.id
+          ? { ...p, isActive: newStatus, updatedAt: new Date().toISOString() }
+          : p,
+      ),
+    );
+    toast.success(
+      `Đã cập nhật trạng thái: ${newStatus ? "Hoạt động" : "Ngưng hoạt động"}`,
+    );
+  };
+
+  // --- Configuration ---
   const columns: Column<Product>[] = [
     {
       header: "SKU",
@@ -130,7 +127,7 @@ const ProductPage = () => {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden shrink-0 bg-gray-50 flex items-center justify-center text-xs text-gray-400">
             <img
-              src={item.image || "https://placehold.co/100?text=No+Image"}
+              src={item.img || "https://placehold.co/100?text=No+Image"}
               alt={item.name}
               className="w-full h-full object-cover"
               onError={(e) => {
@@ -176,14 +173,10 @@ const ProductPage = () => {
       ),
     },
     {
-      header: "Mô tả",
-      accessor: "description",
-      className: "min-w-[200px] max-w-xs",
-      render: (item) => (
-        <p className="text-sm text-gray-500 truncate" title={item.description}>
-          {item.description || "---"}
-        </p>
-      ),
+      header: "Ngày tạo",
+      accessor: (item) => new Date(item.createdAt).toLocaleDateString("vi-VN"),
+      sortable: true,
+      className: "text-gray-500 text-sm",
     },
     {
       header: "Ngày cập nhật",
@@ -194,17 +187,22 @@ const ProductPage = () => {
   ];
 
   return (
-    <div className="p-6 h-auto max-h-[calc(100vh-4rem)] flex flex-col transition-all animate-fade-in">
+    <div className="p-6 h-[calc(100vh-4rem)] min-h-0 flex flex-col overflow-hidden transition-all animate-fade-in">
       <CRUDTable<Product>
         title="Quản lý Sản phẩm"
         data={data}
         columns={columns}
         pageSize={5}
-        // ✅ RBAC: STAFF sẽ không thấy nút Add/Edit/Delete
-        onAdd={canWrite ? handleAdd : undefined}
-        onEdit={canWrite ? handleEdit : undefined}
-        onDelete={canWrite ? handleDelete : undefined}
-        searchKeys={["name", "category", "id"]}
+        tableMaxHeightClass="max-h-[60vh]"
+        // Actions
+        onAdd={handleAdd}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        // Status
+        statusField="isActive"
+        onStatusChange={handleStatusChange}
+        // Search & Filter
+        searchKeys={["name", "SKU"]}
         filters={[
           {
             key: "isActive",
@@ -217,36 +215,32 @@ const ProductPage = () => {
         ]}
       />
 
-      {/* ✅ STAFF không render modal write */}
-      {canWrite ? (
-        <>
-          <CreateProductModal
-            isOpen={isCreateOpen}
-            onClose={() => setIsCreateOpen(false)}
-            onSubmit={handleCreateSubmit}
-          />
+      {/* --- Modals --- */}
+      <CreateProductModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSubmit={handleCreateSubmit}
+      />
 
-          <EditProductModal
-            isOpen={isEditOpen}
-            onClose={() => {
-              setIsEditOpen(false);
-              setEditingProduct(null);
-            }}
-            product={editingProduct}
-            onSubmit={handleEditSubmit}
-          />
+      <EditProductModal
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditingProduct(null);
+        }}
+        product={editingProduct}
+        onSubmit={handleEditSubmit}
+      />
 
-          <DeleteProductModal
-            isOpen={isDeleteOpen}
-            onClose={() => {
-              setIsDeleteOpen(false);
-              setDeletingProduct(null);
-            }}
-            product={deletingProduct}
-            onConfirm={handleDeleteConfirm}
-          />
-        </>
-      ) : null}
+      <DeleteProductModal
+        isOpen={isDeleteOpen}
+        onClose={() => {
+          setIsDeleteOpen(false);
+          setDeletingProduct(null);
+        }}
+        product={deletingProduct}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 };

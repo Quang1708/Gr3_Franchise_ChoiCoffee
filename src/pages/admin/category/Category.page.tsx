@@ -3,14 +3,12 @@ import {
   CRUDTable,
   type Column,
 } from "../../../components/Admin/template/CRUD.template";
-
 import { toast } from "sonner";
 import type { Category } from "../../../models/category.model";
 import {
   CreateCategoryModal,
   EditCategoryModal,
   DeleteCategoryModal,
-  type CategoryFormData,
 } from "../../../components/Admin/category/CategoryModals";
 
 // ✅ RBAC
@@ -18,6 +16,8 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import { can } from "@/auth/rbac";
 import { PERM } from "@/auth/rbac.permissions";
+import { CATEGORY_SEED_DATA } from "@/mocks/category.seed";
+
 
 const CategoryPage = () => {
   const user = useAuthStore((s) => s.user);
@@ -28,7 +28,7 @@ const CategoryPage = () => {
     [user, franchiseId],
   );
 
-  const [data, setData] = useState<Category[]>(CATEGORIES);
+  const [data, setData] = useState<Category[]>(CATEGORY_SEED_DATA);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -71,16 +71,19 @@ const CategoryPage = () => {
 
   const handleCreateSubmit = (newData: Partial<Category>) => {
     if (!canWrite) return;
+    if (!newData.code || !newData.name) return;
+
+    const nextId = data.length > 0 ? Math.max(...data.map((c) => c.id)) + 1 : 1;
 
     const category: Category = {
       id: nextId,
       code: newData.code,
       name: newData.name,
       description: newData.description || "",
-      is_active: newData.is_active ?? true,
-      is_deleted: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      isActive: newData.isActive ?? true,
+      isDeleted: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     setData((prev) => [category, ...prev]);
@@ -105,7 +108,7 @@ const CategoryPage = () => {
               ...c,
               ...updatedData,
               // Check specifically for undefined to allow false
-              isActive: updatedData.is_active ?? c.isActive,
+              isActive: updatedData.isActive ?? c.isActive,
               updatedAt: new Date().toISOString(),
             }
           : c,
@@ -150,18 +153,19 @@ const CategoryPage = () => {
   };
 
   return (
-    <div className="p-6 h-auto max-h-[calc(100vh-4rem)] flex flex-col">
+    <div className="p-6 h-[calc(100vh-4rem)] min-h-0 flex flex-col overflow-hidden transition-all animate-fade-in">
       <CRUDTable<Category>
         title="Quản lý Danh mục"
         data={data}
         columns={columns}
         pageSize={5}
+        tableMaxHeightClass="max-h-[60vh]"
         // ✅ RBAC: STAFF không thấy Add/Edit/Delete
         onAdd={canWrite ? handleCreateOpen : undefined}
         onEdit={canWrite ? handleEditOpen : undefined}
         onDelete={canWrite ? handleDeleteOpen : undefined}
         // ✅ Status vẫn hiển thị nhưng sẽ disable (nhờ CRUD.template.tsx đã sửa)
-        statusField="is_active"
+        statusField="isActive"
         onStatusChange={canWrite ? handleStatusChange : undefined}
         searchKeys={["name", "code", "description"]}
         filters={[

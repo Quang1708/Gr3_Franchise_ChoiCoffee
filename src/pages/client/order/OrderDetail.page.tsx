@@ -12,10 +12,12 @@ import {
 } from "lucide-react";
 // import ClientHeader from "../../../layouts/client/ClientHeader.layout";
 // import ClientFooter from "../../../layouts/client/ClientFooter.layout";
-import { FAKE_ORDERS } from "../../../mocks/dataOder.const";
-
-// Type alias for OrderData to avoid runtime import issues
-type OrderDataType = (typeof FAKE_ORDERS)[number];
+import { ORDER_SEED_DATA } from "../../../mocks/order.seed";
+import { ORDER_ITEM_SEED_DATA } from "../../../mocks/order_item.seed";
+import { CUSTOMER_SEED_DATA } from "../../../mocks/customer.seed";
+import { ORDER_STATUS_LOG_SEED_DATA } from "../../../mocks/order_status_log.seed";
+import { FRANCHISE_SEED_DATA } from "../../../mocks/franchise.seed";
+import type { Order as OrderModel } from "../../../models/order.model";
 
 // Interface for display
 interface OrderDetail {
@@ -63,9 +65,9 @@ interface OrderDetail {
   };
 }
 
-// Helper function to map OrderData to OrderDetail
-const mapOrderDataToOrderDetail = (orderData: OrderDataType): OrderDetail => {
-  const date = new Date(orderData.created_at);
+// Helper function to map OrderModel to OrderDetail
+const mapOrderDataToOrderDetail = (orderData: OrderModel): OrderDetail => {
+  const date = new Date(orderData.createdAt);
   const orderDate = date.toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -76,82 +78,102 @@ const mapOrderDataToOrderDetail = (orderData: OrderDataType): OrderDetail => {
     minute: "2-digit",
   });
 
+  // Get order items
+  const orderItems = ORDER_ITEM_SEED_DATA.filter(
+    (item) => item.orderId === orderData.id && !item.isDeleted,
+  );
+
+  // Get customer info
+  const customer = CUSTOMER_SEED_DATA.find(
+    (c) => c.id === orderData.customerId,
+  );
+
+  // Get franchise info
+  const franchise = FRANCHISE_SEED_DATA.find(
+    (f) => f.id === orderData.franchiseId,
+  );
+
+  // Get status logs for timeline
+  const statusLogs = ORDER_STATUS_LOG_SEED_DATA.filter(
+    (log) => log.orderId === orderData.id,
+  ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
   // Calculate totals
-  const subtotal = orderData.items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0,
-  );
-  const shippingFee = 85000; // Default shipping fee
-  const discountPercent = 5; // Default discount
-  const discount = Math.round((subtotal * discountPercent) / 100);
-  const vatPercent = 8; // Default VAT
-  const vat = Math.round(
-    ((subtotal - discount + shippingFee) * vatPercent) / 100,
-  );
-  const total = subtotal - discount + shippingFee + vat;
+  const subtotal = orderItems.reduce((sum, item) => sum + item.lineTotal, 0);
+  const shippingFee = orderData.type === "ONLINE" ? 30000 : 0; // Shipping fee for online orders
+  const discountPercent = 0; // No discount by default
+  const discount = 0;
+  const vatPercent = 10; // VAT 10%
+  const vat = Math.round((subtotal * vatPercent) / 100);
+  const total = orderData.totalAmount;
 
   // Map status
   let status: "confirmed" | "processing" | "delivering" | "completed";
-  if (orderData.status === "Completed") {
+  if (orderData.status === "COMPLETED") {
     status = "completed";
-  } else if (orderData.status === "Processing") {
+  } else if (orderData.status === "PREPARING") {
+    status = "delivering";
+  } else if (orderData.status === "CONFIRMED") {
     status = "processing";
   } else {
-    status = "confirmed"; // Pending -> confirmed
+    status = "confirmed"; // DRAFT -> confirmed
   }
 
-  // Generate timeline based on created_at and status
-  const createdDate = new Date(orderData.created_at);
-  const confirmedDate = createdDate;
-  const processingDate = new Date(createdDate.getTime() + 1.5 * 60 * 60 * 1000); // +1.5 hours
-  const deliveringDate = new Date(createdDate.getTime() + 24 * 60 * 60 * 1000); // +1 day
-  const completedDate = new Date(
-    createdDate.getTime() + 2 * 24 * 60 * 60 * 1000,
-  ); // +2 days
-
+  // Build timeline from status logs
   const formatDate = (d: Date) =>
     d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
   const formatTime = (d: Date) =>
     d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
 
-  // Map payment method
-  const paymentMethodMap: Record<string, string> = {
-    Cash: "Tiền mặt",
-    Card: "Thẻ ngân hàng",
-    Momo: "Ví MoMo",
-    ZaloPay: "Ví ZaloPay",
-  };
+  const confirmedLog = statusLogs.find((log) => log.toStatus === "CONFIRMED");
+  const preparingLog = statusLogs.find((log) => log.toStatus === "PREPARING");
+  const completedLog = statusLogs.find((log) => log.toStatus === "COMPLETED");
 
-  const paymentStatusMap: Record<string, string> = {
-    Unpaid: "Chưa thanh toán",
-    Paid: "Đã thanh toán",
-    Refunded: "Đã hoàn tiền",
-  };
+  const confirmedDate = confirmedLog
+    ? new Date(confirmedLog.createdAt)
+    : new Date(orderData.createdAt);
+  const processingDate = preparingLog
+    ? new Date(preparingLog.createdAt)
+    : new Date(confirmedDate.getTime() + 30 * 60 * 1000); // +30 minutes default
+  const deliveringDate = preparingLog
+    ? new Date(new Date(preparingLog.createdAt).getTime() + 60 * 60 * 1000) // +1 hour after preparing
+    : new Date(processingDate.getTime() + 60 * 60 * 1000);
+  const completedDate = completedLog
+    ? new Date(completedLog.createdAt)
+    : orderData.completedAt
+      ? new Date(orderData.completedAt)
+      : new Date(deliveringDate.getTime() + 24 * 60 * 60 * 1000); // +1 day default
+
+  // Payment method based on order type
+  const paymentMethod = orderData.type === "POS" ? "Tiền mặt" : "Chuyển khoản";
+  const paymentStatus = orderData.status === "COMPLETED" ? "Đã thanh toán" : "Chưa thanh toán";
 
   return {
-    id: orderData.id,
-    orderCode: orderData.id,
+    id: orderData.id.toString(),
+    orderCode: orderData.code,
     orderDate,
     orderTime,
-    partnerCode: `PART-${orderData.id.slice(-3)}`,
+    partnerCode: `PART-${orderData.code.slice(-3)}`,
     status,
     deliveryInfo: {
-      recipient: orderData.customer_name,
-      phone: orderData.customer_phone,
-      address: orderData.shipping_address,
-      shippingUnit: "Giao Hàng Nhanh (GHN)",
-      trackingNumber: `${orderData.id.slice(-6)}-AX-99`,
-      note: orderData.note || "Không có ghi chú",
+      recipient: customer?.name || "Khách hàng",
+      phone: customer?.phone || "",
+      address: franchise?.address || "Tại quầy",
+      shippingUnit: orderData.type === "ONLINE" ? "Giao Hàng Nhanh (GHN)" : "Tại quầy",
+      trackingNumber: orderData.type === "ONLINE" 
+        ? `${orderData.code.slice(-6)}-GHN-99` 
+        : "N/A",
+      note: "Không có ghi chú",
     },
-    products: orderData.items.map((item) => ({
-      id: item.id,
-      name: item.name,
+    products: orderItems.map((item) => ({
+      id: item.id.toString(),
+      name: item.productNameSnapshot,
       category: "Sản phẩm",
       package: "",
       quantity: item.quantity,
-      unitPrice: item.price,
-      total: item.price * item.quantity,
-      image: `https://via.placeholder.com/60x60?text=${encodeURIComponent(item.name.slice(0, 3))}`,
+      unitPrice: item.priceSnapshot,
+      total: item.lineTotal,
+      image: `https://via.placeholder.com/60x60?text=${encodeURIComponent(item.productNameSnapshot.slice(0, 3))}`,
     })),
     payment: {
       subtotal,
@@ -161,11 +183,9 @@ const mapOrderDataToOrderDetail = (orderData: OrderDataType): OrderDetail => {
       vat,
       vatPercent,
       total,
-      method:
-        paymentMethodMap[orderData.payment_method] || orderData.payment_method,
-      bank: orderData.payment_method === "Card" ? "Vietcombank" : "",
-      status:
-        paymentStatusMap[orderData.payment_status] || orderData.payment_status,
+      method: paymentMethod,
+      bank: orderData.type === "ONLINE" ? "Vietcombank" : "",
+      status: paymentStatus,
     },
     timeline: {
       confirmed: {
@@ -193,8 +213,10 @@ const OrderDetailPage = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
 
-  // Find order from FAKE_ORDERS
-  const orderData = FAKE_ORDERS.find((order) => order.id === orderId);
+  // Find order from ORDER_SEED_DATA
+  const orderData = ORDER_SEED_DATA.find(
+    (order) => order.id.toString() === orderId && !order.isDeleted,
+  );
 
   if (!orderData) {
     return (

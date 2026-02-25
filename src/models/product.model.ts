@@ -4,7 +4,7 @@ export interface Product {
   name: string;
   description?: string;
   content?: string;
-  image?: string;
+  img?: string;
   minPrice: number;
   maxPrice: number;
   isActive: boolean;

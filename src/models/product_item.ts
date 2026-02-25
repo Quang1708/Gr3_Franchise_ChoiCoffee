@@ -1,10 +1,9 @@
-export interface ICart {
+export interface ProductItem {
     product_franchise_id: number;
-    SKU: string;
     product_name: string;
-    description: string;
+    image_url: string;
     price_base: number;
     quantity: number;
-    image_url: string;
+    category_name?: string;
+    SKU?: string;
 }
-

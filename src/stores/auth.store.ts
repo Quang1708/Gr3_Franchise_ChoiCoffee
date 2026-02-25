@@ -1,18 +1,22 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from "zustand";
 import { LOCAL_STORAGE } from "@/consts/localstorage.const";
 import {
   getItemInLocalStorage,
-  setItemInLocalStorage,
   removeItemInLocalStorage,
+  setItemInLocalStorage,
 } from "@/utils/localStorage.util";
 
 type AuthState = {
-  user: any | null;
+  user: any;
   token: string | null;
   isInitialized: boolean;
-  hydrate: () => void;
+
+  // ✅ dùng cho login page
   login: (user: any, token: string) => void;
+
+  // ✅ nội bộ
+  setAuth: (user: any, token: string) => void;
+  hydrate: () => void;
   logout: () => void;
 };
 
@@ -21,21 +25,29 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   isInitialized: false,
 
-  hydrate: () => {
-    const user = getItemInLocalStorage<any>(LOCAL_STORAGE.ACCOUNT_CMS);
-    const token = getItemInLocalStorage<string>(LOCAL_STORAGE.CMS_TOKEN);
-    set({ user: user ?? null, token: token ?? null, isInitialized: true });
-  },
-
   login: (user, token) => {
+    // lưu đúng key để AdminGuard đọc được
     setItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_CMS, user);
     setItemInLocalStorage(LOCAL_STORAGE.CMS_TOKEN, token);
     set({ user, token, isInitialized: true });
   },
 
+  setAuth: (user, token) => {
+    setItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_CMS, user);
+    setItemInLocalStorage(LOCAL_STORAGE.CMS_TOKEN, token);
+    set({ user, token, isInitialized: true });
+  },
+
+  hydrate: () => {
+    const user = getItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_CMS);
+    const token = getItemInLocalStorage(LOCAL_STORAGE.CMS_TOKEN);
+    set({ user: user ?? null, token: token ?? null, isInitialized: true });
+  },
+
   logout: () => {
     removeItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_CMS);
     removeItemInLocalStorage(LOCAL_STORAGE.CMS_TOKEN);
+    removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID);
     set({ user: null, token: null, isInitialized: true });
   },
 }));

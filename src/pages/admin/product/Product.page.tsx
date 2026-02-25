@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CRUDTable,
   type Column,
@@ -12,11 +12,23 @@ import {
   DeleteProductModal,
 } from "../../../components/Admin/product/ProductModals";
 
-const ProductPage = () => {
-  // --- State ---
-  const [data, setData] = useState<Product[]>(PRODUCT_SEED_DATA);
+// ✅ RBAC
+import { useAuthStore } from "@/stores/auth.store";
+import { useAdminContextStore } from "@/stores/adminContext.store";
+import { can } from "@/auth/rbac";
+import { PERM } from "@/auth/rbac.permissions";
 
-  // Modal State
+const ProductPage = () => {
+  const user = useAuthStore((s) => s.user);
+  const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
+
+  const canWrite = useMemo(
+    () => can(user, PERM.PRODUCT_WRITE, franchiseId ?? undefined),
+    [user, franchiseId],
+  );
+
+  const [data, setData] = useState<Product[]>(PRODUCTS);
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -25,16 +37,16 @@ const ProductPage = () => {
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  // --- Handlers ---
-
   // Create
   const handleAdd = () => {
+    if (!canWrite) return;
     setIsCreateOpen(true);
   };
 
   const handleCreateSubmit = (newData: Partial<Product>) => {
-    // Generate simple mock ID
-    const nextId = data.length > 0 ? Math.max(...data.map((p) => p.id)) + 1 : 1;
+    if (!canWrite) return;
+
+    const newId = `PROD-${Math.floor(Math.random() * 10000)}`;
 
     const product: Product = {
       id: nextId,
@@ -58,12 +70,13 @@ const ProductPage = () => {
 
   // Edit
   const handleEdit = (item: Product) => {
+    if (!canWrite) return;
     setEditingProduct(item);
     setIsEditOpen(true);
   };
 
   const handleEditSubmit = (updatedData: Partial<Product>) => {
-    if (!editingProduct) return;
+    if (!canWrite || !editingProduct) return;
 
     setData((prev) =>
       prev.map((p) =>
@@ -71,7 +84,10 @@ const ProductPage = () => {
           ? {
               ...p,
               ...updatedData,
-              updatedAt: new Date().toISOString(),
+              specifications: {
+                ...p.specifications,
+                ...updatedData.specifications,
+              },
             }
           : p,
       ),
@@ -84,12 +100,13 @@ const ProductPage = () => {
 
   // Delete
   const handleDelete = (item: Product) => {
+    if (!canWrite) return;
     setDeletingProduct(item);
     setIsDeleteOpen(true);
   };
 
   const handleDeleteConfirm = () => {
-    if (!deletingProduct) return;
+    if (!canWrite || !deletingProduct) return;
 
     setData((prev) => prev.filter((p) => p.id !== deletingProduct.id));
     toast.success("Đã xóa sản phẩm");
@@ -97,20 +114,6 @@ const ProductPage = () => {
     setDeletingProduct(null);
   };
 
-  const handleStatusChange = (item: Product, newStatus: boolean) => {
-    setData((prev) =>
-      prev.map((p) =>
-        p.id === item.id
-          ? { ...p, isActive: newStatus, updatedAt: new Date().toISOString() }
-          : p,
-      ),
-    );
-    toast.success(
-      `Đã cập nhật trạng thái: ${newStatus ? "Hoạt động" : "Ngưng hoạt động"}`,
-    );
-  };
-
-  // --- Configuration ---
   const columns: Column<Product>[] = [
     {
       header: "SKU",
@@ -197,15 +200,11 @@ const ProductPage = () => {
         data={data}
         columns={columns}
         pageSize={5}
-        // Actions
-        onAdd={handleAdd}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        // Status
-        statusField="isActive"
-        onStatusChange={handleStatusChange}
-        // Search & Filter
-        searchKeys={["name", "SKU"]}
+        // ✅ RBAC: STAFF sẽ không thấy nút Add/Edit/Delete
+        onAdd={canWrite ? handleAdd : undefined}
+        onEdit={canWrite ? handleEdit : undefined}
+        onDelete={canWrite ? handleDelete : undefined}
+        searchKeys={["name", "category", "id"]}
         filters={[
           {
             key: "isActive",
@@ -218,32 +217,36 @@ const ProductPage = () => {
         ]}
       />
 
-      {/* --- Modals --- */}
-      <CreateProductModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onSubmit={handleCreateSubmit}
-      />
+      {/* ✅ STAFF không render modal write */}
+      {canWrite ? (
+        <>
+          <CreateProductModal
+            isOpen={isCreateOpen}
+            onClose={() => setIsCreateOpen(false)}
+            onSubmit={handleCreateSubmit}
+          />
 
-      <EditProductModal
-        isOpen={isEditOpen}
-        onClose={() => {
-          setIsEditOpen(false);
-          setEditingProduct(null);
-        }}
-        product={editingProduct}
-        onSubmit={handleEditSubmit}
-      />
+          <EditProductModal
+            isOpen={isEditOpen}
+            onClose={() => {
+              setIsEditOpen(false);
+              setEditingProduct(null);
+            }}
+            product={editingProduct}
+            onSubmit={handleEditSubmit}
+          />
 
-      <DeleteProductModal
-        isOpen={isDeleteOpen}
-        onClose={() => {
-          setIsDeleteOpen(false);
-          setDeletingProduct(null);
-        }}
-        product={deletingProduct}
-        onConfirm={handleDeleteConfirm}
-      />
+          <DeleteProductModal
+            isOpen={isDeleteOpen}
+            onClose={() => {
+              setIsDeleteOpen(false);
+              setDeletingProduct(null);
+            }}
+            product={deletingProduct}
+            onConfirm={handleDeleteConfirm}
+          />
+        </>
+      ) : null}
     </div>
   );
 };

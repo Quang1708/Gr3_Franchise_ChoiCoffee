@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CRUDTable,
   type Column,
@@ -12,10 +12,23 @@ import {
   DeleteCategoryModal,
   type CategoryFormData,
 } from "../../../components/Admin/category/CategoryModals";
-import { CATEGORY_SEED_DATA } from "@/mocks/category.seed";
+
+// ✅ RBAC
+import { useAuthStore } from "@/stores/auth.store";
+import { useAdminContextStore } from "@/stores/adminContext.store";
+import { can } from "@/auth/rbac";
+import { PERM } from "@/auth/rbac.permissions";
 
 const CategoryPage = () => {
-  const [data, setData] = useState<Category[]>(CATEGORY_SEED_DATA);
+  const user = useAuthStore((s) => s.user);
+  const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
+
+  const canWrite = useMemo(
+    () => can(user, PERM.CATEGORY_WRITE, franchiseId ?? undefined),
+    [user, franchiseId],
+  );
+
+  const [data, setData] = useState<Category[]>(CATEGORIES);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -51,22 +64,23 @@ const CategoryPage = () => {
   ];
 
   // Create
-  const handleCreateOpen = () => setIsCreateOpen(true);
+  const handleCreateOpen = () => {
+    if (!canWrite) return;
+    setIsCreateOpen(true);
+  };
 
-  const handleCreateSubmit = (newData: CategoryFormData) => {
-    // Determine the next ID
-    const nextId = data.length > 0 ? Math.max(...data.map((c) => c.id)) + 1 : 1;
+  const handleCreateSubmit = (newData: Partial<Category>) => {
+    if (!canWrite) return;
 
     const category: Category = {
       id: nextId,
       code: newData.code,
       name: newData.name,
       description: newData.description || "",
-      // Map form's is_active to model's isActive
-      isActive: newData.is_active ?? true,
-      isDeleted: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      is_active: newData.is_active ?? true,
+      is_deleted: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
     setData((prev) => [category, ...prev]);
@@ -76,12 +90,13 @@ const CategoryPage = () => {
 
   // Edit
   const handleEditOpen = (item: Category) => {
+    if (!canWrite) return;
     setEditingCategory(item);
     setIsEditOpen(true);
   };
 
-  const handleEditSubmit = (updatedData: Partial<CategoryFormData>) => {
-    if (!editingCategory) return;
+  const handleEditSubmit = (updatedData: Partial<Category>) => {
+    if (!canWrite || !editingCategory) return;
 
     setData((prev) =>
       prev.map((c) =>
@@ -104,12 +119,13 @@ const CategoryPage = () => {
 
   // Delete
   const handleDeleteOpen = (item: Category) => {
+    if (!canWrite) return;
     setDeletingCategory(item);
     setIsDeleteOpen(true);
   };
 
   const handleDeleteConfirm = () => {
-    if (!deletingCategory) return;
+    if (!canWrite || !deletingCategory) return;
 
     setData((prev) => prev.filter((c) => c.id !== deletingCategory.id));
     toast.success("Đã xóa danh mục thành công");
@@ -119,6 +135,8 @@ const CategoryPage = () => {
 
   // Status
   const handleStatusChange = (item: Category, newStatus: boolean) => {
+    if (!canWrite) return;
+
     setData((prev) =>
       prev.map((c) =>
         c.id === item.id
@@ -138,11 +156,13 @@ const CategoryPage = () => {
         data={data}
         columns={columns}
         pageSize={5}
-        onAdd={handleCreateOpen}
-        onEdit={handleEditOpen}
-        onDelete={handleDeleteOpen}
-        statusField="isActive"
-        onStatusChange={handleStatusChange}
+        // ✅ RBAC: STAFF không thấy Add/Edit/Delete
+        onAdd={canWrite ? handleCreateOpen : undefined}
+        onEdit={canWrite ? handleEditOpen : undefined}
+        onDelete={canWrite ? handleDeleteOpen : undefined}
+        // ✅ Status vẫn hiển thị nhưng sẽ disable (nhờ CRUD.template.tsx đã sửa)
+        statusField="is_active"
+        onStatusChange={canWrite ? handleStatusChange : undefined}
         searchKeys={["name", "code", "description"]}
         filters={[
           {
@@ -156,31 +176,36 @@ const CategoryPage = () => {
         ]}
       />
 
-      <CreateCategoryModal
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onSubmit={handleCreateSubmit}
-      />
+      {/* ✅ STAFF không render modal write */}
+      {canWrite ? (
+        <>
+          <CreateCategoryModal
+            isOpen={isCreateOpen}
+            onClose={() => setIsCreateOpen(false)}
+            onSubmit={handleCreateSubmit}
+          />
 
-      <EditCategoryModal
-        isOpen={isEditOpen}
-        onClose={() => {
-          setIsEditOpen(false);
-          setEditingCategory(null);
-        }}
-        category={editingCategory}
-        onSubmit={handleEditSubmit}
-      />
+          <EditCategoryModal
+            isOpen={isEditOpen}
+            onClose={() => {
+              setIsEditOpen(false);
+              setEditingCategory(null);
+            }}
+            category={editingCategory}
+            onSubmit={handleEditSubmit}
+          />
 
-      <DeleteCategoryModal
-        isOpen={isDeleteOpen}
-        onClose={() => {
-          setIsDeleteOpen(false);
-          setDeletingCategory(null);
-        }}
-        category={deletingCategory}
-        onConfirm={handleDeleteConfirm}
-      />
+          <DeleteCategoryModal
+            isOpen={isDeleteOpen}
+            onClose={() => {
+              setIsDeleteOpen(false);
+              setDeletingCategory(null);
+            }}
+            category={deletingCategory}
+            onConfirm={handleDeleteConfirm}
+          />
+        </>
+      ) : null}
     </div>
   );
 };

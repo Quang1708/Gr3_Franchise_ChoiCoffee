@@ -1,7 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  MapPin,
-  ShoppingBag,
   FileText,
   Headphones,
   CheckCircle2,
@@ -148,6 +146,10 @@ const mapOrderDataToOrderDetail = (orderData: OrderModel): OrderDetail => {
   const paymentMethod = orderData.type === "POS" ? "Tiền mặt" : "Chuyển khoản";
   const paymentStatus = orderData.status === "COMPLETED" ? "Đã thanh toán" : "Chưa thanh toán";
 
+  // Get the latest status log note
+  const latestStatusLog = statusLogs.length > 0 ? statusLogs[statusLogs.length - 1] : null;
+  const noteFromLog = latestStatusLog?.note || "Không có ghi chú";
+
   return {
     id: orderData.id.toString(),
     orderCode: orderData.code,
@@ -163,8 +165,9 @@ const mapOrderDataToOrderDetail = (orderData: OrderModel): OrderDetail => {
       trackingNumber: orderData.type === "ONLINE" 
         ? `${orderData.code.slice(-6)}-GHN-99` 
         : "N/A",
-      note: "Không có ghi chú",
+      note: noteFromLog,
     },
+
     products: orderItems.map((item) => ({
       id: item.id.toString(),
       name: item.productNameSnapshot,
@@ -283,16 +286,9 @@ const OrderDetailPage = () => {
       {/* <ClientHeader /> */}
 
       {/* Main Content */}
-      <main className="flex-1 p-6 overflow-y-auto bg-background-light">
+      <main className="flex-1 p-6 overflow-y-auto bg-background-light max-w-6xl mx-auto w-full">
         {/* Breadcrumbs */}
-        <nav className="mb-4 text-sm text-gray-600">
-          <span
-            className="hover:text-primary cursor-pointer"
-            onClick={() => navigate("/")}
-          >
-            Trang chủ
-          </span>
-          <span className="mx-2">/</span>
+        <nav className="mb-4 text-xs text-gray-600">
           <span
             className="hover:text-primary cursor-pointer"
             onClick={() => navigate("/client/order")}
@@ -300,7 +296,7 @@ const OrderDetailPage = () => {
             Đơn hàng
           </span>
           <span className="mx-2">/</span>
-          <span className="text-gray-800 font-medium">
+          <span className="font-bold text-charcoal text-base">
             Chi tiết đơn hàng #{order.orderCode}
           </span>
         </nav>
@@ -308,12 +304,12 @@ const OrderDetailPage = () => {
         {/* Order Header */}
         <div className="mb-6 flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-charcoal mb-2">
+            <h1 className="text-2xl font-bold text-charcoal mb-2">
               Đơn hàng #{order.orderCode}
             </h1>
             <div className="flex items-center gap-4 mb-3">
               <span
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border ${getStatusColor(order.status)}`}
+                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(order.status)}`}
               >
                 {getStatusLabel(order.status)}
               </span>
@@ -479,10 +475,7 @@ const OrderDetailPage = () => {
             {/* Delivery Information Card */}
             <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                  <MapPin className="text-primary" size={20} />
-                </div>
-                <h2 className="text-xl font-bold text-charcoal">
+                <h2 className="text-xl font-bold text-charcoal text-base">
                   Thông tin giao hàng
                 </h2>
               </div>
@@ -492,7 +485,7 @@ const OrderDetailPage = () => {
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
                     NGƯỜI NHẬN
                   </p>
-                  <p className="text-charcoal font-medium">
+                  <p className="text-charcoal font-bold text-charcoal text-base">
                     {order.deliveryInfo.recipient}
                   </p>
                   <p className="text-gray-600 text-sm">
@@ -533,10 +526,7 @@ const OrderDetailPage = () => {
             {/* Products Card */}
             <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                  <ShoppingBag className="text-primary" size={20} />
-                </div>
-                <h2 className="text-xl font-bold text-charcoal">
+                <h2 className="text-xl font-bold text-charcoal text-base">
                   Sản phẩm đã đặt
                 </h2>
               </div>
@@ -545,16 +535,16 @@ const OrderDetailPage = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                      <th className="px-4 py-3 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
                         SẢN PHẨM
                       </th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                      <th className="px-4 py-3 text-center text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
                         SỐ LƯỢNG
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                      <th className="px-4 py-3 text-right text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
                         ĐƠN GIÁ
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
+                      <th className="px-4 py-3 text-right text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
                         THÀNH TIỀN
                       </th>
                     </tr>
@@ -562,7 +552,7 @@ const OrderDetailPage = () => {
                   <tbody>
                     {order.products.map((product) => (
                       <tr key={product.id} className="border-b border-gray-200">
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-4 text-left">
                           <div className="flex items-center gap-3">
                             <img
                               src={product.image}
@@ -570,7 +560,7 @@ const OrderDetailPage = () => {
                               className="w-12 h-12 rounded-lg object-cover"
                             />
                             <div>
-                              <p className="font-medium text-charcoal">
+                              <p className="font-bold text-charcoal text-base">
                                 {product.name}
                               </p>
                               <p className="text-sm text-gray-600">
@@ -587,10 +577,10 @@ const OrderDetailPage = () => {
                         <td className="px-4 py-4 text-center text-charcoal">
                           {product.quantity}
                         </td>
-                        <td className="px-4 py-4 text-right text-charcoal">
+                        <td className="px-4 py-4 text-right font-bold text-charcoal text-base">
                           {formatCurrency(product.unitPrice)}
                         </td>
-                        <td className="px-4 py-4 text-right font-semibold text-charcoal">
+                        <td className="px-4 py-4 text-right font-bold text-charcoal text-base">
                           {formatCurrency(product.total)}
                         </td>
                       </tr>
@@ -606,10 +596,7 @@ const OrderDetailPage = () => {
             {/* Payment Summary Card */}
             <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                  <FileText className="text-primary" size={20} />
-                </div>
-                <h2 className="text-xl font-bold text-charcoal">
+                <h2 className="text-xl font-bold text-charcoal text-base">
                   Tổng kết thanh toán
                 </h2>
               </div>
@@ -652,10 +639,10 @@ const OrderDetailPage = () => {
 
               <div className="border-t border-gray-200 pt-4 mb-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold text-charcoal">
+                  <span className="text-base font-bold text-charcoal">
                     Tổng thanh toán
                   </span>
-                  <span className="text-2xl font-bold text-primary">
+                  <span className="text-xl font-bold text-primary">
                     {formatCurrency(order.payment.total)}
                   </span>
                 </div>
@@ -666,9 +653,6 @@ const OrderDetailPage = () => {
                   PHƯƠNG THỨC THANH TOÁN
                 </p>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                    <FileText className="text-primary" size={16} />
-                  </div>
                   <div>
                     <p className="text-sm font-medium text-charcoal">
                       {order.payment.method}
@@ -684,10 +668,7 @@ const OrderDetailPage = () => {
             {/* Order Support Card */}
             <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                  <Headphones className="text-primary" size={20} />
-                </div>
-                <h2 className="text-xl font-bold text-charcoal">
+                <h2 className="text-xl font-bold text-charcoal text-base">
                   Hỗ trợ đơn hàng
                 </h2>
               </div>

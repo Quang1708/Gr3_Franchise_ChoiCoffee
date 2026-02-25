@@ -296,6 +296,28 @@ const ClientHeader = () => {
                   </span>
                 </div>
                 <div className="relative" ref={franchiseDropdownRef}>
+                <a
+                  onClick={() => {
+                    navigate("/client/loyalty");
+                    setIsProfileOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#F27125] cursor-pointer"
+                >
+                  <UserRound size={16} /> Tích điểm
+                </a>
+
+                              <a
+                  onClick={() => {
+                    navigate("/client/history");
+                    setIsProfileOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#F27125] cursor-pointer"
+                >
+                  <UserRound size={16} /> Lịch sử đơn hàng
+                </a>
+
+
+                <div className="border-t border-gray-100 mt-1 pt-1">
                   <button
                     title="franchise"
                     onClick={() =>

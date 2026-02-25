@@ -11,6 +11,8 @@ import {
   Edit,
   Trash2,
   Eye,
+  Check,
+  ChevronDown,
 } from "lucide-react";
 
 // --- Types ---
@@ -39,6 +41,7 @@ export interface CRUDTableProps<T> {
   data: T[];
   columns: Column<T>[];
   pageSize?: number;
+  tableMaxHeightClass?: string;
 
   onAdd?: () => void;
   onView?: (item: T) => void;
@@ -95,6 +98,106 @@ const ToggleSwitch = ({
   );
 };
 
+interface CustomSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  icon?: React.ReactNode;
+  className?: string;
+  position?: "top" | "bottom";
+}
+
+const CustomSelect = ({
+  value,
+  onChange,
+  options,
+  placeholder,
+  icon,
+  className,
+  position = "bottom",
+}: CustomSelectProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const selectedOption = options.find((opt) => opt.value === value);
+
+  return (
+    <div
+      className={`relative ${className || "min-w-[200px]"}`}
+      ref={containerRef}
+    >
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className={`
+          flex items-center gap-2 w-full py-2 pl-3 pr-3 text-sm bg-white border rounded-lg cursor-pointer transition-all select-none
+          ${isOpen ? "border-primary ring-2 ring-primary/20" : "border-gray-200 hover:border-gray-300"}
+        `}
+      >
+        {icon && <span className="text-gray-500">{icon}</span>}
+        <span
+          className={`flex-1 truncate ${!selectedOption ? "text-gray-500" : "text-gray-700"}`}
+        >
+          {selectedOption ? selectedOption.label : placeholder || "Select..."}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isOpen ? "transform rotate-180" : ""}`}
+        />
+      </div>
+
+      {isOpen && (
+        <div
+          className={`absolute z-50 w-full bg-white border border-gray-100 rounded-lg shadow-lg max-h-60 overflow-auto animate-in fade-in zoom-in-95 duration-100
+          ${position === "top" ? "bottom-full mb-1" : "mt-1"}
+          `}
+        >
+          <div className="p-1">
+            {options.map((option) => (
+              <div
+                key={option.value}
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+                className={`
+                  flex items-center justify-between px-3 py-2 text-sm rounded-md cursor-pointer transition-colors
+                  ${
+                    option.value === value
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }
+                `}
+              >
+                <span className="truncate">{option.label}</span>
+                {option.value === value && (
+                  <Check className="w-3.5 h-3.5 text-primary" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // --- Main Template ---
 
 export function CRUDTable<T extends { id?: string | number }>({
@@ -102,6 +205,7 @@ export function CRUDTable<T extends { id?: string | number }>({
   data,
   columns,
   pageSize = 5,
+  tableMaxHeightClass,
   onAdd,
   onView,
   onEdit,
@@ -200,14 +304,14 @@ export function CRUDTable<T extends { id?: string | number }>({
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden font-sans">
       {/* Header */}
-      <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:flex-nowrap sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800 uppercase">{title}</h2>
         </div>
         {onAdd && (
           <button
             onClick={onAdd}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md active:scale-[0.98]"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md active:scale-[0.98] cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Thêm mới</span>
@@ -216,7 +320,7 @@ export function CRUDTable<T extends { id?: string | number }>({
       </div>
 
       {/* Tools */}
-      <div className="p-4 bg-gray-50/50 flex flex-col md:flex-row gap-4 items-center justify-between border-b border-gray-100">
+      <div className="p-4 bg-gray-50/50 flex flex-col md:flex-row md:flex-nowrap gap-3 items-center justify-between border-b border-gray-100">
         {/* Search + slot */}
         <div className="w-full md:w-auto flex items-center gap-3">
           <div className="relative w-full md:w-72 group">
@@ -243,47 +347,41 @@ export function CRUDTable<T extends { id?: string | number }>({
         {filters.length > 0 && (
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
             {filters.map((filter) => (
-              <div
+              <CustomSelect
                 key={String(filter.key)}
-                className="flex items-center gap-2 min-w-[200px]"
-              >
-                <Filter className="w-4 h-4 text-gray-500" />
-                <select
-                  className="block w-full py-2 pl-3 pr-8 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer hover:border-gray-300 transition-all"
-                  value={activeFilters[filter.key] || ""}
-                  onChange={(e) =>
-                    setActiveFilters((prev) => ({
-                      ...prev,
-                      [filter.key]: e.target.value,
-                    }))
-                  }
-                >
-                  <option value="all">Tất cả {filter.label}</option>
-                  {filter.options.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                value={activeFilters[filter.key] || "all"}
+                onChange={(newValue) =>
+                  setActiveFilters((prev) => ({
+                    ...prev,
+                    [filter.key]: newValue,
+                  }))
+                }
+                options={[
+                  { value: "all", label: `Tất cả ${filter.label}` },
+                  ...filter.options,
+                ]}
+                icon={<Filter className="w-4 h-4" />}
+              />
             ))}
           </div>
         )}
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div
+        className={`overflow-x-auto overflow-y-auto ${tableMaxHeightClass || ""}`}
+      >
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 border-b border-gray-100">
-              <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-16">
+              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap">
                 #
               </th>
 
               {columns.map((col, idx) => (
                 <th
                   key={idx}
-                  className={`px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider ${
+                  className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap ${
                     col.className || ""
                   } ${
                     col.sortable
@@ -306,13 +404,13 @@ export function CRUDTable<T extends { id?: string | number }>({
               ))}
 
               {statusField && (
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center whitespace-nowrap">
                   Trạng thái
                 </th>
               )}
 
               {(onView || onEdit || onDelete) && (
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right whitespace-nowrap">
                   Hành động
                 </th>
               )}
@@ -326,14 +424,14 @@ export function CRUDTable<T extends { id?: string | number }>({
                   key={item.id || index}
                   className="bg-white hover:bg-primary/5 transition-colors group"
                 >
-                  <td className="px-6 py-5 text-base text-gray-500 font-medium align-middle">
+                  <td className="px-4 py-3 text-sm text-gray-500 font-medium align-middle whitespace-nowrap">
                     {(currentPage - 1) * itemsPerPage + index + 1}
                   </td>
 
                   {columns.map((col, idx) => (
                     <td
                       key={idx}
-                      className="px-6 py-5 text-base text-gray-700 align-middle"
+                      className="px-4 py-3 text-sm text-gray-700 align-middle whitespace-nowrap"
                     >
                       {col.render
                         ? col.render(item)
@@ -344,7 +442,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                   ))}
 
                   {statusField && (
-                    <td className="px-6 py-5 text-center align-middle">
+                    <td className="px-4 py-3 text-center align-middle whitespace-nowrap">
                       <div className="flex flex-col items-center justify-center gap-1">
                         {/* ✅ DISABLE khi không có onStatusChange */}
                         <ToggleSwitch
@@ -364,12 +462,12 @@ export function CRUDTable<T extends { id?: string | number }>({
                   )}
 
                   {(onView || onEdit || onDelete) && (
-                    <td className="px-6 py-5 text-right align-middle">
+                    <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         {onView && (
                           <button
                             onClick={() => onView(item)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                             title="Xem chi tiết"
                           >
                             <Eye className="w-5 h-5" />
@@ -378,7 +476,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                         {onEdit && (
                           <button
                             onClick={() => onEdit(item)}
-                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
                             title="Chỉnh sửa"
                           >
                             <Edit className="w-5 h-5" />
@@ -387,7 +485,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                         {onDelete && (
                           <button
                             onClick={() => onDelete(item)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                             title="Xóa"
                           >
                             <Trash2 className="w-5 h-5" />
@@ -456,7 +554,7 @@ export function CRUDTable<T extends { id?: string | number }>({
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -488,6 +586,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                             ? "bg-primary text-white shadow-sm"
                             : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
                         }
+                        cursor-pointer
                       `}
                     >
                       {p}
@@ -501,7 +600,7 @@ export function CRUDTable<T extends { id?: string | number }>({
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages || totalPages === 0}
-            className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
           >
             <ChevronRight className="w-4 h-4" />
           </button>

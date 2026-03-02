@@ -1,28 +1,22 @@
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import {
   CRUDTable,
   type Column,
 } from "../../../components/Admin/template/CRUD.template";
-import {
-  type OrderData,
-  type OrderStatus,
-  type PaymentStatus,
-} from "../../../mocks/dataOder.const";
-import { FAKE_ORDERS } from "../../../mocks/dataOder.const";
+import { AUDIT_LOG_SEED_DATA } from "../../../mocks/audit_log.seed";
+import { CUSTOMER_SEED_DATA } from "../../../mocks/customer.seed";
+import { LOYALTY_TRANSACTION_SEED_DATA } from "../../../mocks/loyalty_transaction.seed";
+import { FRANCHISE_SEED_DATA } from "../../../mocks/franchise.seed";
+import { ORDER_ITEM_SEED_DATA } from "../../../mocks/order_item.seed";
+import { ORDER_STATUS_LOG_SEED_DATA } from "../../../mocks/order_status_log.seed";
+import { ORDER_SEED_DATA } from "../../../mocks/order.seed";
+import { USER_SEED_DATA } from "../../../mocks/user.seed";
+import type { Order as OrderModel } from "../../../models/order.model";
 
-type Order = {
-  id: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  createdAt: string;
-  status: OrderStatus;
-  paymentMethod: OrderData["payment_method"];
-  paymentStatus: PaymentStatus;
-  shippingAddress: string;
-  note?: string;
-  items: OrderData["items"];
+type OrderRow = OrderModel & {
+  franchise: string;
+  customer: string;
+  createdByName: string;
 };
 
 const currency = new Intl.NumberFormat("vi-VN", {
@@ -30,34 +24,56 @@ const currency = new Intl.NumberFormat("vi-VN", {
   currency: "VND",
 });
 
-const statusColor: Record<OrderStatus, string> = {
-  Pending: "bg-yellow-100 text-yellow-800",
-  Processing: "bg-blue-100 text-blue-800",
-  Completed: "bg-green-100 text-green-800",
-  Cancelled: "bg-red-100 text-red-800",
+const statusColor: Record<OrderRow["status"], string> = {
+  DRAFT: "bg-gray-100 text-gray-700",
+  CONFIRMED: "bg-blue-100 text-blue-800",
+  PREPARING: "bg-yellow-100 text-yellow-800",
+  COMPLETED: "bg-green-100 text-green-800",
+  CANCELLED: "bg-red-100 text-red-800",
 };
 
-const paymentColor: Record<PaymentStatus, string> = {
-  Unpaid: "bg-orange-100 text-orange-800",
-  Paid: "bg-green-100 text-green-800",
-  Refunded: "bg-gray-100 text-gray-800",
+const typeColor: Record<OrderRow["type"], string> = {
+  POS: "bg-indigo-100 text-indigo-800",
+  ONLINE: "bg-emerald-100 text-emerald-800",
 };
 
-const initialOrders: Order[] = FAKE_ORDERS.map((order) => ({
-  id: order.id,
-  customerName: order.customer_name,
-  customerEmail: order.customer_email,
-  customerPhone: order.customer_phone,
-  createdAt: order.created_at,
-  status: order.status,
-  paymentMethod: order.payment_method,
-  paymentStatus: order.payment_status,
-  shippingAddress: order.shipping_address,
-  note: order.note,
-  items: order.items,
-}));
+const statusLabel: Record<OrderRow["status"], string> = {
+  DRAFT: "Nháp",
+  CONFIRMED: "Đã xác nhận",
+  PREPARING: "Đang chuẩn bị",
+  COMPLETED: "Hoàn tất",
+  CANCELLED: "Đã hủy",
+};
 
-const formatCreatedAt = (value: string) => {
+const paymentStatusLabel: Record<"PENDING" | "PAID" | "REFUNDED", string> = {
+  PENDING: "Chờ thanh toán",
+  PAID: "Đã thanh toán",
+  REFUNDED: "Đã hoàn tiền",
+};
+
+const loyaltyTypeLabel: Record<"EARN" | "REDEEM" | "ADJUST", string> = {
+  EARN: "Cộng điểm",
+  REDEEM: "Đổi điểm",
+  ADJUST: "Điều chỉnh",
+};
+
+const getOrderItemPolicyNotice = (isLocked: boolean) => {
+  if (isLocked) {
+    return {
+      className: "mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800",
+      message:
+        "Đơn hàng đã hoàn tất: không thể sửa giá, số lượng hoặc xóa món. Nếu cần xử lý, vui lòng hủy đơn hoặc tạo refund.",
+    };
+  }
+
+  return {
+    className: "mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800",
+    message: "Đơn chưa hoàn tất: có thể điều chỉnh món trong đơn theo quy trình vận hành.",
+  };
+};
+
+const formatDateTime = (value?: string) => {
+  if (!value) return "--";
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime())
     ? value
@@ -70,56 +86,168 @@ const formatCreatedAt = (value: string) => {
       });
 };
 
-const calculateTotal = (order: Order) =>
-  order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+const paymentStatusByOrderStatus: Record<OrderRow["status"], "PENDING" | "PAID" | "REFUNDED"> = {
+  DRAFT: "PENDING",
+  CONFIRMED: "PENDING",
+  PREPARING: "PENDING",
+  COMPLETED: "PAID",
+  CANCELLED: "REFUNDED",
+};
 
 const OrderPage = () => {
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
-  const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
-  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
-  const [isViewOpen, setIsViewOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
-  const columns: Column<Order>[] = useMemo(
+  const [selectedOrder, setSelectedOrder] = useState<OrderRow | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const franchiseNameById = useMemo(
+    () => new Map(FRANCHISE_SEED_DATA.map((franchise) => [franchise.id, franchise.name])),
+    [],
+  );
+  const customerNameById = useMemo(
+    () => new Map(CUSTOMER_SEED_DATA.map((customer) => [customer.id, customer.name])),
+    [],
+  );
+  const userNameById = useMemo(
+    () => new Map(USER_SEED_DATA.map((user) => [user.id, user.name])),
+    [],
+  );
+
+  const orders = useMemo<OrderRow[]>(() => {
+    return ORDER_SEED_DATA.filter((order) => !order.isDeleted).map((order) => ({
+      ...order,
+      franchise:
+        franchiseNameById.get(order.franchiseId) ?? `Franchise #${order.franchiseId}`,
+      customer: customerNameById.get(order.customerId) ?? `Customer #${order.customerId}`,
+      createdByName: order.createdBy
+        ? (userNameById.get(order.createdBy) ?? `User #${order.createdBy}`)
+        : "Online/Hệ thống",
+    }));
+  }, [franchiseNameById, customerNameById, userNameById]);
+
+  const filteredOrders = useMemo(() => {
+    if (!fromDate && !toDate) return orders;
+
+    const fromDateObj = fromDate ? new Date(`${fromDate}T00:00:00`) : null;
+    const toDateObj = toDate ? new Date(`${toDate}T23:59:59.999`) : null;
+
+    return orders.filter((order) => {
+      const createdAt = new Date(order.createdAt);
+      if (Number.isNaN(createdAt.getTime())) return false;
+      if (fromDateObj && createdAt < fromDateObj) return false;
+      if (toDateObj && createdAt > toDateObj) return false;
+      return true;
+    });
+  }, [orders, fromDate, toDate]);
+
+  const selectedOrderDetail = useMemo(() => {
+    if (!selectedOrder) return null;
+
+    const orderItems = ORDER_ITEM_SEED_DATA.filter(
+      (item) => item.orderId === selectedOrder.id && !item.isDeleted,
+    );
+
+    const orderStatusLogs = ORDER_STATUS_LOG_SEED_DATA.filter(
+      (log) => log.orderId === selectedOrder.id,
+    ).sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+
+    const loyaltyLogs = LOYALTY_TRANSACTION_SEED_DATA.filter(
+      (log) => log.orderId === selectedOrder.id && !log.isDeleted,
+    ).sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+
+    const orderItemIds = new Set(orderItems.map((item) => item.id));
+    const auditLogs = AUDIT_LOG_SEED_DATA.filter(
+      (log) =>
+        (log.entityType === "order" && log.entityId === selectedOrder.id) ||
+        (log.entityType === "order_item" && orderItemIds.has(log.entityId)),
+    ).sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+
+    const timeline = [
+      {
+        label: "Tạo đơn",
+        value: selectedOrder.createdAt,
+      },
+      {
+        label: "Xác nhận",
+        value: selectedOrder.confirmedAt,
+      },
+      {
+        label: "Hoàn tất",
+        value: selectedOrder.completedAt,
+      },
+    ];
+
+    const payment = {
+      method: selectedOrder.type === "POS" ? "Tiền mặt" : "Cổng thanh toán online",
+      amount: selectedOrder.totalAmount,
+      status: paymentStatusByOrderStatus[selectedOrder.status],
+      providerTxnId:
+        selectedOrder.type === "ONLINE"
+          ? `TXN-${selectedOrder.code}`
+          : "Không áp dụng",
+    };
+
+    const pointTotal = loyaltyLogs.reduce((sum, log) => sum + log.pointChange, 0);
+
+    return {
+      orderItems,
+      orderStatusLogs,
+      loyaltyLogs,
+      auditLogs,
+      timeline,
+      payment,
+      pointTotal,
+    };
+  }, [selectedOrder]);
+
+  const handleView = (order: OrderRow) => {
+    setSelectedOrder(order);
+    setIsDetailOpen(true);
+  };
+
+  const isOrderItemLocked = selectedOrder?.status === "COMPLETED";
+  const orderItemPolicyNotice = getOrderItemPolicyNotice(isOrderItemLocked);
+
+  const columns: Column<OrderRow>[] = useMemo(
     () => [
       {
-        header: "Đơn hàng",
-        accessor: "id",
+        header: "Mã đơn",
+        accessor: "code",
         sortable: true,
-        className: "min-w-[230px]",
-        render: (item) => (
-          <div>
-            <p className="font-semibold text-gray-900">{item.id}</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {formatCreatedAt(item.createdAt)}
-            </p>
-          </div>
-        ),
+        className: "min-w-[170px]",
+      },
+      {
+        header: "Chi nhánh",
+        accessor: "franchise",
+        sortable: true,
+        className: "min-w-[200px]",
       },
       {
         header: "Khách hàng",
-        accessor: "customerName",
+        accessor: "customer",
         sortable: true,
-        render: (item) => (
-          <div>
-            <p className="font-medium text-gray-900">{item.customerName}</p>
-            <p className="text-xs text-gray-500">{item.customerPhone}</p>
-          </div>
-        ),
+        className: "min-w-[200px]",
       },
       {
-        header: "Thanh toán",
-        accessor: "paymentStatus",
+        header: "Loại đơn",
+        accessor: "type",
         sortable: true,
         render: (item) => (
-          <div className="space-y-1">
-            <p className="text-sm text-gray-700">{item.paymentMethod}</p>
-            <span
-              className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${paymentColor[item.paymentStatus]}`}
-            >
-              {item.paymentStatus}
-            </span>
-          </div>
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${typeColor[item.type]}`}
+          >
+            {item.type}
+          </span>
         ),
       },
       {
@@ -130,257 +258,275 @@ const OrderPage = () => {
           <span
             className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${statusColor[item.status]}`}
           >
-            {item.status}
+            {statusLabel[item.status]}
           </span>
-        ),
-      },
-      {
-        header: "Sản phẩm",
-        accessor: "items",
-        render: (item) => (
-          <span className="text-sm text-gray-700">{item.items.length} món</span>
         ),
       },
       {
         header: "Tổng tiền",
-        accessor: "createdAt",
+        accessor: "totalAmount",
         sortable: true,
         render: (item) => (
           <span className="font-semibold text-primary">
-            {currency.format(calculateTotal(item))}
+            {currency.format(item.totalAmount)}
           </span>
         ),
+      },
+      {
+        header: "Người tạo",
+        accessor: "createdByName",
+        sortable: true,
       },
     ],
     [],
   );
 
-  const handleView = (order: Order) => {
-    setViewingOrder(order);
-    setIsViewOpen(true);
-  };
-
-  const handleEditOpen = (order: Order) => {
-    setEditingOrder(order);
-    setIsEditOpen(true);
-  };
-
-  const handleEditSave = () => {
-    if (!editingOrder) return;
-    setOrders((prev) =>
-      prev.map((item) => (item.id === editingOrder.id ? editingOrder : item)),
-    );
-    toast.success("Cập nhật đơn hàng thành công");
-    setIsEditOpen(false);
-    setEditingOrder(null);
-  };
-
   return (
     <div className="p-6 transition-all animate-fade-in">
-      <CRUDTable<Order>
-        title="Quản lý Đơn hàng"
-        data={orders}
+      <CRUDTable<OrderRow>
+        title="Danh sách đơn hàng"
+        data={filteredOrders}
         columns={columns}
         pageSize={5}
         onView={handleView}
-        onEdit={handleEditOpen}
-        searchKeys={["id", "customerName", "customerPhone", "customerEmail"]}
+        searchKeys={["code", "franchise", "customer", "createdByName"]}
+        searchRight={
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(event) => setFromDate(event.target.value)}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              aria-label="Lọc từ ngày"
+            />
+            <input
+              type="date"
+              value={toDate}
+              onChange={(event) => setToDate(event.target.value)}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              aria-label="Lọc đến ngày"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setFromDate("");
+                setToDate("");
+              }}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Xóa ngày
+            </button>
+          </div>
+        }
         filters={[
+          {
+            key: "type",
+            label: "Loại đơn",
+            options: [
+              { value: "POS", label: "POS" },
+              { value: "ONLINE", label: "ONLINE" },
+            ],
+          },
           {
             key: "status",
             label: "Trạng thái",
             options: [
-              { value: "Pending", label: "Pending" },
-              { value: "Processing", label: "Processing" },
-              { value: "Completed", label: "Completed" },
-              { value: "Cancelled", label: "Cancelled" },
-            ],
-          },
-          {
-            key: "paymentStatus",
-            label: "Thanh toán",
-            options: [
-              { value: "Unpaid", label: "Unpaid" },
-              { value: "Paid", label: "Paid" },
-              { value: "Refunded", label: "Refunded" },
+              { value: "DRAFT", label: "Nháp" },
+              { value: "CONFIRMED", label: "Đã xác nhận" },
+              { value: "PREPARING", label: "Đang chuẩn bị" },
+              { value: "COMPLETED", label: "Hoàn tất" },
+              { value: "CANCELLED", label: "Đã hủy" },
             ],
           },
         ]}
       />
 
-      {isViewOpen && viewingOrder ? (
+      {isDetailOpen && selectedOrder && selectedOrderDetail ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="w-full max-w-3xl rounded-xl border border-gray-100 bg-white shadow-xl">
+          <div className="w-full max-w-6xl rounded-xl border border-gray-100 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Chi tiết đơn hàng</h3>
-                <p className="text-sm text-gray-500">{viewingOrder.id}</p>
+                <p className="text-sm text-gray-500">{selectedOrder.code}</p>
               </div>
               <button
                 type="button"
                 className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
                 onClick={() => {
-                  setIsViewOpen(false);
-                  setViewingOrder(null);
+                  setIsDetailOpen(false);
+                  setSelectedOrder(null);
                 }}
               >
                 Đóng
               </button>
             </div>
 
-            <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-5">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="rounded-lg border border-gray-100 p-4">
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Khách hàng</p>
-                  <p className="mt-2 font-medium text-gray-900">{viewingOrder.customerName}</p>
-                  <p className="text-sm text-gray-600">{viewingOrder.customerPhone}</p>
-                  <p className="text-sm text-gray-600">{viewingOrder.customerEmail}</p>
+            <div className="max-h-[78vh] space-y-5 overflow-y-auto px-6 py-5">
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">1️⃣ Thông tin chung</p>
+                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 lg:grid-cols-3">
+                  <p><span className="font-medium text-gray-600">Mã đơn:</span> {selectedOrder.code}</p>
+                  <p><span className="font-medium text-gray-600">Chi nhánh:</span> {selectedOrder.franchise}</p>
+                  <p><span className="font-medium text-gray-600">Khách hàng:</span> {selectedOrder.customer}</p>
+                  <p><span className="font-medium text-gray-600">Loại đơn:</span> {selectedOrder.type}</p>
+                  <p>
+                    <span className="font-medium text-gray-600">Tổng tiền :</span>{" "}
+                    {currency.format(selectedOrder.totalAmount)}
+                  </p>
+                  <p><span className="font-medium text-gray-600">Nhân viên tạo đơn:</span> {selectedOrder.createdByName}</p>
                 </div>
-                <div className="rounded-lg border border-gray-100 p-4">
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Thông tin đơn</p>
-                  <p className="mt-2 text-sm text-gray-700">{formatCreatedAt(viewingOrder.createdAt)}</p>
-                  <p className="text-sm text-gray-700">{viewingOrder.paymentMethod}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${statusColor[viewingOrder.status]}`}
-                    >
-                      {viewingOrder.status}
-                    </span>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${paymentColor[viewingOrder.paymentStatus]}`}
-                    >
-                      {viewingOrder.paymentStatus}
-                    </span>
+
+                <div className="mt-4">
+                  <p className="mb-2 text-sm font-medium text-gray-700">Thời gian trạng thái</p>
+                  <div className="space-y-2">
+                    {selectedOrderDetail.timeline.map((timelineItem) => (
+                      <div
+                        key={`${selectedOrder.id}-${timelineItem.label}`}
+                        className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2"
+                      >
+                        <span className="text-sm text-gray-700">{timelineItem.label}</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {formatDateTime(timelineItem.value)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
               <div className="rounded-lg border border-gray-100 p-4">
-                <p className="text-xs uppercase tracking-wide text-gray-500">Địa chỉ giao hàng</p>
-                <p className="mt-2 text-sm text-gray-700">{viewingOrder.shippingAddress}</p>
+                <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">2️⃣ Món trong đơn</p>
+                <div className={orderItemPolicyNotice.className}>{orderItemPolicyNotice.message}</div>
+                {selectedOrderDetail.orderItems.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[620px] border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-500">
+                          <th className="px-2 py-2">Tên món </th>
+                          <th className="px-2 py-2 text-right">giá tiền</th>
+                          <th className="px-2 py-2 text-right">Số lượng</th>
+                          <th className="px-2 py-2 text-right"> tổng tiền </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedOrderDetail.orderItems.map((item) => (
+                          <tr key={item.id} className="border-b border-gray-50 last:border-0">
+                            <td className="px-2 py-2 text-gray-800">{item.productNameSnapshot}</td>
+                            <td className="px-2 py-2 text-right text-gray-700">
+                              {currency.format(item.priceSnapshot)}
+                            </td>
+                            <td className="px-2 py-2 text-right text-gray-700">{item.quantity}</td>
+                            <td className="px-2 py-2 text-right font-medium text-gray-900">
+                              {currency.format(item.lineTotal)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Không có món trong đơn.</p>
+                )}
               </div>
 
               <div className="rounded-lg border border-gray-100 p-4">
-                <p className="text-xs uppercase tracking-wide text-gray-500 mb-3">Sản phẩm</p>
-                <div className="space-y-2">
-                  {viewingOrder.items.map((item, idx) => (
-                    <div
-                      key={`${viewingOrder.id}-${item.id}-${idx}`}
-                      className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2"
-                    >
-                      <p className="text-sm text-gray-700">
-                        {idx + 1}. {item.name} x {item.quantity}
-                      </p>
-                      <p className="text-sm font-medium text-gray-900">
-                        {currency.format(item.quantity * item.price)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
-                  <p className="font-medium text-gray-700">Tổng đơn</p>
-                  <p className="text-lg font-semibold text-primary">
-                    {currency.format(calculateTotal(viewingOrder))}
+                <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">3️⃣ Thanh toán</p>
+                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                  <p><span className="font-medium text-gray-600">Phương thức:</span> {selectedOrderDetail.payment.method}</p>
+                  <p>
+                    <span className="font-medium text-gray-600">Số tiền:</span>{" "}
+                    {currency.format(selectedOrderDetail.payment.amount)}
+                  </p>
+                  <p><span className="font-medium text-gray-600">Trạng thái:</span> {paymentStatusLabel[selectedOrderDetail.payment.status]}</p>
+                  <p>
+                    <span className="font-medium text-gray-600">Nhà Cung Cấp :</span>{" "}
+                    {selectedOrderDetail.payment.providerTxnId}
                   </p>
                 </div>
               </div>
 
-              {viewingOrder.note ? (
-                <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-                  <p className="text-xs uppercase tracking-wide text-yellow-700">Ghi chú</p>
-                  <p className="mt-2 text-sm text-yellow-800">{viewingOrder.note}</p>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {isEditOpen && editingOrder ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="w-full max-w-lg rounded-xl border border-gray-100 bg-white shadow-xl">
-            <div className="border-b border-gray-100 px-6 py-4">
-              <h3 className="text-lg font-semibold text-gray-900">Cập nhật đơn hàng</h3>
-              <p className="text-sm text-gray-500">{editingOrder.id}</p>
-            </div>
-
-            <div className="space-y-4 px-6 py-5">
-              <div>
-                <label
-                  htmlFor="edit-order-status"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
-                  Trạng thái đơn
-                </label>
-                <select
-                  id="edit-order-status"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={editingOrder.status}
-                  onChange={(event) =>
-                    setEditingOrder((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            status: event.target.value as OrderStatus,
-                          }
-                        : prev,
-                    )
-                  }
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Processing">Processing</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">4️⃣ Điểm tích lũy</p>
+                <p className="mb-3 text-sm">
+                  <span className="font-medium text-gray-600">Điểm cộng / trừ:</span>{" "}
+                  <span
+                    className={selectedOrderDetail.pointTotal >= 0 ? "text-green-700" : "text-red-700"}
+                  >
+                    {selectedOrderDetail.pointTotal >= 0
+                      ? `+${selectedOrderDetail.pointTotal}`
+                      : selectedOrderDetail.pointTotal}
+                  </span>
+                </p>
+                <p className="mb-2 text-sm font-medium text-gray-700">Nhật ký điểm tích lũy</p>
+                {selectedOrderDetail.loyaltyLogs.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedOrderDetail.loyaltyLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="rounded-lg border border-gray-100 px-3 py-2 text-sm"
+                      >
+                        <p className="font-medium text-gray-800">
+                          {loyaltyTypeLabel[log.type]} • {log.pointChange > 0 ? `+${log.pointChange}` : log.pointChange} điểm
+                        </p>
+                        <p className="text-gray-600">{log.reason ?? "Không có lý do"}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatDateTime(log.createdAt)} • bởi {userNameById.get(log.createdBy) ?? `User #${log.createdBy}`}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Không có log giao dịch loyalty cho đơn này.</p>
+                )}
               </div>
 
-              <div>
-                <label
-                  htmlFor="edit-payment-status"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
-                  Trạng thái thanh toán
-                </label>
-                <select
-                  id="edit-payment-status"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={editingOrder.paymentStatus}
-                  onChange={(event) =>
-                    setEditingOrder((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            paymentStatus: event.target.value as PaymentStatus,
-                          }
-                        : prev,
-                    )
-                  }
-                >
-                  <option value="Unpaid">Unpaid</option>
-                  <option value="Paid">Paid</option>
-                  <option value="Refunded">Refunded</option>
-                </select>
-              </div>
-            </div>
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">5️⃣ Nhật ký hoạt động </p>
 
-            <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-6 py-4">
-              <button
-                type="button"
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                onClick={() => {
-                  setIsEditOpen(false);
-                  setEditingOrder(null);
-                }}
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
-                onClick={handleEditSave}
-              >
-                Lưu thay đổi
-              </button>
+                <p className="mb-2 text-sm font-medium text-gray-700">Nhật ký hoạt động trạng thái đơn hàng </p>
+                {selectedOrderDetail.orderStatusLogs.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedOrderDetail.orderStatusLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="rounded-lg border border-gray-100 px-3 py-2 text-sm"
+                      >
+                        <p className="font-medium text-gray-800">
+                          {log.fromStatus} → {log.toStatus}
+                        </p>
+                        <p className="text-gray-600">{log.note ?? "Không có ghi chú"}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatDateTime(log.createdAt)} • bởi {userNameById.get(log.changedBy) ?? `User #${log.changedBy}`}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mb-3 text-sm text-gray-500">Không có order_status_log.</p>
+                )}
+
+                <p className="mb-2 mt-4 text-sm font-medium text-gray-700">Nhật ký hoạt động khác </p>
+                {selectedOrderDetail.auditLogs.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedOrderDetail.auditLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="rounded-lg border border-gray-100 px-3 py-2 text-sm"
+                      >
+                        <p className="font-medium text-gray-800">
+                          {log.entityType}#{log.entityId} • {log.action}
+                        </p>
+                        <p className="text-gray-600">{log.note ?? "Không có ghi chú"}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatDateTime(log.createdAt)} • bởi {userNameById.get(log.changedBy) ?? `User #${log.changedBy}`}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Không có audit_log liên quan tới đơn này.</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

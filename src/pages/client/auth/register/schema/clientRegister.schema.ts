@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const ClientRegisterSchema = z
   .object({
-    fullName: z.string().min(1, "Vui lòng nhập họ và tên"),
+    name: z.string().min(1, "Vui lòng nhập họ và tên"),
     phone: z
       .string()
       .min(1, "Vui lòng nhập số điện thoại")
@@ -17,6 +17,8 @@ export const ClientRegisterSchema = z
         (val) => !val || z.string().email().safeParse(val).success,
         "Email không hợp lệ",
       ),
+    address: z.string().min(1, "Vui lòng nhập địa chỉ"),
+    avatar_url: z.string().optional().default("https://picsum.photos/200"),
     password: z
       .string()
       .min(1, "Vui lòng nhập mật khẩu")

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
+﻿import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
 import { toastSuccess, toastError } from "../../../utils/toast.util";
 import {
   getUsers,
@@ -12,6 +12,7 @@ interface UserFormData {
   email: string;
   password: string;
   name: string;
+  phone: string; // added phone field
   roleCode: string;
   avatarUrl?: string;
 }
@@ -34,6 +35,7 @@ const UserPage = () => {
     email: "",
     password: "",
     name: "",
+    phone: "", // initialize phone
     roleCode: "STAFF",
     avatarUrl: "",
   });
@@ -72,6 +74,7 @@ const UserPage = () => {
         email: user.email,
         password: "",
         name: user.name,
+        phone: user.phone || "", // include phone
         roleCode: user.roleCode,
         avatarUrl: user.avatarUrl || "",
       });
@@ -81,6 +84,7 @@ const UserPage = () => {
         email: "",
         password: "",
         name: "",
+        phone: "", // include default phone
         roleCode: "STAFF",
         avatarUrl: "",
       });
@@ -95,6 +99,7 @@ const UserPage = () => {
       email: "",
       password: "",
       name: "",
+      phone: "",
       roleCode: "STAFF",
       avatarUrl: "",
     });
@@ -124,7 +129,7 @@ const UserPage = () => {
         id: Date.now(),
         email: formData.email,
         name: formData.name,
-        phone: "",
+        phone: formData.phone, // use formData.phone
         roleCode: formData.roleCode,
         avatarUrl: formData.avatarUrl,
         createdAt: new Date().toISOString(),
@@ -218,10 +223,10 @@ const UserPage = () => {
           </div>
           <div>
             <label
-              htmlFor="user-role"
+              htmlFor="user-status"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Lọc theo vai trò
+              Lọc theo trạng thái
             </label>
             <select
               id="user-role"
@@ -253,7 +258,10 @@ const UserPage = () => {
                   Email
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Vai trò
+                  Phone
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ngày tạo
@@ -266,7 +274,7 @@ const UserPage = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                     Đang tải dữ liệu user...
                   </td>
                 </tr>
@@ -330,33 +338,15 @@ const UserPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => handleOpenModal(user)}
-                        disabled={!canChangeRole}
-                        title={
-                          canChangeRole
-                            ? "Sửa thông tin user"
-                            : "Chỉ admin mới có quyền sửa"
-                        }
-                        className={`mr-4 ${
-                          canChangeRole
-                            ? "text-blue-600 hover:text-blue-900"
-                            : "text-gray-400 cursor-not-allowed"
-                        }`}
+                        className="mr-4 text-blue-600 hover:text-blue-900"
+                        title="Sửa thông tin user"
                       >
                         Sửa
                       </button>
                       <button
                         onClick={() => handleDelete(user.id)}
-                        disabled={!canChangeRole}
-                        title={
-                          canChangeRole
-                            ? "Xóa user"
-                            : "Chỉ admin mới có quyền xóa"
-                        }
-                        className={
-                          canChangeRole
-                            ? "text-red-600 hover:text-red-900"
-                            : "text-gray-400 cursor-not-allowed"
-                        }
+                        className="text-red-600 hover:text-red-900"
+                        title="Xóa user"
                       >
                         Xóa
                       </button>
@@ -367,7 +357,7 @@ const UserPage = () => {
                 !isLoading && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-6 py-8 text-center text-gray-500"
                     >
                       Không tìm thấy người dùng nào
@@ -455,13 +445,32 @@ const UserPage = () => {
                 </div>
                 <div>
                   <label
-                    htmlFor="user-role-form"
+                    htmlFor="user-phone"
                     className="block text-sm font-medium text-gray-700 mb-2"
                   >
-                    Vai trò <span className="text-red-500">*</span>
+                    Phone <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="user-phone"
+                    type="tel"
+                    required
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập số điện thoại"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="user-status-form"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Trạng thái <span className="text-red-500">*</span>
                   </label>
                   <select
-                    id="user-role-form"
+                    id="user-status-form"
                     required
                     value={formData.roleCode}
                     onChange={(e) =>

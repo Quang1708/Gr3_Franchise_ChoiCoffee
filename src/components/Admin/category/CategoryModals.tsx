@@ -2,8 +2,8 @@ import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Modal } from "../../UI/Modal";
-import type { Category } from "../../../models/category.model";
+import { Modal } from "@/components/UI/Modal";
+import type { Category } from "@/models/category.model";
 import { AlertTriangle } from "lucide-react";
 
 // --- Schema ---
@@ -14,7 +14,7 @@ const categorySchema = z.object({
   is_active: z.boolean(),
 });
 
-type CategoryFormData = z.infer<typeof categorySchema>;
+export type CategoryFormData = z.infer<typeof categorySchema>;
 
 // --- Shared Form Component ---
 interface CategoryFormProps {
@@ -132,14 +132,14 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
         >
           Hủy bỏ
         </button>
         <button
           type="submit"
           disabled={isLoading}
-          className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
         >
           {isLoading ? (
             <>
@@ -160,7 +160,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
 interface CreateCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Partial<Category>) => void;
+  onSubmit: (data: CategoryFormData) => void;
 }
 
 export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
@@ -171,7 +171,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   const handleSubmit = (data: CategoryFormData) => {
     // Simulate API call
     console.log("Creating:", data);
-    onSubmit(data as unknown as Partial<Category>);
+    onSubmit(data);
     onClose();
   };
 
@@ -191,7 +191,7 @@ interface EditCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   category: Category | null;
-  onSubmit: (data: Partial<Category>) => void;
+  onSubmit: (data: CategoryFormData) => void;
 }
 
 export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
@@ -205,7 +205,7 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
   const handleSubmit = (data: CategoryFormData) => {
     // Simulate API call
     console.log("Updating:", data);
-    onSubmit(data as unknown as Partial<Category>);
+    onSubmit(data);
     onClose();
   };
 
@@ -216,7 +216,7 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
           code: category.code,
           name: category.name,
           description: category.description,
-          is_active: category.is_active,
+          is_active: category.isActive,
         }}
         onSubmit={handleSubmit}
         onCancel={onClose}
@@ -264,7 +264,7 @@ export const DeleteCategoryModal: React.FC<DeleteCategoryModalProps> = ({
         <div className="flex gap-3 w-full">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
           >
             Hủy bỏ
           </button>
@@ -273,7 +273,7 @@ export const DeleteCategoryModal: React.FC<DeleteCategoryModalProps> = ({
               onConfirm();
               onClose();
             }}
-            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
+            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 cursor-pointer"
           >
             Xóa danh mục
           </button>

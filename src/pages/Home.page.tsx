@@ -7,6 +7,7 @@ import { PRODUCT_FRANCHISE_SEED_DATA } from "@/mocks/product_franchise.seed";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ROUTER_URL from "@/routes/router.const";
+import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
 const HomePage = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
@@ -86,9 +87,11 @@ const HomePage = () => {
               tách cà phê của bạn. Giao hàng nhanh chóng, hương vị trọn vẹn.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <button className="cursor-pointer bg-primary hover:bg-primary/90 text-white px-10 py-4 rounded-xl font-bold text-lg shadow-xl shadow-primary/30 transition-transform active:scale-95">
-                Mua ngay
-              </button>
+              <ButtonSubmit
+                label="Khám phá ngay"
+                className="cursor-pointer px-10 py-4 active:scale-95 w-full sm:w-auto"
+                onClick={() => navigate(ROUTER_URL.MENU)}
+              />
               <button className="bg-input-border dark:bg-white/10 px-10 py-4 rounded-xl font-bold text-lg hover:bg-white transition-colors cursor-pointer"
                 onClick={() => {navigate(ROUTER_URL.MENU)}}
               >

@@ -1,23 +1,22 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  type OrderData,
-  type OrderStatus,
-  type PaymentStatus,
-} from "../../../mocks/dataOder.const";
-import { FAKE_ORDERS } from "../../../mocks/dataOder.const";
+  CRUDTable,
+  type Column,
+} from "../../../components/Admin/template/CRUD.template";
+import { AUDIT_LOG_SEED_DATA } from "../../../mocks/audit_log.seed";
+import { CUSTOMER_SEED_DATA } from "../../../mocks/customer.seed";
+import { LOYALTY_TRANSACTION_SEED_DATA } from "../../../mocks/loyalty_transaction.seed";
+import { FRANCHISE_SEED_DATA } from "../../../mocks/franchise.seed";
+import { ORDER_ITEM_SEED_DATA } from "../../../mocks/order_item.seed";
+import { ORDER_STATUS_LOG_SEED_DATA } from "../../../mocks/order_status_log.seed";
+import { ORDER_SEED_DATA } from "../../../mocks/order.seed";
+import { USER_SEED_DATA } from "../../../mocks/user.seed";
+import type { Order as OrderModel } from "../../../models/order.model";
 
-type Order = {
-  id: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  createdAt: string;
-  status: OrderStatus;
-  paymentMethod: OrderData["payment_method"];
-  paymentStatus: PaymentStatus;
-  shippingAddress: string;
-  note?: string;
-  items: OrderData["items"];
+type OrderRow = OrderModel & {
+  franchise: string;
+  customer: string;
+  createdByName: string;
 };
 
 const currency = new Intl.NumberFormat("vi-VN", {
@@ -25,34 +24,56 @@ const currency = new Intl.NumberFormat("vi-VN", {
   currency: "VND",
 });
 
-const statusColor: Record<OrderStatus, string> = {
-  Pending: "bg-yellow-100 text-yellow-800",
-  Processing: "bg-blue-100 text-blue-800",
-  Completed: "bg-green-100 text-green-800",
-  Cancelled: "bg-red-100 text-red-800",
+const statusColor: Record<OrderRow["status"], string> = {
+  DRAFT: "bg-gray-100 text-gray-700",
+  CONFIRMED: "bg-blue-100 text-blue-800",
+  PREPARING: "bg-yellow-100 text-yellow-800",
+  COMPLETED: "bg-green-100 text-green-800",
+  CANCELLED: "bg-red-100 text-red-800",
 };
 
-const paymentColor: Record<PaymentStatus, string> = {
-  Unpaid: "bg-orange-100 text-orange-800",
-  Paid: "bg-green-100 text-green-800",
-  Refunded: "bg-gray-100 text-gray-800",
+const typeColor: Record<OrderRow["type"], string> = {
+  POS: "bg-indigo-100 text-indigo-800",
+  ONLINE: "bg-emerald-100 text-emerald-800",
 };
 
-const initialOrders: Order[] = FAKE_ORDERS.map((order) => ({
-  id: order.id,
-  customerName: order.customer_name,
-  customerEmail: order.customer_email,
-  customerPhone: order.customer_phone,
-  createdAt: order.created_at,
-  status: order.status,
-  paymentMethod: order.payment_method,
-  paymentStatus: order.payment_status,
-  shippingAddress: order.shipping_address,
-  note: order.note,
-  items: order.items,
-}));
+const statusLabel: Record<OrderRow["status"], string> = {
+  DRAFT: "Nháp",
+  CONFIRMED: "Đã xác nhận",
+  PREPARING: "Đang chuẩn bị",
+  COMPLETED: "Hoàn tất",
+  CANCELLED: "Đã hủy",
+};
 
-const formatCreatedAt = (value: string) => {
+const paymentStatusLabel: Record<"PENDING" | "PAID" | "REFUNDED", string> = {
+  PENDING: "Chờ thanh toán",
+  PAID: "Đã thanh toán",
+  REFUNDED: "Đã hoàn tiền",
+};
+
+const loyaltyTypeLabel: Record<"EARN" | "REDEEM" | "ADJUST", string> = {
+  EARN: "Cộng điểm",
+  REDEEM: "Đổi điểm",
+  ADJUST: "Điều chỉnh",
+};
+
+const getOrderItemPolicyNotice = (isLocked: boolean) => {
+  if (isLocked) {
+    return {
+      className: "mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800",
+      message:
+        "Đơn hàng đã hoàn tất: không thể sửa giá, số lượng hoặc xóa món. Nếu cần xử lý, vui lòng hủy đơn hoặc tạo refund.",
+    };
+  }
+
+  return {
+    className: "mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800",
+    message: "Đơn chưa hoàn tất: có thể điều chỉnh món trong đơn theo quy trình vận hành.",
+  };
+};
+
+const formatDateTime = (value?: string) => {
+  if (!value) return "--";
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime())
     ? value
@@ -65,311 +86,451 @@ const formatCreatedAt = (value: string) => {
       });
 };
 
+const paymentStatusByOrderStatus: Record<OrderRow["status"], "PENDING" | "PAID" | "REFUNDED"> = {
+  DRAFT: "PENDING",
+  CONFIRMED: "PENDING",
+  PREPARING: "PENDING",
+  COMPLETED: "PAID",
+  CANCELLED: "REFUNDED",
+};
+
 const OrderPage = () => {
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"All" | OrderStatus>("All");
-  const [search, setSearch] = useState<string>("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  const [selectedOrder, setSelectedOrder] = useState<OrderRow | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  const franchiseNameById = useMemo(
+    () => new Map(FRANCHISE_SEED_DATA.map((franchise) => [franchise.id, franchise.name])),
+    [],
+  );
+  const customerNameById = useMemo(
+    () => new Map(CUSTOMER_SEED_DATA.map((customer) => [customer.id, customer.name])),
+    [],
+  );
+  const userNameById = useMemo(
+    () => new Map(USER_SEED_DATA.map((user) => [user.id, user.name])),
+    [],
+  );
+
+  const orders = useMemo<OrderRow[]>(() => {
+    return ORDER_SEED_DATA.filter((order) => !order.isDeleted).map((order) => ({
+      ...order,
+      franchise:
+        franchiseNameById.get(order.franchiseId) ?? `Franchise #${order.franchiseId}`,
+      customer: customerNameById.get(order.customerId) ?? `Customer #${order.customerId}`,
+      createdByName: order.createdBy
+        ? (userNameById.get(order.createdBy) ?? `User #${order.createdBy}`)
+        : "Online/Hệ thống",
+    }));
+  }, [franchiseNameById, customerNameById, userNameById]);
 
   const filteredOrders = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
+    if (!fromDate && !toDate) return orders;
+
+    const fromDateObj = fromDate ? new Date(`${fromDate}T00:00:00`) : null;
+    const toDateObj = toDate ? new Date(`${toDate}T23:59:59.999`) : null;
+
     return orders.filter((order) => {
-      const matchStatus = statusFilter === "All" || order.status === statusFilter;
-      const matchKeyword =
-        keyword.length === 0 ||
-        order.id.toLowerCase().includes(keyword) ||
-        order.customerName.toLowerCase().includes(keyword) ||
-        order.customerPhone.replaceAll(/\s/g, "").includes(keyword.replaceAll(/\s/g, ""));
-      return matchStatus && matchKeyword;
+      const createdAt = new Date(order.createdAt);
+      if (Number.isNaN(createdAt.getTime())) return false;
+      if (fromDateObj && createdAt < fromDateObj) return false;
+      if (toDateObj && createdAt > toDateObj) return false;
+      return true;
     });
-  }, [orders, search, statusFilter]);
+  }, [orders, fromDate, toDate]);
 
-  const handleStatusChange = (orderId: string, nextStatus: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((order) =>
-        order.id === orderId ? { ...order, status: nextStatus } : order
-      )
+  const selectedOrderDetail = useMemo(() => {
+    if (!selectedOrder) return null;
+
+    const orderItems = ORDER_ITEM_SEED_DATA.filter(
+      (item) => item.orderId === selectedOrder.id && !item.isDeleted,
     );
-  };
 
-  const handlePaymentStatusChange = (orderId: string, nextStatus: PaymentStatus) => {
-    setOrders((prev) =>
-      prev.map((order) =>
-        order.id === orderId ? { ...order, paymentStatus: nextStatus } : order
-      )
+    const orderStatusLogs = ORDER_STATUS_LOG_SEED_DATA.filter(
+      (log) => log.orderId === selectedOrder.id,
+    ).sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
-  };
 
-  const countByStatus = useMemo(() => {
-    return orders.reduce(
-      (acc, order) => {
-        acc.total += 1;
-        acc[order.status] += 1;
-        return acc;
+    const loyaltyLogs = LOYALTY_TRANSACTION_SEED_DATA.filter(
+      (log) => log.orderId === selectedOrder.id && !log.isDeleted,
+    ).sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+
+    const orderItemIds = new Set(orderItems.map((item) => item.id));
+    const auditLogs = AUDIT_LOG_SEED_DATA.filter(
+      (log) =>
+        (log.entityType === "order" && log.entityId === selectedOrder.id) ||
+        (log.entityType === "order_item" && orderItemIds.has(log.entityId)),
+    ).sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+
+    const timeline = [
+      {
+        label: "Tạo đơn",
+        value: selectedOrder.createdAt,
       },
       {
-        total: 0,
-        Pending: 0,
-        Processing: 0,
-        Completed: 0,
-        Cancelled: 0,
-      }
-    );
-  }, [orders]);
+        label: "Xác nhận",
+        value: selectedOrder.confirmedAt,
+      },
+      {
+        label: "Hoàn tất",
+        value: selectedOrder.completedAt,
+      },
+    ];
+
+    const payment = {
+      method: selectedOrder.type === "POS" ? "Tiền mặt" : "Cổng thanh toán online",
+      amount: selectedOrder.totalAmount,
+      status: paymentStatusByOrderStatus[selectedOrder.status],
+      providerTxnId:
+        selectedOrder.type === "ONLINE"
+          ? `TXN-${selectedOrder.code}`
+          : "Không áp dụng",
+    };
+
+    const pointTotal = loyaltyLogs.reduce((sum, log) => sum + log.pointChange, 0);
+
+    return {
+      orderItems,
+      orderStatusLogs,
+      loyaltyLogs,
+      auditLogs,
+      timeline,
+      payment,
+      pointTotal,
+    };
+  }, [selectedOrder]);
+
+  const handleView = (order: OrderRow) => {
+    setSelectedOrder(order);
+    setIsDetailOpen(true);
+  };
+
+  const isOrderItemLocked = selectedOrder?.status === "COMPLETED";
+  const orderItemPolicyNotice = getOrderItemPolicyNotice(isOrderItemLocked);
+
+  const columns: Column<OrderRow>[] = useMemo(
+    () => [
+      {
+        header: "Mã đơn",
+        accessor: "code",
+        sortable: true,
+        className: "min-w-[170px]",
+      },
+      {
+        header: "Chi nhánh",
+        accessor: "franchise",
+        sortable: true,
+        className: "min-w-[200px]",
+      },
+      {
+        header: "Khách hàng",
+        accessor: "customer",
+        sortable: true,
+        className: "min-w-[200px]",
+      },
+      {
+        header: "Loại đơn",
+        accessor: "type",
+        sortable: true,
+        render: (item) => (
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${typeColor[item.type]}`}
+          >
+            {item.type}
+          </span>
+        ),
+      },
+      {
+        header: "Trạng thái",
+        accessor: "status",
+        sortable: true,
+        render: (item) => (
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${statusColor[item.status]}`}
+          >
+            {statusLabel[item.status]}
+          </span>
+        ),
+      },
+      {
+        header: "Tổng tiền",
+        accessor: "totalAmount",
+        sortable: true,
+        render: (item) => (
+          <span className="font-semibold text-primary">
+            {currency.format(item.totalAmount)}
+          </span>
+        ),
+      },
+      {
+        header: "Người tạo",
+        accessor: "createdByName",
+        sortable: true,
+      },
+    ],
+    [],
+  );
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Order Management</h1>
-          <p className="text-gray-600">View orders, details, and update status</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <div className="rounded-lg bg-white px-4 py-2 shadow-sm">
-            <p className="text-xs text-gray-500">Total</p>
-            <p className="text-lg font-semibold text-gray-800">{countByStatus.total}</p>
+    <div className="p-6 transition-all animate-fade-in">
+      <CRUDTable<OrderRow>
+        title="Danh sách đơn hàng"
+        data={filteredOrders}
+        columns={columns}
+        pageSize={5}
+        onView={handleView}
+        searchKeys={["code", "franchise", "customer", "createdByName"]}
+        searchRight={
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(event) => setFromDate(event.target.value)}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              aria-label="Lọc từ ngày"
+            />
+            <input
+              type="date"
+              value={toDate}
+              onChange={(event) => setToDate(event.target.value)}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              aria-label="Lọc đến ngày"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setFromDate("");
+                setToDate("");
+              }}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Xóa ngày
+            </button>
           </div>
-          <div className="rounded-lg bg-white px-4 py-2 shadow-sm">
-            <p className="text-xs text-gray-500">Pending</p>
-            <p className="text-lg font-semibold text-yellow-700">{countByStatus.Pending}</p>
-          </div>
-          <div className="rounded-lg bg-white px-4 py-2 shadow-sm">
-            <p className="text-xs text-gray-500">Processing</p>
-            <p className="text-lg font-semibold text-blue-700">{countByStatus.Processing}</p>
-          </div>
-          <div className="rounded-lg bg-white px-4 py-2 shadow-sm">
-            <p className="text-xs text-gray-500">Completed</p>
-            <p className="text-lg font-semibold text-green-700">{countByStatus.Completed}</p>
-          </div>
-        </div>
-      </div>
+        }
+        filters={[
+          {
+            key: "type",
+            label: "Loại đơn",
+            options: [
+              { value: "POS", label: "POS" },
+              { value: "ONLINE", label: "ONLINE" },
+            ],
+          },
+          {
+            key: "status",
+            label: "Trạng thái",
+            options: [
+              { value: "DRAFT", label: "Nháp" },
+              { value: "CONFIRMED", label: "Đã xác nhận" },
+              { value: "PREPARING", label: "Đang chuẩn bị" },
+              { value: "COMPLETED", label: "Hoàn tất" },
+              { value: "CANCELLED", label: "Đã hủy" },
+            ],
+          },
+        ]}
+      />
 
-      <div className="grid grid-cols-1 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center">
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  search
-                </span>
-                <input
-                  className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-3 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="Search order ID, customer, phone"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
+      {isDetailOpen && selectedOrder && selectedOrderDetail ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-6xl rounded-xl border border-gray-100 bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Chi tiết đơn hàng</h3>
+                <p className="text-sm text-gray-500">{selectedOrder.code}</p>
               </div>
-              <select
-                className="rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as "All" | OrderStatus)}
+              <button
+                type="button"
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                onClick={() => {
+                  setIsDetailOpen(false);
+                  setSelectedOrder(null);
+                }}
               >
-                <option value="All">All Status</option>
-                <option value="Pending">Pending</option>
-                <option value="Processing">Processing</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
+                Đóng
+              </button>
             </div>
-            <p className="text-sm text-gray-500">Showing {filteredOrders.length} orders</p>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="text-gray-500 bg-gray-50 sticky top-0">
-                <tr className="border-b">
-                  <th className="py-4 px-4 font-medium">Order ID</th>
-                  <th className="py-4 px-4 font-medium">Customer</th>
-                  <th className="py-4 px-4 font-medium">Created</th>
-                  <th className="py-4 px-4 font-medium">Payment</th>
-                  <th className="py-4 px-4 font-medium">Status</th>
-                  <th className="py-4 px-4 font-medium text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.map((order) => {
-                  const total = order.items.reduce(
-                    (sum, item) => sum + item.price * item.quantity,
-                    0
-                  );
-                  const isExpanded = order.id === expandedId;
+            <div className="max-h-[78vh] space-y-5 overflow-y-auto px-6 py-5">
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">1️⃣ Thông tin chung</p>
+                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 lg:grid-cols-3">
+                  <p><span className="font-medium text-gray-600">Mã đơn:</span> {selectedOrder.code}</p>
+                  <p><span className="font-medium text-gray-600">Chi nhánh:</span> {selectedOrder.franchise}</p>
+                  <p><span className="font-medium text-gray-600">Khách hàng:</span> {selectedOrder.customer}</p>
+                  <p><span className="font-medium text-gray-600">Loại đơn:</span> {selectedOrder.type}</p>
+                  <p>
+                    <span className="font-medium text-gray-600">Tổng tiền :</span>{" "}
+                    {currency.format(selectedOrder.totalAmount)}
+                  </p>
+                  <p><span className="font-medium text-gray-600">Nhân viên tạo đơn:</span> {selectedOrder.createdByName}</p>
+                </div>
 
-                  return (
-                    <React.Fragment key={order.id}>
-                      <tr
-                        className={`border-b transition cursor-pointer ${
-                          isExpanded ? "bg-blue-50" : "hover:bg-gray-50"
-                        }`}
-                        onClick={() => setExpandedId(isExpanded ? null : order.id)}
+                <div className="mt-4">
+                  <p className="mb-2 text-sm font-medium text-gray-700">Thời gian trạng thái</p>
+                  <div className="space-y-2">
+                    {selectedOrderDetail.timeline.map((timelineItem) => (
+                      <div
+                        key={`${selectedOrder.id}-${timelineItem.label}`}
+                        className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2"
                       >
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-400 font-bold w-4">{isExpanded ? "▼" : "▶"}</span>
-                            <span className="font-semibold text-gray-800">{order.id}</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <p className="font-medium text-gray-800">{order.customerName}</p>
-                          <p className="text-xs text-gray-500">{order.customerPhone}</p>
-                        </td>
-                        <td className="py-4 px-4 text-gray-600">
-                          {formatCreatedAt(order.createdAt)}
-                        </td>
-                        <td className="py-4 px-4">
-                          <select
-                            className="rounded-lg border border-gray-200 bg-white py-1.5 px-2 text-xs font-medium text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                            value={order.paymentStatus}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(event) => {
-                              event.stopPropagation();
-                              handlePaymentStatusChange(order.id, event.target.value as PaymentStatus);
-                            }}
-                          >
-                            <option value="Unpaid">Unpaid</option>
-                            <option value="Paid">Paid</option>
-                            <option value="Refunded">Refunded</option>
-                          </select>
-                        </td>
-                        <td className="py-4 px-4">
-                          <select
-                            className="rounded-lg border border-gray-200 bg-white py-1.5 px-2 text-xs font-medium text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                            value={order.status}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(event) => {
-                              event.stopPropagation();
-                              handleStatusChange(order.id, event.target.value as OrderStatus);
-                            }}
-                          >
-                            <option value="Pending">Pending</option>
-                            <option value="Processing">Processing</option>
-                            <option value="Completed">Completed</option>
-                            <option value="Cancelled">Cancelled</option>
-                          </select>
-                        </td>
-                        <td className="py-4 px-4 text-right font-semibold text-gray-800">
-                          {currency.format(total)}
-                        </td>
-                      </tr>
-                      {isExpanded && (
-                        <tr className="bg-blue-50 border-b">
-                          <td colSpan={6} className="p-8">
-                            <div className="max-w-6xl mx-auto">
-                              <div className="grid grid-cols-2 gap-8 mb-8">
-                                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                                  <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-lg">person</span>
-                                    Customer Information
-                                  </h4>
-                                  <div className="text-sm space-y-3">
-                                    <div>
-                                      <p className="text-gray-500 text-xs font-medium uppercase">Name</p>
-                                      <p className="text-gray-800 font-medium">{order.customerName}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-gray-500 text-xs font-medium uppercase">Email</p>
-                                      <p className="text-gray-800">{order.customerEmail}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-gray-500 text-xs font-medium uppercase">Phone</p>
-                                      <p className="text-gray-800">{order.customerPhone}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-gray-500 text-xs font-medium uppercase">Address</p>
-                                      <p className="text-gray-800">{order.shippingAddress}</p>
-                                    </div>
-                                  </div>
-                                </div>
+                        <span className="text-sm text-gray-700">{timelineItem.label}</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {formatDateTime(timelineItem.value)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
-                                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                                  <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-lg">receipt_long</span>
-                                    Order Information
-                                  </h4>
-                                  <div className="text-sm space-y-3">
-                                    <div>
-                                      <p className="text-gray-500 text-xs font-medium uppercase">Created</p>
-                                      <p className="text-gray-800">{formatCreatedAt(order.createdAt)}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-gray-500 text-xs font-medium uppercase">Payment Method</p>
-                                      <p className="text-gray-800">{order.paymentMethod}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-gray-500 text-xs font-medium uppercase">Order Status</p>
-                                      <p className={`inline-block rounded px-2 py-1 text-xs font-medium mt-1 ${statusColor[order.status]}`}>
-                                        {order.status}
-                                      </p>
-                                    </div>
-                                    <div>
-                                      <p className="text-gray-500 text-xs font-medium uppercase">Payment Status</p>
-                                      <p className={`inline-block rounded px-2 py-1 text-xs font-medium mt-1 ${paymentColor[order.paymentStatus]}`}>
-                                        {order.paymentStatus}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-                                <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                  <span className="material-symbols-outlined text-lg">shopping_cart</span>
-                                  Items ({order.items.length})
-                                </h4>
-                                <div className="space-y-2">
-                                  {order.items.map((item, idx) => (
-                                    <div key={item.id} className="flex items-center justify-between p-4 border border-gray-100 rounded hover:bg-gray-50 transition">
-                                      <div className="flex-1">
-                                        <p className="font-medium text-gray-800">{idx + 1}. {item.name}</p>
-                                        <p className="text-xs text-gray-500 mt-1">Quantity: {item.quantity} x {currency.format(item.price)}</p>
-                                      </div>
-                                      <p className="font-bold text-gray-800 ml-4">
-                                        {currency.format(item.price * item.quantity)}
-                                      </p>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {order.note && (
-                                <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-6 mb-8">
-                                  <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-lg">note</span>
-                                    Note
-                                  </h4>
-                                  <p className="text-sm text-gray-700">{order.note}</p>
-                                </div>
-                              )}
-
-                              <div className="bg-gradient-to-r from-primary to-blue-600 rounded-lg p-6 text-white">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-sm font-medium opacity-90">Total Amount</p>
-                                    <p className="text-3xl font-bold mt-1">{currency.format(total)}</p>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-sm opacity-90">Order ID: {order.id}</p>
-                                    <p className="text-sm opacity-90 mt-1">Items: {order.items.length}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">2️⃣ Món trong đơn</p>
+                <div className={orderItemPolicyNotice.className}>{orderItemPolicyNotice.message}</div>
+                {selectedOrderDetail.orderItems.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[620px] border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-500">
+                          <th className="px-2 py-2">Tên món </th>
+                          <th className="px-2 py-2 text-right">giá tiền</th>
+                          <th className="px-2 py-2 text-right">Số lượng</th>
+                          <th className="px-2 py-2 text-right"> tổng tiền </th>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </thead>
+                      <tbody>
+                        {selectedOrderDetail.orderItems.map((item) => (
+                          <tr key={item.id} className="border-b border-gray-50 last:border-0">
+                            <td className="px-2 py-2 text-gray-800">{item.productNameSnapshot}</td>
+                            <td className="px-2 py-2 text-right text-gray-700">
+                              {currency.format(item.priceSnapshot)}
+                            </td>
+                            <td className="px-2 py-2 text-right text-gray-700">{item.quantity}</td>
+                            <td className="px-2 py-2 text-right font-medium text-gray-900">
+                              {currency.format(item.lineTotal)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Không có món trong đơn.</p>
+                )}
+              </div>
 
-          {!filteredOrders.length && (
-            <div className="py-10 text-center text-sm text-gray-500">
-              No orders found.
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">3️⃣ Thanh toán</p>
+                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                  <p><span className="font-medium text-gray-600">Phương thức:</span> {selectedOrderDetail.payment.method}</p>
+                  <p>
+                    <span className="font-medium text-gray-600">Số tiền:</span>{" "}
+                    {currency.format(selectedOrderDetail.payment.amount)}
+                  </p>
+                  <p><span className="font-medium text-gray-600">Trạng thái:</span> {paymentStatusLabel[selectedOrderDetail.payment.status]}</p>
+                  <p>
+                    <span className="font-medium text-gray-600">Nhà Cung Cấp :</span>{" "}
+                    {selectedOrderDetail.payment.providerTxnId}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">4️⃣ Điểm tích lũy</p>
+                <p className="mb-3 text-sm">
+                  <span className="font-medium text-gray-600">Điểm cộng / trừ:</span>{" "}
+                  <span
+                    className={selectedOrderDetail.pointTotal >= 0 ? "text-green-700" : "text-red-700"}
+                  >
+                    {selectedOrderDetail.pointTotal >= 0
+                      ? `+${selectedOrderDetail.pointTotal}`
+                      : selectedOrderDetail.pointTotal}
+                  </span>
+                </p>
+                <p className="mb-2 text-sm font-medium text-gray-700">Nhật ký điểm tích lũy</p>
+                {selectedOrderDetail.loyaltyLogs.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedOrderDetail.loyaltyLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="rounded-lg border border-gray-100 px-3 py-2 text-sm"
+                      >
+                        <p className="font-medium text-gray-800">
+                          {loyaltyTypeLabel[log.type]} • {log.pointChange > 0 ? `+${log.pointChange}` : log.pointChange} điểm
+                        </p>
+                        <p className="text-gray-600">{log.reason ?? "Không có lý do"}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatDateTime(log.createdAt)} • bởi {userNameById.get(log.createdBy) ?? `User #${log.createdBy}`}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Không có log giao dịch loyalty cho đơn này.</p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">5️⃣ Nhật ký hoạt động </p>
+
+                <p className="mb-2 text-sm font-medium text-gray-700">Nhật ký hoạt động trạng thái đơn hàng </p>
+                {selectedOrderDetail.orderStatusLogs.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedOrderDetail.orderStatusLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="rounded-lg border border-gray-100 px-3 py-2 text-sm"
+                      >
+                        <p className="font-medium text-gray-800">
+                          {log.fromStatus} → {log.toStatus}
+                        </p>
+                        <p className="text-gray-600">{log.note ?? "Không có ghi chú"}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatDateTime(log.createdAt)} • bởi {userNameById.get(log.changedBy) ?? `User #${log.changedBy}`}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mb-3 text-sm text-gray-500">Không có order_status_log.</p>
+                )}
+
+                <p className="mb-2 mt-4 text-sm font-medium text-gray-700">Nhật ký hoạt động khác </p>
+                {selectedOrderDetail.auditLogs.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedOrderDetail.auditLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        className="rounded-lg border border-gray-100 px-3 py-2 text-sm"
+                      >
+                        <p className="font-medium text-gray-800">
+                          {log.entityType}#{log.entityId} • {log.action}
+                        </p>
+                        <p className="text-gray-600">{log.note ?? "Không có ghi chú"}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatDateTime(log.createdAt)} • bởi {userNameById.get(log.changedBy) ?? `User #${log.changedBy}`}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Không có audit_log liên quan tới đơn này.</p>
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 };

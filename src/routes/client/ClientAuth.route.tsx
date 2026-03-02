@@ -6,6 +6,7 @@ import OrderDetailPage from "../../pages/client/order/OrderDetail.index";
 import ROUTER_URL from "../router.const";
 import CartPage from "@/pages/client/cart/Cart.page";
 import CheckoutPage from "@/pages/client/checkout/Checkout.page";
+import ClientProfilePage from "@/pages/client/account/profile/ClientProfile.page";
 import LoyaltyPage from "@/pages/client/loyalty/Loyalty.page";
 import ClientHistoryPage from "../../pages/client/history";
 
@@ -21,6 +22,10 @@ const ClientForgotPasswordPage = React.lazy(
 
 const ClientVerifyTokenPage = React.lazy(
   () => import("@/pages/client/auth/verify/ClientVerifyToken.page"),
+);
+
+const PaymentStatusPage = React.lazy(
+  () => import("@/pages/client/checkout/CheckoutStatus.page"),
 );
 
 const ClientAuthRoutes = (
@@ -41,6 +46,7 @@ const ClientAuthRoutes = (
       path={ROUTER_URL.CLIENT_ROUTER.VERIFY}
       element={<ClientVerifyTokenPage />}
     />
+    <Route path={ROUTER_URL.CLIENT_ROUTER.PAYMENT_STATUS} element={<PaymentStatusPage />} />
     <Route element={<ClientLayout />}>
       <Route path={`${ROUTER_URL.CLIENT}/order`} element={<OrderPage />} />
       <Route
@@ -53,6 +59,10 @@ const ClientAuthRoutes = (
       <Route
         path={ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER_DETAIL}
         element={<OrderDetailPage />}
+      />
+      <Route
+        path={ROUTER_URL.CLIENT_ROUTER.PROFILE}
+        element={<ClientProfilePage />}
       />
     </Route>
   </>

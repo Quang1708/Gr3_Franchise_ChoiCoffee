@@ -15,7 +15,6 @@ const ClientLoginPage: React.FC = () => {
   const [form, setForm] = useState<ClientLoginSchemaType>({
     email: "",
     password: "",
-    rememberMe: false,
   });
   const [errors, setErrors] = useState<{
     email?: string;
@@ -201,22 +200,6 @@ const ClientLoginPage: React.FC = () => {
                   Quên mật khẩu?
                 </a>
               </div>
-            </div>
-
-            {/* Remember */}
-            <div className="flex items-center justify-between py-2">
-              <label className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary transition-all cursor-pointer"
-                  type="checkbox"
-                  name="rememberMe"
-                  checked={form.rememberMe}
-                  onChange={handleChange}
-                />
-                <span className="text-sm font-semibold text-charcoal/60 group-hover:text-charcoal transition-colors">
-                  Ghi nhớ đăng nhập
-                </span>
-              </label>
             </div>
 
             {/* Submit Button */}

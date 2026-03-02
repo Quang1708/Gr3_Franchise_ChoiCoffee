@@ -39,7 +39,7 @@ export const Modal: React.FC<ModalProps> = ({
             </h3>
             <button
               type="button"
-              className="rounded-lg p-1 text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="rounded-lg p-1 text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               onClick={onClose}
             >
               <span className="sr-only">Close</span>

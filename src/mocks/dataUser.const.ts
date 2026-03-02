@@ -1,5 +1,3 @@
-import { ROLE } from "../models/role.model";
-
 export const FAKE_ADMIN_USERS = [
   {
     id: 1,
@@ -12,7 +10,7 @@ export const FAKE_ADMIN_USERS = [
     is_deleted: false,
     created_at: "2024-01-01T08:00:00Z",
     updated_at: "2026-01-31T08:00:00Z",
-    role: ROLE.ADMIN,
+    role: "admin",
   },
   {
     id: 2,
@@ -25,7 +23,7 @@ export const FAKE_ADMIN_USERS = [
     is_deleted: false,
     created_at: "2024-01-01T08:00:00Z",
     updated_at: "2026-01-31T08:00:00Z",
-    role: ROLE.MANAGER,
+    role: "manager",
   },
   {
     id: 3,
@@ -38,6 +36,6 @@ export const FAKE_ADMIN_USERS = [
     is_deleted: false,
     created_at: "2024-01-01T08:00:00Z",
     updated_at: "2026-01-31T08:00:00Z",
-    role: ROLE.CUSTOMER,
+    role: "customer",
   },
 ];

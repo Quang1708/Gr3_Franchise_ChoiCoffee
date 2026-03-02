@@ -1,4 +1,4 @@
-import type { Product } from '@/models/product.model';
+import type { Product } from "@/models/product.model";
 
 export const PRODUCT_SEED_DATA: Product[] = [
     { id: 1, SKU: 'CF-001', name: 'Cà Phê Đen Đá', img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93', minPrice: 29000, maxPrice: 35000, isActive: true, isDeleted: false, createdAt: '2024-01-01T08:00:00Z', updatedAt: '2024-01-01T08:00:00Z' },

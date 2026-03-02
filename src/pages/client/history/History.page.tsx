@@ -1,16 +1,9 @@
 import { useMemo, useState } from "react";
 import {
-  ArrowUp,
   Eye,
   Filter,
   MoreVertical,
   Search,
-  ShoppingBag,
-  Truck,
-  Wallet,
-  CheckCircle2,
-  RotateCcw,
-  MoreHorizontal,
 } from "lucide-react";
 import ROUTER_URL from "../../../routes/router.const";
 import { ORDER_SEED_DATA } from "../../../mocks/order.seed";
@@ -93,7 +86,7 @@ const ClientHistoryPage = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 4;
+  const itemsPerPage = 5;
 
   const stats = useMemo(() => {
     const totalOrders = allOrders.length;
@@ -164,34 +157,21 @@ const ClientHistoryPage = () => {
     );
   };
 
-  const getPaymentIcon = (status: OrderDisplay["paymentStatus"]) => {
-    if (status === "paid") {
-      return <CheckCircle2 className="text-green-500" size={18} />;
-    }
-    if (status === "cancelled") {
-      return <RotateCcw className="text-red-500" size={18} />;
-    }
-    return <MoreHorizontal className="text-gray-400" size={18} />;
-  };
+
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="p-6">
-        <nav className="mb-4 text-sm text-gray-600">
-          <span
-            className="hover:text-primary cursor-pointer"
-            onClick={() => navigate("/")}
-          >
-            Trang chủ
-          </span>
-          <span className="mx-2">/</span>
-          <span className="text-gray-800 font-medium">Lịch sử Đơn hàng</span>
-        </nav>
-
+      <div className="p-6 max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Lịch sử Đơn hàng
-          </h1>
+                           <div className="mb-6">
+                <h2 className="text-charcoal dark:text-white text-3xl font-black tracking-tight">
+                  Lịch sử đơn hàng của tôi
+                </h2>
+                <p className="text-wood-brown text-sm font-normal">
+                  Theo dõi và quản lý toàn bộ lịch sử đơn hàng của hệ thống
+                  ChoiCoffee
+                </p>
+              </div>
           <div className="relative">
             <input
               type="text"
@@ -210,73 +190,45 @@ const ClientHistoryPage = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Tổng đơn hàng</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  {stats.totalOrders.toLocaleString("vi-VN")}
-                </p>
-                <div className="flex items-center gap-1 mt-2">
-                  <ArrowUp className="text-green-500" size={14} />
-                  <span className="text-sm text-green-500">
-                    +12.5% so với tháng trước
-                  </span>
-                </div>
-              </div>
-              <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
-                <ShoppingBag className="text-blue-500" size={24} />
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+            <div>
+              <p className="text-xs text-gray-600 mb-1">Tổng đơn hàng</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {stats.totalOrders.toLocaleString("vi-VN")}
+              </p>
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">Tổng chi tiêu</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(stats.totalSpending)}
-                </p>
-                <div className="flex items-center gap-1 mt-2">
-                  <ArrowUp className="text-green-500" size={14} />
-                  <span className="text-sm text-green-500">+8.2%</span>
-                </div>
-              </div>
-              <div className="w-12 h-12 bg-green-500/10 rounded-lg flex items-center justify-center">
-                <Wallet className="text-green-500" size={24} />
-              </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+            <div>
+              <p className="text-xs text-gray-600 mb-1">Tổng chi tiêu</p>
+              <p className="text-xl font-bold text-gray-900">
+                {formatCurrency(stats.totalSpending)}
+              </p>
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">
-                  Đơn hàng mới (24h)
-                </p>
-                <p className="text-3xl font-bold text-gray-900">
-                  {stats.newOrders24h}
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Dự kiến giao trong hôm nay
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-orange-500/10 rounded-lg flex items-center justify-center">
-                <Truck className="text-orange-500" size={24} />
-              </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+            <div>
+              <p className="text-xs text-gray-600 mb-1">
+                Đơn hàng mới (24h)
+              </p>
+              <p className="text-2xl font-bold text-gray-900">
+                {stats.newOrders24h}
+              </p>
             </div>
           </div>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-          <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-charcoal text-base">
               Danh sách đơn hàng
             </h2>
-            <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700">
-                <Filter size={16} />
+            <div className="flex items-center gap-2">
+              <button className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium text-gray-700">
+                <Filter size={14} />
                 Bộ lọc
               </button>
             </div>
@@ -286,25 +238,25 @@ const ClientHistoryPage = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
                     MÃ ĐƠN HÀNG
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider">
                     NGÀY ĐẶT
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider">
                     ĐỐI TÁC/CỬA HÀNG
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider">
                     TỔNG TIỀN
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider">
                     TRẠNG THÁI
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-center text-xs font-bold text-charcoal text-base uppercase tracking-wider">
                     THANH TOÁN
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-center text-xs font-bold text-charcoal text-base uppercase tracking-wider">
                     THAO TÁC
                   </th>
                 </tr>
@@ -316,8 +268,8 @@ const ClientHistoryPage = () => {
                       key={order.id}
                       className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-gray-900">
+                      <td className="px-6 py-6 whitespace-nowrap">
+                        <span className="text-sm font-bold text-charcoal text-base text-charcoal">
                           #{order.orderCode}
                         </span>
                       </td>
@@ -332,7 +284,7 @@ const ClientHistoryPage = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-gray-900">
+                        <span className="text-sm font-bold text-charcoal text-base text-charcoal">
                           {formatCurrency(order.totalAmount)}
                         </span>
                       </td>
@@ -340,7 +292,11 @@ const ClientHistoryPage = () => {
                         {getStatusBadge(order.status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {getPaymentIcon(order.paymentStatus)}
+                        <span className="inline-flex items-center px-3 py-1 rounded-lg border-2 border-primary bg-primary text-white text-xs font-medium">
+                          {order.paymentStatus === 'paid' && 'Đã thanh toán'}
+                          {order.paymentStatus === 'pending' && 'Chưa thanh toán'}
+                          {order.paymentStatus === 'cancelled' && 'Đã hủy'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center justify-center gap-2">
@@ -353,16 +309,16 @@ const ClientHistoryPage = () => {
                                 ),
                               )
                             }
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                             title="Xem chi tiết"
                           >
-                            <Eye className="text-gray-600" size={18} />
+                            <Eye className="text-gray-600" size={14} />
                           </button>
                           <button
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                             title="Thêm tùy chọn"
                           >
-                            <MoreVertical className="text-gray-600" size={18} />
+                            <MoreVertical className="text-gray-600" size={14} />
                           </button>
                         </div>
                       </td>
@@ -382,48 +338,51 @@ const ClientHistoryPage = () => {
             </table>
           </div>
 
-          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              Hiển thị {startIndex + 1}–
-              {Math.min(startIndex + itemsPerPage, filteredOrders.length)} của{" "}
-              {filteredOrders.length} đơn hàng
+          {totalPages > 1 && (
+            <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+              <div className="text-xs text-gray-600">
+                Hiển thị {startIndex + 1}–
+                {Math.min(startIndex + itemsPerPage, filteredOrders.length)}{" "}
+                của {filteredOrders.length} đơn hàng
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs"
+                >
+                  &lt;
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1.5 rounded-lg transition-colors text-xs ${currentPage === page
+                          ? "bg-primary text-white"
+                          : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        }`}
+                    >
+                      {page}
+                    </button>
+                  ),
+                )}
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) =>
+                      Math.min(totalPages, prev + 1),
+                    )
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs"
+                >
+                  &gt;
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-              >
-                &lt;
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`px-4 py-2 rounded-lg transition-colors text-sm ${
-                      currentPage === page
-                        ? "bg-primary text-white"
-                        : "border border-gray-300 text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ),
-              )}
-              <button
-                onClick={() =>
-                  setCurrentPage((prev) =>
-                    Math.min(totalPages, prev + 1),
-                  )
-                }
-                disabled={currentPage === totalPages}
-                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-              >
-                &gt;
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

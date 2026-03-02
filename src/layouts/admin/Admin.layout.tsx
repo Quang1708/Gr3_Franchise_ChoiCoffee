@@ -8,24 +8,29 @@ const AdminLayout = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       <AdminSidebar
         collapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed((v) => !v)}
       />
 
       <div
-        className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${
+        className={`flex-1 min-w-0 flex flex-col transition-all duration-300 ${
           isSidebarCollapsed ? "ml-16" : "ml-64"
         }`}
       >
-        <AdminHeader />
+        {/* Header cố định chiều cao */}
+        <div className="shrink-0">
+          <AdminHeader />
+        </div>
 
-        <main className="flex-1 overflow-hidden">
+        {/* Main chỉ scroll trong vùng này, không đẩy footer */}
+        <main className="flex-1 min-h-0 overflow-auto">
           <Outlet />
         </main>
 
-        <div className="mt-auto">
+        {/* Footer không bị đẩy ra ngoài viewport */}
+        <div className="shrink-0">
           <AdminFooter />
         </div>
       </div>

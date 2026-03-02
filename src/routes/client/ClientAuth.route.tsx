@@ -6,6 +6,7 @@ import OrderDetailPage from "../../pages/client/order/OrderDetail.index";
 import ROUTER_URL from "../router.const";
 import CartPage from "@/pages/client/cart/Cart.page";
 import CheckoutPage from "@/pages/client/checkout/Checkout.page";
+import ClientProfilePage from "@/pages/client/account/profile/ClientProfile.page";
 import LoyaltyPage from "@/pages/client/loyalty/Loyalty.page";
 import ClientHistoryPage from "../../pages/client/history";
 
@@ -58,6 +59,10 @@ const ClientAuthRoutes = (
       <Route
         path={ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER_DETAIL}
         element={<OrderDetailPage />}
+      />
+      <Route
+        path={ROUTER_URL.CLIENT_ROUTER.PROFILE}
+        element={<ClientProfilePage />}
       />
     </Route>
   </>

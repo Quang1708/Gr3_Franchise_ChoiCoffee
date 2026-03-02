@@ -2,11 +2,6 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
-  ShoppingBag,
-  Truck,
-  CheckCircle2,
-  Wallet,
-  Eye,
 } from "lucide-react";
 // import ClientHeader from "../../../layouts/client/ClientHeader.layout";
 // import ClientFooter from "../../../layouts/client/ClientFooter.layout";
@@ -21,10 +16,10 @@ interface Order {
   orderDate: string;
   orderTime: string;
   totalAmount: number;
-  status: "processing" | "delivering" | "completed";
+  status: "processing" | "delivering" | "completed" | "cancelled";
 }
 
-type OrderStatus = "all" | "processing" | "delivering" | "completed";
+type OrderStatus = "all" | "processing" | "delivering" | "completed" | "cancelled";
 
 // Helper function to map OrderModel to Order
 const mapOrderDataToOrder = (orderData: OrderModel): Order => {
@@ -40,11 +35,13 @@ const mapOrderDataToOrder = (orderData: OrderModel): Order => {
   });
 
   // Map status from OrderModel to display status
-  let status: "processing" | "delivering" | "completed";
+  let status: "processing" | "delivering" | "completed" | "cancelled";
   if (orderData.status === "COMPLETED") {
     status = "completed";
   } else if (orderData.status === "PREPARING") {
     status = "delivering";
+  } else if (orderData.status === "CANCELLED") {
+    status = "cancelled";
   } else {
     // DRAFT, CONFIRMED -> processing
     status = "processing";
@@ -60,9 +57,9 @@ const mapOrderDataToOrder = (orderData: OrderModel): Order => {
   };
 };
 
-// Filter out cancelled and deleted orders, then map to display format
+// Filter out deleted orders, then map to display format
 const orders: Order[] = ORDER_SEED_DATA.filter(
-  (order) => order.status !== "CANCELLED" && !order.isDeleted,
+  (order) => !order.isDeleted,
 ).map(mapOrderDataToOrder);
 
 const OrderPage = () => {
@@ -133,6 +130,11 @@ const OrderPage = () => {
         className: "bg-green-500/20 text-green-400 border-green-500/30",
         dot: "bg-green-500",
       },
+      cancelled: {
+        label: "Đã hủy",
+        className: "bg-red-500/20 text-red-400 border-red-500/30",
+        dot: "bg-red-500",
+      },
     };
 
     const config = statusConfig[status];
@@ -155,295 +157,266 @@ const OrderPage = () => {
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Main Content */}
-          <main className="flex-1 p-6 overflow-y-auto bg-background-light">
-            {/* Breadcrumbs */}
-            <nav className="mb-4 text-sm text-gray-600">
-              <span className="hover:text-primary cursor-pointer">
-                Trang chủ
-              </span>
-              <span className="mx-2">/</span>
-              <span className="text-gray-800 font-medium">
-                Danh sách đơn hàng
-              </span>
-            </nav>
+          <main className="flex-1 p-6 bg-background-light">
+            <div className="max-w-6xl mx-auto">
+              {/* Page Title */}
+              <div className="mb-6">
+                <h2 className="text-charcoal dark:text-white text-3xl font-black tracking-tight">
+                  Danh sách Đơn hàng của tôi
+                </h2>
+                <p className="text-wood-brown text-sm font-normal">
+                  Theo dõi và quản lý các đơn hàng nhập hàng của hệ thống
+                  ChoiCoffee
+                </p>
+              </div>
 
-            {/* Page Title */}
-            <div className="mb-6">
-              <h2 className="text-3xl font-bold text-charcoal mb-2">
-                Danh sách Đơn hàng của tôi
-              </h2>
-              <p className="text-gray-600">
-                Theo dõi và quản lý các đơn hàng nhập hàng của hệ thống
-                ChoiCoffee
-              </p>
-            </div>
-
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-6">
-              {/* Processing Card */}
-              <div className="bg-white rounded-lg  p-6  border-blue-500 border border-gray-200">
-                <div className="flex items-center justify-between">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pb-4">
+                {/* Processing Card */}
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Đang xử lý</p>
-                    <p className="text-3xl font-bold text-charcoal">
+                    <p className="text-xs text-gray-600 mb-1">Đang xử lý</p>
+                    <p className="text-2xl font-bold text-charcoal">
                       {stats.processing}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                    <ShoppingBag className="text-blue-400" size={24} />
-                  </div>
                 </div>
-              </div>
 
-              {/* Delivering Card */}
-              <div className="bg-white rounded-lg  p-6   border border-gray-200">
-                <div className="flex items-center justify-between">
+                {/* Delivering Card */}
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Đang giao</p>
-                    <p className="text-3xl font-bold text-charcoal">
+                    <p className="text-xs text-gray-600 mb-1">Đang giao</p>
+                    <p className="text-2xl font-bold text-charcoal">
                       {stats.delivering}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                    <Truck className="text-orange-400" size={24} />
-                  </div>
                 </div>
-              </div>
 
-              {/* Completed Card */}
-              <div className="bg-white rounded-lg  p-6   border border-gray-200">
-                <div className="flex items-center justify-between">
+                {/* Completed Card */}
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Đã hoàn thành</p>
-                    <p className="text-3xl font-bold text-charcoal">
+                    <p className="text-xs text-gray-600 mb-1">Đã hoàn thành</p>
+                    <p className="text-2xl font-bold text-charcoal">
                       {stats.completed}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
-                    <CheckCircle2 className="text-green-400" size={24} />
-                  </div>
                 </div>
-              </div>
 
-              {/* Monthly Spending Card */}
-              <div className="bg-white rounded-lg  p-6  border border-gray-200 ">
-                <div className="flex items-center justify-between">
+                {/* Monthly Spending Card */}
+                <div className="bg-white rounded-lg p-4 border border-gray-200">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">
+                    <p className="text-xs text-gray-600 mb-1">
                       Tổng chi tiêu tháng này
                     </p>
-                    <p className="text-2xl font-bold text-charcoal">
+                    <p className="text-xl font-bold text-charcoal">
                       {formatCurrency(stats.monthlySpending)}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center  ">
-                    <Wallet className="text-primary" size={24} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Orders Section Frame */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6 border border-gray-200">
-              {/* Status Tabs */}
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex gap-6">
-                  {[
-                    { key: "all", label: "Tất cả" },
-                    { key: "processing", label: "Đang xử lý" },
-                    { key: "delivering", label: "Đang giao" },
-                    { key: "completed", label: "Đã hoàn thành" },
-                  ].map((tab) => (
-                    <button
-                      key={tab.key}
-                      onClick={() => {
-                        setActiveTab(tab.key as OrderStatus);
-                        setCurrentPage(1);
-                      }}
-                      className={`pb-4 px-2 font-medium transition-colors relative ${activeTab === tab.key
-                        ? "text-primary"
-                        : "text-gray-600 hover:text-charcoal"
-                        }`}
-                    >
-                      {tab.label}
-                      {activeTab === tab.key && (
-                        <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Date Filters */}
-                <div className="mt-6 flex items-center gap-4 flex-wrap pt-5 border-t border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600 whitespace-nowrap">
-                      Từ ngày:
-                    </label>
-                    <div className="relative">
-                      <Calendar
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                        size={18}
-                      />
-                      <input
-                        type="date"
-                        value={fromDate}
-                        onChange={(e) => setFromDate(e.target.value)}
-                        className="pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-charcoal"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600 whitespace-nowrap">
-                      Đến ngày:
-                    </label>
-                    <div className="relative">
-                      <Calendar
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                        size={18}
-                      />
-                      <input
-                        type="date"
-                        value={toDate}
-                        onChange={(e) => setToDate(e.target.value)}
-                        className="pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-charcoal"
-                      />
-                    </div>
-                  </div>
-
-                  <button className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium">
-                    Lọc kết quả
-                  </button>
-
-                  <div className="ml-auto text-sm text-gray-600">
-                    Hiển thị {startIndex + 1} –{" "}
-                    {Math.min(startIndex + itemsPerPage, filteredOrders.length)}{" "}
-                    của {filteredOrders.length} đơn hàng
-                  </div>
                 </div>
               </div>
 
-              {/* Order Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
-                        MÃ ĐƠN HÀNG
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
-                        NGÀY ĐẶT
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
-                        TỔNG TIỀN
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
-                        TRẠNG THÁI
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider bg-gray-50">
-                        THAO TÁC
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {paginatedOrders.length > 0 ? (
-                      paginatedOrders.map((order) => (
-                        <tr
-                          key={order.id}
-                          className="transition-colors border-b border-gray-200 hover:bg-gray-50"
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-semibold text-charcoal">
-                              #{order.orderCode}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-600">
-                              {order.orderDate} - {order.orderTime}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm font-semibold text-charcoal">
-                              {formatCurrency(order.totalAmount)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {getStatusBadge(order.status)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <button
-                                onClick={() =>
-                                  navigate(
-                                    ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER_DETAIL.replace(
-                                      ":orderId",
-                                      order.id,
-                                    ),
-                                  )
-                                }
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
-                              >
-                                <Eye size={16} />
-                                Xem chi tiết
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="px-6 py-12 text-center text-gray-500"
-                        >
-                          Không có đơn hàng nào
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-center gap-2">
-                  <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(1, prev - 1))
-                    }
-                    disabled={currentPage === 1}
-                    className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    &lt;
-                  </button>
-
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (page) => (
+              {/* Orders Section Frame */}
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6 border border-gray-200">
+                {/* Status Tabs */}
+                <div className="p-4 border-b border-gray-200">
+                  <div className="flex gap-5">
+                    {[
+                      { key: "all", label: "Tất cả" },
+                      { key: "processing", label: "Đang xử lý" },
+                      { key: "delivering", label: "Đang giao" },
+                      { key: "completed", label: "Đã hoàn thành" },
+                      { key: "cancelled", label: "Đã hủy" },
+                    ].map((tab) => (
                       <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-4 py-2 rounded-lg transition-colors ${currentPage === page
-                          ? "bg-primary text-white"
-                          : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        key={tab.key}
+                        onClick={() => {
+                          setActiveTab(tab.key as OrderStatus);
+                          setCurrentPage(1);
+                        }}
+                        className={`pb-3 px-2 text-sm font-medium transition-colors relative ${activeTab === tab.key
+                          ? "text-primary"
+                          : "text-gray-600 hover:text-charcoal"
                           }`}
                       >
-                        {page}
+                        {tab.label}
+                        {activeTab === tab.key && (
+                          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></span>
+                        )}
                       </button>
-                    ),
-                  )}
+                    ))}
+                  </div>
 
-                  <button
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    &gt;
-                  </button>
+                  {/* Date Filters */}
+                  <div className="mt-4 flex items-center gap-3 flex-wrap pt-3 border-t border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-gray-600 whitespace-nowrap">
+                        Từ ngày:
+                      </label>
+                      <div className="relative">
+                        <Calendar
+                          className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                          size={16}
+                        />
+                        <input
+                          type="date"
+                          value={fromDate}
+                          onChange={(e) => setFromDate(e.target.value)}
+                          className="pl-8 pr-3 py-1.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-charcoal"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-gray-600 whitespace-nowrap">
+                        Đến ngày:
+                      </label>
+                      <div className="relative">
+                        <Calendar
+                          className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+                          size={16}
+                        />
+                        <input
+                          type="date"
+                          value={toDate}
+                          onChange={(e) => setToDate(e.target.value)}
+                          className="pl-8 pr-3 py-1.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-charcoal"
+                        />
+                      </div>
+                    </div>
+
+                    <button className="px-4 py-1.5 bg-primary text-white rounded text-xs hover:bg-primary/90 transition-colors font-medium">
+                      Lọc kết quả
+                    </button>
+
+                    <div className="ml-auto text-xs text-gray-600">
+                      Hiển thị {startIndex + 1} –{" "}
+                      {Math.min(startIndex + itemsPerPage, filteredOrders.length)}{" "}
+                      của {filteredOrders.length} đơn hàng
+                    </div>
+                  </div>
                 </div>
-              )}
+
+                {/* Order Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
+                          MÃ ĐƠN HÀNG
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
+                          NGÀY ĐẶT
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
+                          TỔNG TIỀN
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
+                          TRẠNG THÁI
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
+                          THAO TÁC
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {paginatedOrders.length > 0 ? (
+                        paginatedOrders.map((order) => (
+                          <tr
+                            key={order.id}
+                            className="transition-colors border-b border-gray-200 hover:bg-gray-50"
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm font-bold text-charcoal text-base text-charcoal">
+                                #{order.orderCode}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm text-gray-600">
+                                {order.orderDate} - {order.orderTime}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm font-bold text-charcoal text-base text-charcoal">
+                                {formatCurrency(order.totalAmount)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {getStatusBadge(order.status)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center ">
+                                <button
+                                  onClick={() =>
+                                    navigate(
+                                      ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER_DETAIL.replace(
+                                        ":orderId",
+                                        order.id,
+                                      ),
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+                                >
+                                  Xem chi tiết
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={5}
+                            className="px-6 py-12 text-center text-gray-500"
+                          >
+                            Không có đơn hàng nào
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-center gap-2">
+                    <button
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
+                      disabled={currentPage === 1}
+                      className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      &lt;
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                      (page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-4 py-2 rounded-lg transition-colors ${currentPage === page
+                            ? "bg-primary text-white"
+                            : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                            }`}
+                        >
+                          {page}
+                        </button>
+                      ),
+                    )}
+
+                    <button
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      &gt;
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </main>
         </div>

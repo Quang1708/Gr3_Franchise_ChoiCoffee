@@ -8,7 +8,7 @@ export const ORDER_SEED_DATA: Order[] = [
         franchiseId: 1,
         customerId: 1, // Khách hàng: Nguyễn Hoàng Anh
         type: 'POS',
-        status: 'COMPLETED',
+        status: 'DRAFT',
         totalAmount: 85000,
         confirmedAt: '2024-06-01T09:00:00Z',
         completedAt: '2024-06-01T09:15:00Z',

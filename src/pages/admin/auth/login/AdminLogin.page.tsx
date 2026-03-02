@@ -9,9 +9,10 @@ import {
   AdminAuthSchema,
   type AdminAuthSchemaType,
 } from "./schema/AdminAuth.schema";
-import { toastSuccess } from "@/utils/toast.util";
 import { useAuthStore } from "@/stores/auth.store";
-import { loginAdmin } from "@/services/adminAuth.service";
+import { toastSuccess } from "@/utils/toast.util";
+import { getAdminProfile, loginAdmin } from "./service/api.login";
+
 
 const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,48 +21,69 @@ const AdminLoginPage: React.FC = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
     setError,
     clearErrors,
-  } = useForm<AdminAuthSchemaType>({
-    resolver: zodResolver(AdminAuthSchema),
-    defaultValues: { email: "", password: "" },
-    mode: "onSubmit",
-  });
-
-  const getInputClass = (hasError: boolean) =>
-    `w-full h-10 pl-10 rounded-lg outline-none border transition ` +
-    (hasError
-      ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200 bg-red-50"
-      : "border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-200 bg-gray-50");
+    formState: { errors, isSubmitting },
+  } = useForm<AdminAuthSchemaType>({ resolver: zodResolver(AdminAuthSchema) });
 
   const setAuthError = (message: string) => {
     setError("email", { type: "manual", message });
     setError("password", { type: "manual", message });
   };
 
+  const normalizeRoles = (roles: unknown) =>
+    Array.isArray(roles)
+      ? roles.map((r) =>
+          typeof r === "object" && r !== null && "role" in r
+            ? { ...(r as object), role_code: (r as { role?: string }).role }
+            : r,
+        )
+      : roles;
+
+  const buildUser = (data: unknown) => {
+    const user = (data as { user?: unknown } | null)?.user ?? data;
+    const roles = normalizeRoles((data as { roles?: unknown } | null)?.roles);
+
+    return user && Array.isArray(roles) ? { ...(user as object), roles } : user;
+  };
+
+  const handleLoginSuccess = (user: unknown, token: string) => {
+    useAuthStore.getState().login(user, token);
+    toastSuccess?.("Đăng nhập thành công!");
+    clearErrors();
+    navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
+  };
+
   const onSubmit = async (values: AdminAuthSchemaType) => {
     try {
-      const result = await loginAdmin({
-        email: values.email,
-        password: values.password,
-      });
+      const result = await loginAdmin(values);
 
-      if (!result.ok) {
-        setAuthError(result.message);
+      if (!result.success) {
+        setAuthError(result.message ?? "Đăng nhập thất bại.");
         return;
       }
 
-      useAuthStore.getState().login(result.user, result.token);
+      if (result.data) {
+        const user = buildUser(result.data);
+        handleLoginSuccess(user ?? result.data.user, result.data.token);
+        return;
+      }
 
-      toastSuccess("Đăng nhập thành công!");
-      clearErrors();
-      navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
+      const profile = await getAdminProfile();
+      const user = profile.success ? buildUser(profile.data) : null;
+
+      if (user) {
+        handleLoginSuccess(user, "SESSION");
+        return;
+      }
+
+      setAuthError(result.message ?? profile.message ?? "Đăng nhập thất bại.");
     } catch (error) {
       console.error(error);
       setAuthError("Có lỗi xảy ra, vui lòng thử lại sau.");
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background-light px-4">
@@ -92,7 +114,7 @@ const AdminLoginPage: React.FC = () => {
               <input
                 type="text"
                 placeholder="Email"
-                className={getInputClass(Boolean(errors.email))}
+                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 {...register("email")}
               />
             </div>
@@ -114,7 +136,7 @@ const AdminLoginPage: React.FC = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="********"
-                className={getInputClass(Boolean(errors.password))}
+                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 {...register("password")}
               />
               <button

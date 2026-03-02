@@ -5,11 +5,10 @@ import {
   type ClientLoginSchemaType,
 } from "./schema/clientLogin.schema";
 import ROUTER_URL from "../../../../routes/router.const";
-import { setItemInLocalStorage } from "../../../../utils/localStorage.util";
-import { LOCAL_STORAGE } from "../../../../consts/localstorage.const";
 import { toastSuccess, toastError } from "../../../../utils/toast.util";
-import { FAKE_ADMIN_USERS } from "../../../../mocks/dataUser.const";
-import { ROLE } from "../../../../models/role.model";
+import { customerLogin } from "../services/authApi";
+import { getCustomerInfo } from "../../account/partial/service/api";
+import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
 
 const ClientLoginPage: React.FC = () => {
   const [form, setForm] = useState<ClientLoginSchemaType>({
@@ -28,7 +27,7 @@ const ClientLoginPage: React.FC = () => {
     setForm({ ...form, [name]: type === "checkbox" ? checked : value });
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const result = ClientLoginSchema.safeParse(form);
     if (!result.success) {
@@ -42,22 +41,33 @@ const ClientLoginPage: React.FC = () => {
     }
     setErrors({});
 
-    // Xử lý đăng nhập
-    const foundUser = FAKE_ADMIN_USERS.find(
-      (u) =>
-        (u.email === form.email || u.phone === form.email) &&
-        u.password_hash === form.password &&
-        u.role === ROLE.CUSTOMER,
-    );
+    try {
+      const loginResponse = await customerLogin({
+        email: form.email,
+        password: form.password,
+      });
 
-    if (foundUser) {
-      setItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_CLIENT, foundUser);
-      toastSuccess("Đăng nhập thành công!");
-      setTimeout(() => {
-        navigate(ROUTER_URL.HOME);
-      }, 1000);
-    } else {
-      toastError("Email/Số điện thoại hoặc mật khẩu không đúng!");
+      // Check if login was successful
+      if (loginResponse.success) {
+        // Fetch customer info and store in localStorage
+        try {
+          const customerInfo = await getCustomerInfo();
+          localStorage.setItem("customer_info", JSON.stringify(customerInfo));
+        } catch (error) {
+          console.error("Failed to fetch customer info:", error);
+          // Continue anyway, user is logged in
+        }
+
+        toastSuccess("Đăng nhập thành công!");
+        setTimeout(() => {
+          navigate(ROUTER_URL.HOME);
+        }, 1000);
+      }
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toastError(
+        err?.response?.data?.message || "Email hoặc mật khẩu không đúng!",
+      );
     }
   };
 
@@ -203,15 +213,7 @@ const ClientLoginPage: React.FC = () => {
             </div>
 
             {/* Submit Button */}
-            <button
-              className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-3 group active:scale-[0.98] cursor-pointer"
-              type="submit"
-            >
-              <span>Đăng nhập</span>
-              <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">
-                arrow_forward
-              </span>
-            </button>
+            <ButtonSubmit label="Đăng nhập" icon="arrow_forward" />
           </form>
 
           {/* Register Link */}

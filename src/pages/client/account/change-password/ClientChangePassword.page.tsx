@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Modal } from "@/components/UI/Modal";
 import { Eye, EyeOff, Lock } from "lucide-react";
 import { toastSuccess, toastError } from "@/utils/toast.util";
+import { changePassword } from "../partial/service/api";
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -47,13 +48,19 @@ export default function ChangePasswordModal({
     setIsLoading(true);
 
     try {
-      // TODO: Call API to change password
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulated API call
+      await changePassword({
+        old_password: currentPassword,
+        new_password: newPassword,
+      });
 
       toastSuccess("Đổi mật khẩu thành công");
       handleClose();
-    } catch {
-      toastError("Đổi mật khẩu thất bại. Vui lòng thử lại");
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toastError(
+        err?.response?.data?.message ||
+          "Đổi mật khẩu thất bại. Vui lòng thử lại",
+      );
     } finally {
       setIsLoading(false);
     }

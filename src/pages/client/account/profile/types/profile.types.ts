@@ -3,6 +3,7 @@ export interface UserProfile {
   email: string;
   phone: string;
   avatar_url: string;
+  address: string;
   is_active: boolean;
   created_at: string;
   role_name: string;

@@ -1,34 +1,30 @@
 import { useState } from "react";
 import type { User } from "../../../models/user.model";
-import { ROLE, type Role } from "../../../models/role.model";
-import { getCurrentUserRole } from "../../../utils/localStorage.util";
-import { toastSuccess, toastError } from "../../../utils/toast.util";
-import { updateUserRole } from "../../../services/user.service";
 import { FAKE_ADMIN_USERS } from "../../../mocks/dataUser.const";
 
 interface UserFormData {
   email: string;
   password: string;
   name: string;
-  role: Role;
+  phone: string;
   avatarUrl?: string;
+  isActive: boolean;
 }
 
 const initialUsers: User[] = FAKE_ADMIN_USERS.map((user) => ({
-  id: user.id.toString(),
+  id: user.id,
   email: user.email,
-  password: user.password_hash,
+  passwordHash: user.password_hash,
   name: user.name,
-  role: user.role,
+  phone: user.phone,
   avatarUrl: user.avatar_url,
+  isActive: user.is_active,
+  isDeleted: user.is_deleted,
   createdAt: user.created_at,
   updatedAt: user.updated_at,
 }));
 
 const UserPage = () => {
-  const currentUserRole = getCurrentUserRole();
-  const canChangeRole = currentUserRole === ROLE.ADMIN;
-
   const [users, setUsers] = useState<User[]>(initialUsers);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,12 +33,13 @@ const UserPage = () => {
     email: "",
     password: "",
     name: "",
-    role: ROLE.STAFF,
+    phone: "",
     avatarUrl: "",
+    isActive: true,
   });
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterRole, setFilterRole] = useState<Role | "all">("all");
+  const [filterActive, setFilterActive] = useState<"all" | "active" | "inactive">("all");
 
   const handleOpenModal = (user?: User) => {
     if (user) {
@@ -51,8 +48,9 @@ const UserPage = () => {
         email: user.email,
         password: "",
         name: user.name,
-        role: user.role,
+        phone: user.phone,
         avatarUrl: user.avatarUrl || "",
+        isActive: user.isActive,
       });
     } else {
       setEditingUser(null);
@@ -60,8 +58,9 @@ const UserPage = () => {
         email: "",
         password: "",
         name: "",
-        role: ROLE.STAFF,
+        phone: "",
         avatarUrl: "",
+        isActive: true,
       });
     }
     setIsModalOpen(true);
@@ -74,8 +73,9 @@ const UserPage = () => {
       email: "",
       password: "",
       name: "",
-      role: ROLE.STAFF,
+      phone: "",
       avatarUrl: "",
+      isActive: true,
     });
   };
 
@@ -91,9 +91,9 @@ const UserPage = () => {
                 ...user,
                 email: formData.email,
                 name: formData.name,
-                role: formData.role,
+                phone: formData.phone,
                 avatarUrl: formData.avatarUrl,
-                password: formData.password || user.password,
+                isActive: formData.isActive,
                 updatedAt: new Date().toISOString(),
               }
             : user,
@@ -102,12 +102,14 @@ const UserPage = () => {
     } else {
       // Create new user
       const newUser: User = {
-        id: Date.now().toString(),
+        id: Date.now(),
         email: formData.email,
-        password: formData.password,
+        passwordHash: formData.password,
         name: formData.name,
-        role: formData.role,
+        phone: formData.phone,
         avatarUrl: formData.avatarUrl,
+        isActive: formData.isActive,
+        isDeleted: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -117,26 +119,9 @@ const UserPage = () => {
     handleCloseModal();
   };
 
-  const handleDelete = (userId: string) => {
+  const handleDelete = (userId: number) => {
     if (globalThis.confirm("Bạn có chắc chắn muốn xóa người dùng này?")) {
       setUsers(users.filter((user) => user.id !== userId));
-    }
-  };
-
-  const handleRoleChange = async (user: User, newRole: Role) => {
-    if (user.role === newRole) return;
-    const result = await updateUserRole(user.id, newRole);
-    if (result.ok) {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === user.id
-            ? { ...u, role: newRole, updatedAt: new Date().toISOString() }
-            : u,
-        ),
-      );
-      toastSuccess("Cập nhật vai trò thành công");
-    } else {
-      toastError(result.message);
     }
   };
 
@@ -144,24 +129,12 @@ const UserPage = () => {
     const matchesSearch =
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = filterRole === "all" || user.role === filterRole;
-    return matchesSearch && matchesRole;
+    const matchesActive =
+      filterActive === "all" ||
+      (filterActive === "active" && user.isActive) ||
+      (filterActive === "inactive" && !user.isActive);
+    return matchesSearch && matchesActive;
   });
-
-  const getRoleBadgeColor = (role: Role) => {
-    switch (role) {
-      case ROLE.ADMIN:
-        return "bg-red-100 text-red-800";
-      case ROLE.MANAGER:
-        return "bg-blue-100 text-blue-800";
-      case ROLE.STAFF:
-        return "bg-green-100 text-green-800";
-      case ROLE.CUSTOMER:
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
 
   return (
     <div className="p-6">
@@ -197,22 +170,20 @@ const UserPage = () => {
           </div>
           <div>
             <label
-              htmlFor="user-role"
+              htmlFor="user-status"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Lọc theo vai trò
+              Lọc theo trạng thái
             </label>
             <select
-              id="user-role"
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value as Role | "all")}
+              id="user-status"
+              value={filterActive}
+              onChange={(e) => setFilterActive(e.target.value as "all" | "active" | "inactive")}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">Tất cả vai trò</option>
-              <option value={ROLE.ADMIN}>Admin</option>
-              <option value={ROLE.MANAGER}>Manager</option>
-              <option value={ROLE.STAFF}>Staff</option>
-              <option value={ROLE.CUSTOMER}>Customer</option>
+              <option value="all">Tất cả</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </select>
           </div>
         </div>
@@ -231,7 +202,10 @@ const UserPage = () => {
                   Email
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Vai trò
+                  Phone
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ngày tạo
@@ -273,28 +247,18 @@ const UserPage = () => {
                       <div className="text-sm text-gray-900">{user.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        value={user.role}
-                        disabled={!canChangeRole}
-                        onChange={(e) =>
-                          handleRoleChange(user, e.target.value as Role)
-                        }
-                        className={`min-w-[100px] px-2 py-1 text-xs font-semibold rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          canChangeRole
-                            ? "bg-white border-gray-300 cursor-pointer"
-                            : "bg-gray-100 border-gray-200 cursor-not-allowed opacity-75"
-                        } ${getRoleBadgeColor(user.role)}`}
-                        title={
-                          canChangeRole
-                            ? "Phân quyền (Change Role)"
-                            : "Chỉ admin mới có quyền đổi vai trò"
-                        }
+                      <div className="text-sm text-gray-900">{user.phone}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 py-1 text-xs font-semibold rounded-lg ${
+                          user.isActive
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
                       >
-                        <option value={ROLE.ADMIN}>Admin</option>
-                        <option value={ROLE.MANAGER}>Manager</option>
-                        <option value={ROLE.STAFF}>Staff</option>
-                        <option value={ROLE.CUSTOMER}>Customer</option>
-                      </select>
+                        {user.isActive ? "Active" : "Inactive"}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(user.createdAt).toLocaleDateString("vi-VN")}
@@ -302,33 +266,15 @@ const UserPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => handleOpenModal(user)}
-                        disabled={!canChangeRole}
-                        title={
-                          canChangeRole
-                            ? "Sửa thông tin user"
-                            : "Chỉ admin mới có quyền sửa"
-                        }
-                        className={`mr-4 ${
-                          canChangeRole
-                            ? "text-blue-600 hover:text-blue-900"
-                            : "text-gray-400 cursor-not-allowed"
-                        }`}
+                        className="mr-4 text-blue-600 hover:text-blue-900"
+                        title="Sửa thông tin user"
                       >
                         Sửa
                       </button>
                       <button
                         onClick={() => handleDelete(user.id)}
-                        disabled={!canChangeRole}
-                        title={
-                          canChangeRole
-                            ? "Xóa user"
-                            : "Chỉ admin mới có quyền xóa"
-                        }
-                        className={
-                          canChangeRole
-                            ? "text-red-600 hover:text-red-900"
-                            : "text-gray-400 cursor-not-allowed"
-                        }
+                        className="text-red-600 hover:text-red-900"
+                        title="Xóa user"
                       >
                         Xóa
                       </button>
@@ -425,24 +371,41 @@ const UserPage = () => {
                 </div>
                 <div>
                   <label
-                    htmlFor="user-role-form"
+                    htmlFor="user-phone"
                     className="block text-sm font-medium text-gray-700 mb-2"
                   >
-                    Vai trò <span className="text-red-500">*</span>
+                    Phone <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="user-phone"
+                    type="tel"
+                    required
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập số điện thoại"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="user-status-form"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Trạng thái <span className="text-red-500">*</span>
                   </label>
                   <select
-                    id="user-role-form"
+                    id="user-status-form"
                     required
-                    value={formData.role}
+                    value={formData.isActive ? "true" : "false"}
                     onChange={(e) =>
-                      setFormData({ ...formData, role: e.target.value as Role })
+                      setFormData({ ...formData, isActive: e.target.value === "true" })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value={ROLE.ADMIN}>Admin</option>
-                    <option value={ROLE.MANAGER}>Manager</option>
-                    <option value={ROLE.STAFF}>Staff</option>
-                    <option value={ROLE.CUSTOMER}>Customer</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
                   </select>
                 </div>
                 <div>

@@ -1,57 +1,78 @@
-import { useState } from "react";
-import type { User } from "../../../models/user.model";
-import { ROLE, type Role } from "../../../models/role.model";
-import { getCurrentUserRole } from "../../../utils/localStorage.util";
+import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
 import { toastSuccess, toastError } from "../../../utils/toast.util";
-import { updateUserRole } from "../../../services/user.service";
-import { FAKE_ADMIN_USERS } from "../../../mocks/dataUser.const";
+import {
+  getUsers,
+  updateUserRole,
+  type UserListItem,
+} from "../../../services/user.service";
+import { ROLE_SEED_DATA } from "../../../mocks/role.seed";
+import { useAuthStore } from "@/stores/auth.store";
 
 interface UserFormData {
   email: string;
   password: string;
   name: string;
-  role: Role;
+  roleCode: string;
   avatarUrl?: string;
 }
 
-const initialUsers: User[] = FAKE_ADMIN_USERS.map((user) => ({
-  id: user.id.toString(),
-  email: user.email,
-  password: user.password_hash,
-  name: user.name,
-  role: user.role,
-  avatarUrl: user.avatar_url,
-  createdAt: user.created_at,
-  updatedAt: user.updated_at,
-}));
-
 const UserPage = () => {
-  const currentUserRole = getCurrentUserRole();
-  const canChangeRole = currentUserRole === ROLE.ADMIN;
+  const authUser = useAuthStore((state) => state.user);
+  const canChangeRole = useMemo(
+    () =>
+      Array.isArray(authUser?.roles) &&
+      authUser.roles.some((role: { role_code?: string }) => role.role_code === "ADMIN"),
+    [authUser],
+  );
 
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [users, setUsers] = useState<UserListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
   const [formData, setFormData] = useState<UserFormData>({
     email: "",
     password: "",
     name: "",
-    role: ROLE.STAFF,
+    roleCode: "STAFF",
     avatarUrl: "",
   });
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterRole, setFilterRole] = useState<Role | "all">("all");
+  const [filterRole, setFilterRole] = useState<string>("all");
 
-  const handleOpenModal = (user?: User) => {
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadUsers = async () => {
+      try {
+        const data = await getUsers();
+        if (!isMounted) return;
+        setUsers(data);
+      } catch {
+        toastError("Không thể tải danh sách user");
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadUsers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleOpenModal = (user?: UserListItem) => {
     if (user) {
       setEditingUser(user);
       setFormData({
         email: user.email,
         password: "",
         name: user.name,
-        role: user.role,
+        roleCode: user.roleCode,
         avatarUrl: user.avatarUrl || "",
       });
     } else {
@@ -60,7 +81,7 @@ const UserPage = () => {
         email: "",
         password: "",
         name: "",
-        role: ROLE.STAFF,
+        roleCode: "STAFF",
         avatarUrl: "",
       });
     }
@@ -74,16 +95,15 @@ const UserPage = () => {
       email: "",
       password: "",
       name: "",
-      role: ROLE.STAFF,
+      roleCode: "STAFF",
       avatarUrl: "",
     });
   };
 
-  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (editingUser) {
-      // Update existing user
       setUsers(
         users.map((user) =>
           user.id === editingUser.id
@@ -91,46 +111,47 @@ const UserPage = () => {
                 ...user,
                 email: formData.email,
                 name: formData.name,
-                role: formData.role,
+                roleCode: formData.roleCode,
                 avatarUrl: formData.avatarUrl,
-                password: formData.password || user.password,
                 updatedAt: new Date().toISOString(),
               }
             : user,
         ),
       );
+      toastSuccess("Cập nhật user thành công");
     } else {
-      // Create new user
-      const newUser: User = {
-        id: Date.now().toString(),
+      const newUser: UserListItem = {
+        id: Date.now(),
         email: formData.email,
-        password: formData.password,
         name: formData.name,
-        role: formData.role,
+        phone: "",
+        roleCode: formData.roleCode,
         avatarUrl: formData.avatarUrl,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
       setUsers([...users, newUser]);
+      toastSuccess("Tạo user mới thành công");
     }
 
     handleCloseModal();
   };
 
-  const handleDelete = (userId: string) => {
+  const handleDelete = (userId: number) => {
     if (globalThis.confirm("Bạn có chắc chắn muốn xóa người dùng này?")) {
       setUsers(users.filter((user) => user.id !== userId));
+      toastSuccess("Xóa user thành công");
     }
   };
 
-  const handleRoleChange = async (user: User, newRole: Role) => {
-    if (user.role === newRole) return;
-    const result = await updateUserRole(user.id, newRole);
+  const handleRoleChange = async (user: UserListItem, newRoleCode: string) => {
+    if (user.roleCode === newRoleCode) return;
+    const result = await updateUserRole(user.id.toString(), newRoleCode);
     if (result.ok) {
       setUsers((prev) =>
         prev.map((u) =>
           u.id === user.id
-            ? { ...u, role: newRole, updatedAt: new Date().toISOString() }
+            ? { ...u, roleCode: newRoleCode, updatedAt: new Date().toISOString() }
             : u,
         ),
       );
@@ -144,19 +165,19 @@ const UserPage = () => {
     const matchesSearch =
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = filterRole === "all" || user.role === filterRole;
+    const matchesRole = filterRole === "all" || user.roleCode === filterRole;
     return matchesSearch && matchesRole;
   });
 
-  const getRoleBadgeColor = (role: Role) => {
-    switch (role) {
-      case ROLE.ADMIN:
+  const getRoleBadgeColor = (roleCode: string) => {
+    switch (roleCode) {
+      case "ADMIN":
         return "bg-red-100 text-red-800";
-      case ROLE.MANAGER:
+      case "MANAGER":
         return "bg-blue-100 text-blue-800";
-      case ROLE.STAFF:
+      case "STAFF":
         return "bg-green-100 text-green-800";
-      case ROLE.CUSTOMER:
+      case "CUSTOMER":
         return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -205,14 +226,15 @@ const UserPage = () => {
             <select
               id="user-role"
               value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value as Role | "all")}
+              onChange={(e) => setFilterRole(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">Tất cả vai trò</option>
-              <option value={ROLE.ADMIN}>Admin</option>
-              <option value={ROLE.MANAGER}>Manager</option>
-              <option value={ROLE.STAFF}>Staff</option>
-              <option value={ROLE.CUSTOMER}>Customer</option>
+              {ROLE_SEED_DATA.map((role) => (
+                <option key={role.id} value={role.code}>
+                  {role.code}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -242,6 +264,13 @@ const UserPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    Đang tải dữ liệu user...
+                  </td>
+                </tr>
+              ) : null}
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
@@ -274,26 +303,25 @@ const UserPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <select
-                        value={user.role}
+                        value={user.roleCode}
                         disabled={!canChangeRole}
-                        onChange={(e) =>
-                          handleRoleChange(user, e.target.value as Role)
-                        }
+                        onChange={(e) => handleRoleChange(user, e.target.value)}
                         className={`min-w-[100px] px-2 py-1 text-xs font-semibold rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                           canChangeRole
                             ? "bg-white border-gray-300 cursor-pointer"
                             : "bg-gray-100 border-gray-200 cursor-not-allowed opacity-75"
-                        } ${getRoleBadgeColor(user.role)}`}
+                        } ${getRoleBadgeColor(user.roleCode)}`}
                         title={
                           canChangeRole
                             ? "Phân quyền (Change Role)"
                             : "Chỉ admin mới có quyền đổi vai trò"
                         }
                       >
-                        <option value={ROLE.ADMIN}>Admin</option>
-                        <option value={ROLE.MANAGER}>Manager</option>
-                        <option value={ROLE.STAFF}>Staff</option>
-                        <option value={ROLE.CUSTOMER}>Customer</option>
+                        {ROLE_SEED_DATA.map((role) => (
+                          <option key={role.id} value={role.code}>
+                            {role.code}
+                          </option>
+                        ))}
                       </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -336,14 +364,16 @@ const UserPage = () => {
                   </tr>
                 ))
               ) : (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-6 py-8 text-center text-gray-500"
-                  >
-                    Không tìm thấy người dùng nào
-                  </td>
-                </tr>
+                !isLoading && (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-6 py-8 text-center text-gray-500"
+                    >
+                      Không tìm thấy người dùng nào
+                    </td>
+                  </tr>
+                )
               )}
             </tbody>
           </table>
@@ -433,16 +463,17 @@ const UserPage = () => {
                   <select
                     id="user-role-form"
                     required
-                    value={formData.role}
+                    value={formData.roleCode}
                     onChange={(e) =>
-                      setFormData({ ...formData, role: e.target.value as Role })
+                      setFormData({ ...formData, roleCode: e.target.value })
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value={ROLE.ADMIN}>Admin</option>
-                    <option value={ROLE.MANAGER}>Manager</option>
-                    <option value={ROLE.STAFF}>Staff</option>
-                    <option value={ROLE.CUSTOMER}>Customer</option>
+                    {ROLE_SEED_DATA.map((role) => (
+                      <option key={role.id} value={role.code}>
+                        {role.code}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>

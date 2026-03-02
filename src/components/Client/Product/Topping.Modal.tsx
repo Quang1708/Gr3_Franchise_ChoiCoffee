@@ -53,7 +53,7 @@ const MOCK_TOPPINGS = [
   },
 ];
 
-const MAX_ITEMS = 3;
+const MAX_ITEMS = 10;
 
 type ToppingModalProps = {
   isOpen: boolean;
@@ -206,7 +206,6 @@ const ToppingModal = ({
         </div>
 
         <div className="p-5 border-t border-charcoal/10 dark:border-white/10 bg-white dark:bg-charcoal shrink-0">
-          
           <div className="flex justify-between items-end mb-5 px-1">
             <span className="text-charcoal/80 dark:text-white/80 text-base font-semibold">
               Tạm tính:
@@ -219,19 +218,20 @@ const ToppingModal = ({
             </span>
           </div>
 
-          
-          <div className="flex gap-3">
-            <button
-              onClick={handleClose}
-              className="w-1/3 py-3.5 rounded-xl font-semibold border border-charcoal/20 text-charcoal hover:bg-charcoal/5 dark:border-white/20 dark:text-white dark:hover:bg-white/10 transition-all duration-200"
-            >
-              Hủy
-            </button>
-            <ButtonSubmit
-              label={"Thêm vào giỏ"}
-              onClick={handleConfirm}
-              className="w-2/3 py-3.5 rounded-xl font-bold text-white shadow-md shadow-primary/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2"
-            />
+          <div className="flex w-full justify-end">
+            <div className="flex gap-3 w-1/2 m-0-auto justify-end">
+              <button
+                onClick={handleClose}
+                className="w-full py-3.5 rounded-xl font-semibold border border-charcoal/20 text-charcoal hover:bg-charcoal/10  dark:border-white/20 dark:text-white dark:hover:bg-white/10 transition-all duration-200 cursor-pointer"
+              >
+                Hủy
+              </button>
+              <ButtonSubmit
+                label={"Thêm vào giỏ"}
+                onClick={handleConfirm}
+                className="py-3.5 rounded-xl font-bold text-white shadow-md shadow-primary/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2"
+              />
+            </div>
           </div>
         </div>
       </div>

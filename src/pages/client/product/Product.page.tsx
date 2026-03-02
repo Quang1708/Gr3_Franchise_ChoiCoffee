@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import ProductMenu from "../../../components/Client/Product/Client.MenuHeader";
 // import ProductList from "../../../components/Client/Product/ProductList";
 import type { Category } from "@/models/category.model";
@@ -14,26 +14,6 @@ const ClientProductPage = () => {
     categories[0].id,
   );
   const [category, setCategory] = useState<Category>();
-  const [isNavSticky, setIsNavSticky] = useState(false);
-  const navRef = useRef<HTMLDivElement | null>(null);
-  const navOffsetTop = useRef<number>(0);
-
-
-  useEffect(() => {
-  if (navRef.current) {
-    navOffsetTop.current = navRef.current.offsetTop;
-  }
-}, []);
-
-  useEffect(() => {
-  const handleScroll = () => {
-    setIsNavSticky(window.scrollY >= navOffsetTop.current);
-  };
-
-  window.addEventListener("scroll", handleScroll, { passive: true });
-  return () => window.removeEventListener("scroll", handleScroll);
-}, []);
-
 
   const handleCategoryChange = (category: number) => {
     setActiveCategory(category);
@@ -62,10 +42,7 @@ const ClientProductPage = () => {
 
       <div className="flex flex-col lg:flex-row gap-12 pb-20 min-h-screen">
         <nav 
-        ref={navRef}
-        className={`w-full lg:w-72 shrink-0 transition-all duration-300 nav-wrapper ${
-          isNavSticky ? 'lg:sticky lg:top-4 lg:self-start' : ''
-        }`}>
+        className="w-full lg:w-72 shrink-0 transition-all duration-300 nav-wrapper sticky top-21 self-start">
           <ProductMenu
             activeCategory={activeCategory}
             setActiveCategory={handleCategoryChange}

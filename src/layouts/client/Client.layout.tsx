@@ -5,9 +5,9 @@ import ClientFooter from "./ClientFooter.layout"
 
 const ClientLayout = () => {
   return (
-    <div className = "min-h-screen">
+    <div className = "min-h-screen ">
         <ClientHeader />
-        <main className="flex-1 overflow-x-hidden">
+        <main className="flex-1 ">
             <Outlet />
         </main>
         <ClientFooter />

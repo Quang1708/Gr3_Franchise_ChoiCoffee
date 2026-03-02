@@ -160,11 +160,12 @@ const ClientHeader = () => {
           </div>
           <button
             onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.CART)}
-            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-8 w-8 sm:h-10 sm:w-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold"
+            className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-8 w-8 sm:h-10 sm:w-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold relative"
           >
             <span className="material-symbols-outlined text-lg sm:text-xl">
               shopping_cart
             </span>
+            <span className="absolute top-1 right-1 w-2 h-2 text-xs text-primary font-extrabold">2</span>
           </button>
           <button className="hidden sm:flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold min-w-0 px-2.5 relative">
             <span className="material-symbols-outlined text-xl">

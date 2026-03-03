@@ -1,12 +1,12 @@
-import React from "react";
-import { Mail } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Mail } from "lucide-react";
+import React from "react";
+import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 
-import ROUTER_URL from "../../../routes/router.const";
+import ROUTER_URL from "@/routes/router.const";
 import { AdminForgotPasswordSchema } from "./login/schema/AdminForgotReset.schema";
-import { FAKE_ADMIN_USERS } from "../../../mocks/dataUser.const";
+import { FAKE_ADMIN_USERS } from "@/mocks/dataUser.const";
 
 type FormValues = {
   email: string;

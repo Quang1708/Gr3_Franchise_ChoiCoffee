@@ -46,7 +46,15 @@ const ClientAuthRoutes = (
       path={ROUTER_URL.CLIENT_ROUTER.VERIFY}
       element={<ClientVerifyTokenPage />}
     />
-    <Route path={ROUTER_URL.CLIENT_ROUTER.PAYMENT_STATUS} element={<PaymentStatusPage />} />
+    <Route path="/client/verify/:token" element={<ClientVerifyTokenPage />} />
+    <Route
+      path="/verify-customer-email/:token"
+      element={<ClientVerifyTokenPage />}
+    />
+    <Route
+      path={ROUTER_URL.CLIENT_ROUTER.PAYMENT_STATUS}
+      element={<PaymentStatusPage />}
+    />
     <Route element={<ClientLayout />}>
       <Route path={`${ROUTER_URL.CLIENT}/order`} element={<OrderPage />} />
       <Route
@@ -54,8 +62,14 @@ const ClientAuthRoutes = (
         element={<ClientHistoryPage />}
       />
       <Route path={ROUTER_URL.CLIENT_ROUTER.CART} element={<CartPage />} />
-      <Route path={ROUTER_URL.CLIENT_ROUTER.CHECKOUT} element={<CheckoutPage />} />
-      <Route path={ROUTER_URL.CLIENT_ROUTER.LOYALTY} element={<LoyaltyPage />} />
+      <Route
+        path={ROUTER_URL.CLIENT_ROUTER.CHECKOUT}
+        element={<CheckoutPage />}
+      />
+      <Route
+        path={ROUTER_URL.CLIENT_ROUTER.LOYALTY}
+        element={<LoyaltyPage />}
+      />
       <Route
         path={ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER_DETAIL}
         element={<OrderDetailPage />}

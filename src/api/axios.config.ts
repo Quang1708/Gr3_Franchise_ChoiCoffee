@@ -74,8 +74,8 @@ axiosClient.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
-
-    return Promise.reject(error);
+    console.log(error.message);
+    return Promise.reject(error.response?.data);
   },
 );
 
@@ -153,6 +153,6 @@ axiosAdminClient.interceptors.response.use(
       }
     }
 
-    return Promise.reject(error);
+    return Promise.reject(error.response?.data);
   },
 );

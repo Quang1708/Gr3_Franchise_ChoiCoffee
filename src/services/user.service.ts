@@ -1,4 +1,4 @@
-import { axiosClient } from "./http/axiosClient";
+import { axiosClient } from "@/api/axios.config";
 import { USER_SEED_DATA } from "../mocks/user.seed";
 import { USER_FRANCHISE_ROLE_SEED_DATA } from "../mocks/user_franchise_role.seed";
 import { ROLE_SEED_DATA } from "../mocks/role.seed";
@@ -25,7 +25,8 @@ function mapSeedUsersToList(): UserListItem[] {
       (role) => role.userId === user.id && !role.isDeleted,
     );
     const roleCode =
-      ROLE_SEED_DATA.find((role) => role.id === userRole?.roleId)?.code ?? "STAFF";
+      ROLE_SEED_DATA.find((role) => role.id === userRole?.roleId)?.code ??
+      "STAFF";
 
     return {
       id: user.id,
@@ -57,9 +58,15 @@ export async function getUsers(): Promise<UserListItem[]> {
     name: String(user.name ?? ""),
     phone: String(user.phone ?? ""),
     avatarUrl: user.avatarUrl ?? user.avatar_url ?? undefined,
-    roleCode: String(user.roleCode ?? user.role_code ?? user.roles?.[0]?.role_code ?? "STAFF"),
-    createdAt: String(user.createdAt ?? user.created_at ?? new Date().toISOString()),
-    updatedAt: String(user.updatedAt ?? user.updated_at ?? new Date().toISOString()),
+    roleCode: String(
+      user.roleCode ?? user.role_code ?? user.roles?.[0]?.role_code ?? "STAFF",
+    ),
+    createdAt: String(
+      user.createdAt ?? user.created_at ?? new Date().toISOString(),
+    ),
+    updatedAt: String(
+      user.updatedAt ?? user.updated_at ?? new Date().toISOString(),
+    ),
   }));
 }
 

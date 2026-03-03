@@ -16,7 +16,6 @@ const ROUTER_URL = {
     PAYMENT_STATUS: "/client/payment-status/:success",
     CLIENT_ORDER_DETAIL: `/client/order/:orderId`,
     LOGIN: `/client/login`,
-    LOGIN_BY_GOOGLE: `/client/login/google`,
     REGISTER: `/client/register`,
     PROFILE: `/client/profile`,
     FORGOT_PASSWORD: `/client/forgot-password`,

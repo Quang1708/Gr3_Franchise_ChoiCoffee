@@ -2,16 +2,29 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ClientVerifyTokenSchema } from "./schema/clientVerifyToken.schema";
 import ROUTER_URL from "@/routes/router.const";
-import { toastSuccess } from "@utils/toast.util";
+import { toastSuccess, toastError } from "@utils/toast.util";
+import { verifyToken, resendToken } from "../services/authApi";
 
 const ClientVerifyTokenPage: React.FC = () => {
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [error, setError] = useState<string>("");
   const [timeLeft, setTimeLeft] = useState(300); // 5 phút = 300 giây
+  const [userEmail, setUserEmail] = useState<string>("");
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const navigate = useNavigate();
 
   const canResend = timeLeft <= 0;
+
+  // Get email from localStorage
+  useEffect(() => {
+    const email = localStorage.getItem("verify_email");
+    if (!email) {
+      toastError("Đã xảy ra lỗi. Vui lòng đăng ký lại.");
+      navigate(ROUTER_URL.CLIENT_ROUTER.REGISTER);
+      return;
+    }
+    setUserEmail(email);
+  }, [navigate]);
 
   // Countdown timer
   useEffect(() => {
@@ -65,11 +78,11 @@ const ClientVerifyTokenPage: React.FC = () => {
     inputRefs.current[lastFilledIndex]?.focus();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const otpString = otp.join("");
 
-    const result = ClientVerifyTokenSchema.safeParse({ otp: otpString });
+    const result = ClientVerifyTokenSchema.safeParse({ token: otpString });
 
     if (!result.success) {
       setError(result.error.issues[0].message);
@@ -78,24 +91,40 @@ const ClientVerifyTokenPage: React.FC = () => {
 
     setError("");
 
-    // Mock verification
-    console.log("Verifying OTP:", otpString);
-    toastSuccess("Xác thực thành công!");
-    setTimeout(() => {
-      navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN);
-    }, 1500);
+    try {
+      await verifyToken({ token: otpString });
+      toastSuccess("Xác thực thành công!");
+      // Clear email from localStorage
+      localStorage.removeItem("verify_email");
+      setTimeout(() => {
+        navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN);
+      }, 1500);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      setError(
+        err?.response?.data?.message ||
+          "Mã xác thực không đúng hoặc đã hết hạn!",
+      );
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (!canResend) return;
 
-    // Mock resend
-    console.log("Resending OTP...");
-    toastSuccess("Mã OTP mới đã được gửi!");
-    setTimeLeft(300);
-    setOtp(["", "", "", "", "", ""]);
-    setError("");
-    inputRefs.current[0]?.focus();
+    try {
+      await resendToken({ email: userEmail });
+      toastSuccess("Mã OTP mới đã được gửi!");
+      setTimeLeft(300);
+      setOtp(["", "", "", "", "", ""]);
+      setError("");
+      inputRefs.current[0]?.focus();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toastError(
+        err?.response?.data?.message ||
+          "Không thể gửi lại mã. Vui lòng thử lại sau!",
+      );
+    }
   };
 
   const minutes = Math.floor(timeLeft / 60);
@@ -170,7 +199,7 @@ const ClientVerifyTokenPage: React.FC = () => {
             <p className="text-slate-500 max-w-[320px]">
               Mã xác thực gồm 6 chữ số đã được gửi tới email{" "}
               <span className="text-slate-900 font-semibold">
-                example@choicoffee.vn
+                {userEmail || "example@choicoffee.vn"}
               </span>
             </p>
           </div>
@@ -205,7 +234,7 @@ const ClientVerifyTokenPage: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-primary text-background-dark text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors mb-6 shadow-lg shadow-primary/20 cursor-pointer"
+                className="w-full flex items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-primary text-background-dark text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors mb-6 shadow-lg shadow-primary/20 cursor-pointer"
               >
                 <span className="truncate">Xác thực ngay</span>
               </button>

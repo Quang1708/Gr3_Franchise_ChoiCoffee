@@ -5,13 +5,16 @@ import {
   type ClientRegisterSchemaType,
 } from "./schema/clientRegister.schema";
 import ROUTER_URL from "@/routes/router.const";
-import { toastSuccess } from "@utils/toast.util";
+import { toastSuccess, toastError } from "@utils/toast.util";
+import { customerRegister } from "../services/authApi";
 
 const ClientRegisterPage: React.FC = () => {
   const [form, setForm] = useState<ClientRegisterSchemaType>({
-    fullName: "",
+    name: "",
     phone: "",
     email: "",
+    address: "",
+    avatar_url: "https://picsum.photos/200",
     password: "",
     confirmPassword: "",
   });
@@ -29,7 +32,7 @@ const ClientRegisterPage: React.FC = () => {
     setForm({ ...form, [name]: value });
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const result = ClientRegisterSchema.safeParse(form);
 
@@ -47,12 +50,29 @@ const ClientRegisterPage: React.FC = () => {
 
     setErrors({});
 
-    // Xử lý đăng ký (tạm thời mock)
-    console.log("Register data:", form);
-    toastSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
-    setTimeout(() => {
-      navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN);
-    }, 1500);
+    try {
+      await customerRegister({
+        email: form.email,
+        password: form.password,
+        name: form.name,
+        phone: form.phone,
+        address: form.address,
+        avatar_url: form.avatar_url || "https://picsum.photos/200",
+      });
+
+      // Store email for verification
+      localStorage.setItem("verify_email", form.email);
+
+      toastSuccess("Đăng ký thành công! Vui lòng xác thực tài khoản.");
+      setTimeout(() => {
+        navigate(ROUTER_URL.CLIENT_ROUTER.VERIFY);
+      }, 1500);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toastError(
+        err?.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại!",
+      );
+    }
   };
 
   return (
@@ -150,17 +170,17 @@ const ClientRegisterPage: React.FC = () => {
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-sm text-slate-900 focus:ring-1 focus:ring-[#e69019] focus:border-[#e69019] outline-none transition-all placeholder:text-gray-400"
                   placeholder="Họ và tên đầy đủ của bạn"
                   type="text"
-                  name="fullName"
-                  value={form.fullName}
+                  name="name"
+                  value={form.name}
                   onChange={handleChange}
                 />
                 <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 text-[20px] group-focus-within:text-[#e69019] transition-colors">
                   person
                 </span>
               </div>
-              {errors.fullName && (
+              {errors.name && (
                 <span className="text-xs text-red-500 ml-1 mt-1 block">
-                  {errors.fullName}
+                  {errors.name}
                 </span>
               )}
             </div>
@@ -210,6 +230,30 @@ const ClientRegisterPage: React.FC = () => {
               {errors.email && (
                 <span className="text-xs text-red-500 ml-1 mt-1 block">
                   {errors.email}
+                </span>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-[0.1em] text-gray-700 mb-2">
+                Địa chỉ
+              </label>
+              <div className="relative group">
+                <input
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-sm text-slate-900 focus:ring-1 focus:ring-[#e69019] focus:border-[#e69019] outline-none transition-all placeholder:text-gray-400"
+                  placeholder="Địa chỉ của bạn"
+                  type="text"
+                  name="address"
+                  value={form.address}
+                  onChange={handleChange}
+                />
+                <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 text-[20px] group-focus-within:text-[#e69019] transition-colors">
+                  location_on
+                </span>
+              </div>
+              {errors.address && (
+                <span className="text-xs text-red-500 ml-1 mt-1 block">
+                  {errors.address}
                 </span>
               )}
             </div>

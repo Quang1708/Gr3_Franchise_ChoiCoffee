@@ -5,7 +5,8 @@ import {
   type ClientForgotPasswordSchemaType,
 } from "./schema/clientForgotPassword.schema";
 import ROUTER_URL from "@/routes/router.const";
-import { toastSuccess } from "@utils/toast.util";
+import { toastSuccess, toastError } from "@utils/toast.util";
+import { forgotPassword } from "../services/authApi";
 
 const ClientForgotPasswordPage: React.FC = () => {
   const [form, setForm] = useState<ClientForgotPasswordSchemaType>({
@@ -19,7 +20,7 @@ const ClientForgotPasswordPage: React.FC = () => {
     setError("");
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const result = ClientForgotPasswordSchema.safeParse(form);
 
@@ -30,12 +31,19 @@ const ClientForgotPasswordPage: React.FC = () => {
 
     setError("");
 
-    // Mock send reset link
-    console.log("Sending reset link to:", form.email);
-    toastSuccess("Liên kết đặt lại mật khẩu đã được gửi tới email của bạn!");
-    setTimeout(() => {
-      navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN);
-    }, 2000);
+    try {
+      await forgotPassword({ email: form.email });
+      toastSuccess("Đã gửi liên kết đặt lại mật khẩu tới email của bạn!");
+      setTimeout(() => {
+        navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN);
+      }, 2000);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toastError(
+        err?.response?.data?.message ||
+          "Không tìm thấy email này trong hệ thống!",
+      );
+    }
   };
 
   return (

@@ -105,7 +105,7 @@ export const customerRegister = async (
  * POST /api/auth/logout
  */
 export const customerLogout = async (): Promise<void> => {
-  await axiosClient.post("/api/auth/logout");
+  await axiosClient.post("/api/customer-auth/logout");
 };
 
 /**

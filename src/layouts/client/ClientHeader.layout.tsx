@@ -127,6 +127,7 @@ const ClientHeader = () => {
       setIsLoggedIn(false);
 
       toastSuccess("Đăng xuất thành công!");
+      navigate(ROUTER_URL.HOME);
       setIsProfileOpen(false);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };

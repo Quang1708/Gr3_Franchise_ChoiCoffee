@@ -15,6 +15,7 @@ import { useAdminContextStore } from "@/stores/adminContext.store";
 import type { AdminLoginUserProfile, AdminRoleLike } from "./models/api.model";
 import { getAdminProfile, switchAdminContext } from "./services/login.service";
 import { runAdminLogin } from "./usecases/login.usecase";
+import ClientLoading from "@/components/Client/Client.Loading";
 
 const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -282,11 +283,15 @@ const AdminLoginPage: React.FC = () => {
     }`}
               />
             </div>
-            {errors.email?.message && (
-              <span className="text-xs text-orange-500 font-medium">
-                {errors.email.message}
+            <div className="min-h-[20px] mt-1">
+              <span
+                className={`text-xs font-medium transition-opacity duration-200 ${
+                  errors.email ? "text-orange-500 opacity-100" : "opacity-0"
+                }`}
+              >
+                {errors.email?.message ?? "placeholder"}
               </span>
-            )}
+            </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -316,11 +321,15 @@ const AdminLoginPage: React.FC = () => {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            {errors.password?.message && (
-              <span className="text-xs text-orange-500 font-medium">
-                {errors.password.message}
+            <div className="min-h-[20px] mt-1">
+              <span
+                className={`text-xs font-medium transition-opacity duration-200 ${
+                  errors.password ? "text-orange-500 opacity-100" : "opacity-0"
+                }`}
+              >
+                {errors.password?.message ?? "placeholder"}
               </span>
-            )}
+            </div>
           </div>
 
           <div className="flex justify-between items-center text-sm">
@@ -350,7 +359,8 @@ const AdminLoginPage: React.FC = () => {
                   : "bg-primary hover:bg-[#d48315] hover:shadow-lg active:scale-[0.98]"
               }`}
           >
-            {isSubmitting ? "Đang xử lý..." : "Đăng nhập"}
+            {isSubmitting && <ClientLoading />}
+            <span>{isSubmitting ? "Đang xử lý..." : "Đăng nhập"}</span>
           </button>
         </form>
 

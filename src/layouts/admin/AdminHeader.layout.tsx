@@ -29,14 +29,19 @@ const AdminHeader = () => {
 
   const franchises = useMemo(() => getAccessibleFranchises(user), [user]);
 
-  // Auto pick default franchise (nếu chưa có hoặc không thuộc quyền)
   useEffect(() => {
     if (!franchises.length) return;
-    const ok =
-      selectedFranchiseId != null &&
-      franchises.some((f) => f.id === selectedFranchiseId);
-    if (!ok) setSelectedFranchiseId(franchises[0].id);
-  }, [franchises, selectedFranchiseId, setSelectedFranchiseId]);
+
+    const defaultId = user?.active_context?.franchise_id ?? franchises[0].id;
+
+    const ok = franchises.some((f) => f.id === defaultId);
+
+    if (!ok) {
+      setSelectedFranchiseId(franchises[0].id);
+    } else {
+      setSelectedFranchiseId(defaultId);
+    }
+  }, [franchises, user, setSelectedFranchiseId]);
 
   const [open, setOpen] = useState(false);
 

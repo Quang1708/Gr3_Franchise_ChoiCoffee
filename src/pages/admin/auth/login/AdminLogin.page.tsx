@@ -16,7 +16,6 @@ import type { AdminLoginUserProfile, AdminRoleLike } from "./models/api.model";
 import { getAdminProfile, switchAdminContext } from "./services/login.service";
 import { runAdminLogin } from "./usecases/login.usecase";
 
-
 const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +29,9 @@ const AdminLoginPage: React.FC = () => {
     user: AdminLoginUserProfile;
     token: string;
   } | null>(null);
-  const [selectedRoleIndex, setSelectedRoleIndex] = useState<number | null>(null);
+  const [selectedRoleIndex, setSelectedRoleIndex] = useState<number | null>(
+    null,
+  );
 
   const {
     register,
@@ -38,14 +39,29 @@ const AdminLoginPage: React.FC = () => {
     setError,
     clearErrors,
     formState: { errors, isSubmitting },
-  } = useForm<AdminAuthSchemaType>({ resolver: zodResolver(AdminAuthSchema) });
+  } = useForm<AdminAuthSchemaType>({
+    resolver: zodResolver(AdminAuthSchema),
+    mode: "onChange",
+    defaultValues: { email: "group3@gmail.com", password: "123456789" },
+  });
 
   const setAuthError = (message: string) => {
+    const lowerMsg = message.toLowerCase();
+
+    if (lowerMsg.includes("email")) {
+      setError("email", { type: "manual", message });
+      return;
+    }
+
+    if (lowerMsg.includes("mật khẩu") || lowerMsg.includes("password")) {
+      setError("password", { type: "manual", message });
+      return;
+    }
+
+    // lỗi chung → highlight cả 2
     setError("email", { type: "manual", message });
     setError("password", { type: "manual", message });
   };
-
-
   const handleLoginSuccess = (user: AdminLoginUserProfile, token: string) => {
     if (!pendingAuth) {
       const primaryRole = user.roles?.[0];
@@ -101,8 +117,9 @@ const AdminLoginPage: React.FC = () => {
 
       const profile = await getAdminProfile();
       if (profile.success && profile.data) {
-        const user = (profile.data as { user?: AdminLoginUserProfile } | null)
-          ?.user ?? (profile.data as AdminLoginUserProfile);
+        const user =
+          (profile.data as { user?: AdminLoginUserProfile } | null)?.user ??
+          (profile.data as AdminLoginUserProfile);
         const normalizedRoles = normalizeRoles(
           (profile.data as { roles?: unknown } | null)?.roles,
         );
@@ -118,7 +135,10 @@ const AdminLoginPage: React.FC = () => {
           setSelectedFranchiseId(selected.franchise_id);
         }
 
-        handleLoginSuccess(userWithRoles as AdminLoginUserProfile, pendingAuth.token);
+        handleLoginSuccess(
+          userWithRoles as AdminLoginUserProfile,
+          pendingAuth.token,
+        );
         setContextOpen(false);
         return;
       }
@@ -138,7 +158,8 @@ const AdminLoginPage: React.FC = () => {
 
       if (result.ok && result.user && result.token) {
         const user = result.user;
-        const hasMultipleRoles = Array.isArray(user.roles) && user.roles.length > 1;
+        const hasMultipleRoles =
+          Array.isArray(user.roles) && user.roles.length > 1;
 
         if (hasMultipleRoles) {
           setPendingAuth({ user, token: result.token });
@@ -153,7 +174,8 @@ const AdminLoginPage: React.FC = () => {
       }
 
       const errorMessage =
-        result.message ?? "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.";
+        result.message ??
+        "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.";
       setAuthError(errorMessage);
       toastError?.(errorMessage);
     } catch (error) {
@@ -163,7 +185,6 @@ const AdminLoginPage: React.FC = () => {
       toastError?.(errorMessage);
     }
   };
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background-light px-4">
@@ -191,9 +212,7 @@ const AdminLoginPage: React.FC = () => {
                         : "border-gray-200 hover:bg-gray-50"
                     }`}
                   >
-                    <div className="font-semibold">
-                      {role.role ?? "ROLE"}
-                    </div>
+                    <div className="font-semibold">{role.role ?? "ROLE"}</div>
                     <div className="text-xs text-gray-500">
                       {getRoleLabel(role)}
                     </div>
@@ -254,12 +273,17 @@ const AdminLoginPage: React.FC = () => {
               <input
                 type="text"
                 placeholder="Email"
-                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 {...register("email")}
+                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all
+    ${
+      errors.email
+        ? "border-orange-400 bg-orange-50 focus:ring-orange-400"
+        : "border-gray-300 bg-white focus:ring-primary"
+    }`}
               />
             </div>
             {errors.email?.message && (
-              <span className="text-xs text-red-500 font-medium">
+              <span className="text-xs text-orange-500 font-medium">
                 {errors.email.message}
               </span>
             )}
@@ -276,8 +300,13 @@ const AdminLoginPage: React.FC = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="********"
-                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 {...register("password")}
+                className={`w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all
+    ${
+      errors.password
+        ? "border-orange-400 bg-orange-50 focus:ring-orange-400"
+        : "border-gray-300 bg-white focus:ring-primary"
+    }`}
               />
               <button
                 type="button"
@@ -288,7 +317,7 @@ const AdminLoginPage: React.FC = () => {
               </button>
             </div>
             {errors.password?.message && (
-              <span className="text-xs text-red-500 font-medium">
+              <span className="text-xs text-orange-500 font-medium">
                 {errors.password.message}
               </span>
             )}

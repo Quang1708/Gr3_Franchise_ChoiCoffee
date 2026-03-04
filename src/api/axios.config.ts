@@ -1,12 +1,21 @@
 import { ENV } from "@/config";
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
+import { getItemInSessionStorage, removeItemInSessionStorage } from "@/utils/sessionStorage.util";
+import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
+
 
 export const axiosClient = axios.create({
   baseURL: ENV.API_URL,
   timeout: 300000,
   withCredentials: true,
 });
+
+interface ErrorResponse {
+  message?: string;
+  success?: boolean;
+  data?: unknown;
+}
 
 // Track if we're currently refreshing token
 let isRefreshing = false;
@@ -86,6 +95,17 @@ export const axiosAdminClient = axios.create({
   withCredentials: true,
 });
 
+axiosAdminClient.interceptors.request.use((config) => {
+  const token = getItemInSessionStorage<string>(
+    SESSION_STORAGE.ACCESS_TOKEN,
+  );
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
 // Track if we're currently refreshing admin token
 let isRefreshingAdmin = false;
 // Queue of admin requests waiting for token refresh
@@ -113,12 +133,18 @@ axiosAdminClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+const errorData = error.response?.data as ErrorResponse | undefined;
+
+const isTokenExpired =
+  error.response?.status === 401 ||
+  errorData?.message === "ACCESS_TOKEN_EXPIRED";
+
+if (isTokenExpired && !originalRequest._retry) {
       // Don't retry refresh token endpoint itself
       if (originalRequest.url?.includes("/refresh-token")) {
         // Refresh token expired, clear admin info and redirect to login
-        localStorage.removeItem("admin_info");
+        removeItemInSessionStorage(SESSION_STORAGE.ACCESS_TOKEN);
+localStorage.removeItem("admin_info");
         return Promise.reject(error);
       }
 

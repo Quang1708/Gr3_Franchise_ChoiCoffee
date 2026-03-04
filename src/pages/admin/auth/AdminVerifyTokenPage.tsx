@@ -6,8 +6,8 @@ import {
   getItemInSessionStorage,
   removeItemInSessionStorage,
   setItemInSessionStorage,
-} from "@/utils/sessionStorage.util";
-import { verifyToken } from "@/services/adminAuth.service";
+} from "../../../utils/sessionStorage.util";
+import { verifyToken } from "./login/services/adminAuth.service";
 
 type VerifyStatus = "idle" | "loading" | "success" | "error";
 type VerifyType = "verify" | "reset";
@@ -47,11 +47,10 @@ const AdminVerifyTokenPage: React.FC = () => {
       setMessage("Đang xác thực token...");
 
       const res = await verifyToken(token);
-      if (!res.ok) {
+
+      if (!res?.success) {
         setStatus("error");
-        setMessage(
-          res.message ?? "Token đã hết hạn hoặc không hợp lệ. Vui lòng thử lại.",
-        );
+        setMessage(res?.message || "Token không hợp lệ.");
         return;
       }
 

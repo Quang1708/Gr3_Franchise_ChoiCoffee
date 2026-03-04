@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import type { UserProfile } from "./types/profile.types";
 import ProfileHeader from "./components/ProfileHeader";
 import PersonalInformation from "./components/PersonalInformation";
-import WorkInformation from "./components/WorkInformation";
 import SecuritySettings from "./components/SecuritySettings";
 import ChangePasswordModal from "../change-password/ClientChangePassword.page";
 import { getCustomerInfo, updateCustomerProfile } from "../partial/service/api";
@@ -24,43 +23,45 @@ export default function ClientProfilePage() {
     phone: "",
     avatar_url: "",
     address: "",
-    is_active: false,
-    created_at: "",
-    role_name: "Customer",
-    role_scope: "FRANCHISE",
   });
 
-  // Fetch customer info on mount
+  // Fetch customer info from localStorage on mount
   useEffect(() => {
-    const fetchCustomerInfo = async () => {
+    const fetchCustomerInfo = () => {
       try {
         setIsLoading(true);
-        const data = await getCustomerInfo();
+
+        // Get customer info from localStorage
+        const customerInfoStr = localStorage.getItem("customer_info");
+
+        if (!customerInfoStr) {
+          toastError(
+            "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại!",
+          );
+          navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN);
+          return;
+        }
+
+        const data = JSON.parse(customerInfoStr);
         setCustomerId(data.id);
         setProfile({
+          id: data.id,
           name: data.name,
           email: data.email,
           phone: data.phone,
           avatar_url: data.avatar_url,
-          address: data.address,
-          is_active: data.is_active,
-          created_at: data.created_at,
-          role_name: "Customer",
-          role_scope: "FRANCHISE",
+          address: data.address || "",
         });
-      } catch (error: unknown) {
-        const err = error as { response?: { data?: { message?: string } } };
-        toastError(
-          err?.response?.data?.message ||
-            "Không thể tải thông tin. Vui lòng thử lại!",
-        );
+      } catch {
+        toastError("Không thể tải thông tin. Vui lòng đăng nhập lại!");
+        navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchCustomerInfo();
-  }, []);
+  }, [navigate]);
 
   const handleSaveProfile = async () => {
     try {
@@ -79,10 +80,9 @@ export default function ClientProfilePage() {
       toastSuccess("Cập nhật thông tin thành công!");
       setIsEditing(false);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
+      const err = error as { message?: string };
       toastError(
-        err?.response?.data?.message ||
-          "Không thể cập nhật thông tin. Vui lòng thử lại!",
+        err?.message || "Không thể cập nhật thông tin. Vui lòng thử lại!",
       );
     }
   };
@@ -105,9 +105,7 @@ export default function ClientProfilePage() {
       toastSuccess("Đăng xuất thành công!");
 
       // Navigate to home page
-      setTimeout(() => {
-        navigate(ROUTER_URL.HOME);
-      }, 1000);
+      navigate(ROUTER_URL.HOME);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toastError(
@@ -140,15 +138,11 @@ export default function ClientProfilePage() {
           onCancel={() => setIsEditing(false)}
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <PersonalInformation
-            profile={profile}
-            isEditing={isEditing}
-            onUpdate={handleUpdateProfile}
-          />
-
-          <WorkInformation profile={profile} />
-        </div>
+        <PersonalInformation
+          profile={profile}
+          isEditing={isEditing}
+          onUpdate={handleUpdateProfile}
+        />
 
         <SecuritySettings
           onChangePassword={handleChangePassword}

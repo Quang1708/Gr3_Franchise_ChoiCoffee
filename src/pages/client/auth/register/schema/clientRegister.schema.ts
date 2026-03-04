@@ -17,8 +17,6 @@ export const ClientRegisterSchema = z
         (val) => !val || z.string().email().safeParse(val).success,
         "Email không hợp lệ",
       ),
-    address: z.string().min(1, "Vui lòng nhập địa chỉ"),
-    avatar_url: z.string().optional().default("https://picsum.photos/200"),
     password: z
       .string()
       .min(1, "Vui lòng nhập mật khẩu")

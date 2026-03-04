@@ -1,24 +1,31 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type SyntheticEvent } from "react";
 import { toast } from "react-toastify";
-import { Mail, Phone, User, Building2, Shield, Loader } from "lucide-react";
-import { getAdminProfile } from "../auth/login/services/api.profile";
+import { Mail, Phone, User, Building2, Shield, Loader, Lock } from "lucide-react";
+import { getAdminProfile, changeAdminPassword } from "../auth/login/services/api.profile";
 import type { AdminProfileResponse, AdminUser, AdminRole, ActiveContext } from "../auth/login/services/api.profile";
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState<AdminProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+  const [passwordFormData, setPasswordFormData] = useState({
+    old_password: "",
+    new_password: "",
+    confirm_password: "",
+  });
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
         setError(null);
-        const loadingToast = toast.loading("Đang tải thông tin profile...");
+       
         const response = await getAdminProfile();
         setProfile(response);
-        toast.dismiss(loadingToast);
+      
         toast.success("Tải thông tin profile thành công!");
       } catch (err: any) {
         console.error("Error fetching profile:", err);
@@ -32,6 +39,63 @@ const ProfilePage = () => {
 
     fetchProfile();
   }, []);
+
+  const handleChangePasswordSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (passwordFormData.new_password !== passwordFormData.confirm_password) {
+      toast.error("Mật khẩu mới không khớp!");
+      return;
+    }
+
+    if (passwordFormData.new_password.length < 6) {
+      toast.error("Mật khẩu mới phải có ít nhất 6 ký tự");
+      return;
+    }
+
+    try {
+      setIsSubmittingPassword(true);
+      const response = await changeAdminPassword({
+        old_password: passwordFormData.old_password,
+        new_password: passwordFormData.new_password,
+      });
+
+      if (response.success) {
+        toast.success("Đổi mật khẩu thành công!");
+        setIsChangePasswordModalOpen(false);
+        setPasswordFormData({
+          old_password: "",
+          new_password: "",
+          confirm_password: "",
+        });
+      } else {
+        toast.error(response.message || "Không thể đổi mật khẩu");
+      }
+    } catch (err: any) {
+      console.error("Error changing password:", err);
+      toast.error(err?.message || "Lỗi khi đổi mật khẩu");
+    } finally {
+      setIsSubmittingPassword(false);
+    }
+  };
+
+  const handleOpenChangePasswordModal = () => {
+    setPasswordFormData({
+      old_password: "",
+      new_password: "",
+      confirm_password: "",
+    });
+    setIsChangePasswordModalOpen(true);
+  };
+
+  const handleCloseChangePasswordModal = () => {
+    setIsChangePasswordModalOpen(false);
+    setPasswordFormData({
+      old_password: "",
+      new_password: "",
+      confirm_password: "",
+    });
+  };
 
   if (loading) {
     return (
@@ -71,8 +135,18 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Admin Profile</h1>
+    <div className="p-6 h-screen overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-hidden">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-800">Admin Profile</h1>
+          <button
+            onClick={handleOpenChangePasswordModal}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          >
+            <Lock size={18} />
+            <span>Đổi Mật Khẩu</span>
+          </button>
+        </div>
 
       {/* User Info Card */}
       <div className="bg-white rounded-lg shadow-md p-8 mb-6">
@@ -178,6 +252,115 @@ const ProfilePage = () => {
       {(!roles || roles.length === 0) && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
           <p className="text-yellow-800">No roles assigned</p>
+        </div>
+      )}
+      </div>
+
+      {/* Change Password Modal */}
+      {isChangePasswordModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <Lock className="w-5 h-5 text-blue-600" />
+                Đổi Mật Khẩu
+              </h2>
+            </div>
+            <form onSubmit={handleChangePasswordSubmit}>
+              <div className="px-6 py-4 space-y-4">
+                <div>
+                  <label
+                    htmlFor="old-password"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Mật khẩu hiện tại <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="old-password"
+                    type="password"
+                    required
+                    value={passwordFormData.old_password}
+                    onChange={(e) =>
+                      setPasswordFormData({
+                        ...passwordFormData,
+                        old_password: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập mật khẩu hiện tại"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="new-password"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Mật khẩu mới <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="new-password"
+                    type="password"
+                    required
+                    value={passwordFormData.new_password}
+                    onChange={(e) =>
+                      setPasswordFormData({
+                        ...passwordFormData,
+                        new_password: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập mật khẩu mới"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="confirm-password"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Xác nhận mật khẩu <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="confirm-password"
+                    type="password"
+                    required
+                    value={passwordFormData.confirm_password}
+                    onChange={(e) =>
+                      setPasswordFormData({
+                        ...passwordFormData,
+                        confirm_password: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Xác nhận mật khẩu mới"
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
+                <button
+                  type="submit"
+                  disabled={isSubmittingPassword}
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium text-white transition ${
+                    isSubmittingPassword
+                      ? "bg-blue-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                >
+                  {isSubmittingPassword ? "Đang xử lý..." : "Đổi Mật Khẩu"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseChangePasswordModal}
+                  disabled={isSubmittingPassword}
+                  className="flex-1 px-4 py-2 rounded-lg font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 transition"
+                >
+                  Hủy
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

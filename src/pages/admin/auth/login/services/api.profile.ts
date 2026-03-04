@@ -22,6 +22,17 @@ export type ActiveContext = {
   franchiseid: string;
 };
 
+export type ChangePasswordRequest = {
+  old_password: string;
+  new_password: string;
+};
+
+export type ChangePasswordResponse = {
+  success: boolean;
+  data: null;
+  message?: string;
+};
+
 export type AdminProfileResponse = {
   success: boolean;
   data: {
@@ -35,6 +46,16 @@ export type AdminProfileResponse = {
 export const getAdminProfile = async (): Promise<AdminProfileResponse> => {
   const { data } = await axiosAdminClient.get<AdminProfileResponse>(
     "/api/auth",
+  );
+  return data;
+};
+
+export const changeAdminPassword = async (
+  payload: ChangePasswordRequest,
+): Promise<ChangePasswordResponse> => {
+  const { data } = await axiosAdminClient.put<ChangePasswordResponse>(
+    "/api/auth/change-password",
+    payload,
   );
   return data;
 };

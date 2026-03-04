@@ -2,6 +2,12 @@ import { ENV } from "@/config";
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
 
+// Message constants for token expiration
+export const MSG_CONSTANT = {
+  CUSTOMER_ACCESS_TOKEN_EXPIRED: "CUSTOMER_ACCESS_TOKEN_EXPIRED",
+  ADMIN_ACCESS_TOKEN_EXPIRED: "ACCESS_TOKEN_EXPIRED",
+};
+
 export const axiosClient = axios.create({
   baseURL: ENV.API_URL,
   timeout: 300000,
@@ -35,8 +41,13 @@ axiosClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Check if error response contains CUSTOMER_ACCESS_TOKEN_EXPIRED message
+    const errorData = error.response?.data as { data?: string };
+    const isAccessTokenExpired =
+      errorData?.data === MSG_CONSTANT.CUSTOMER_ACCESS_TOKEN_EXPIRED;
+
+    // If access token expired and we haven't retried yet
+    if (isAccessTokenExpired && !originalRequest._retry) {
       // Don't retry refresh token endpoint itself
       if (originalRequest.url?.includes("/refresh-token")) {
         // Refresh token expired, clear customer info and redirect to login
@@ -113,8 +124,13 @@ axiosAdminClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Check if error response contains ACCESS_TOKEN_EXPIRED message
+    const errorData = error.response?.data as { message?: string };
+    const isAccessTokenExpired =
+      errorData?.message === MSG_CONSTANT.ADMIN_ACCESS_TOKEN_EXPIRED;
+
+    // If access token expired and we haven't retried yet
+    if (isAccessTokenExpired && !originalRequest._retry) {
       // Don't retry refresh token endpoint itself
       if (originalRequest.url?.includes("/refresh-token")) {
         // Refresh token expired, clear admin info and redirect to login

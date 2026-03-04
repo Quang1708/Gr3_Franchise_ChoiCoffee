@@ -6,28 +6,35 @@ import {
   ClientLoginSchema,
   type ClientLoginSchemaType,
 } from "./schema/clientLogin.schema";
-import ROUTER_URL from "../../../../routes/router.const";
-import { toastSuccess, toastError } from "../../../../utils/toast.util";
+import ROUTER_URL from "@/routes/router.const";
+import { toastSuccess, toastError } from "@/utils/toast.util";
 import { customerLogin } from "../services/authApi";
 import { getCustomerInfo } from "../../account/partial/service/api";
 import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
 import ClientLoading from "@/components/Client/Client.Loading";
+import FormInput from "@/components/Client/Form/FormInput";
 
 const ClientLoginPage: React.FC = () => {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<ClientLoginSchemaType>({
     resolver: zodResolver(ClientLoginSchema),
-    mode: "onBlur",
+    mode: "onChange",
     defaultValues: {
       email: "",
       password: "",
     },
   });
 
-  const [showPassword, setShowPassword] = useState(false);
+  const errorMap: Record<string, string> = {
+    "Password incorrect": "Sai mật khẩu!",
+    "Email does not exist or is not eligible for login":
+      "Email không tồn tại hoặc không đủ điều kiện để đăng nhập.",
+  };
+
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -48,19 +55,40 @@ const ClientLoginPage: React.FC = () => {
           localStorage.setItem("customer_info", JSON.stringify(customerInfo));
         } catch (error) {
           console.error("Failed to fetch customer info:", error);
-          // Continue anyway, user is logged in
         }
 
         toastSuccess("Đăng nhập thành công!");
-        setTimeout(() => {
-          navigate(ROUTER_URL.HOME);
-        }, 1000);
+        navigate(ROUTER_URL.HOME);
       }
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toastError(
-        err?.response?.data?.message || "Email hoặc mật khẩu không đúng!",
-      );
+      const err = error as { message?: string };
+      const errorMessage =
+        errorMap[err?.message || ""] || "Đăng nhập thất bại. Vui lòng thử lại.";
+
+      // Set error cho field tương ứng dựa vào message
+      if (err?.message === "Password incorrect") {
+        setError("password", {
+          type: "server",
+          message: errorMap["Password incorrect"],
+        });
+      } else if (
+        err?.message === "Email does not exist or is not eligible for login"
+      ) {
+        setError("email", {
+          type: "server",
+          message:
+            errorMap["Email does not exist or is not eligible for login"],
+        });
+      } else {
+        // Mặc định set error cho password
+        setError("password", {
+          type: "server",
+          message: errorMessage,
+        });
+      }
+
+      toastError(errorMessage);
+      console.log(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -150,53 +178,25 @@ const ClientLoginPage: React.FC = () => {
               className="space-y-4"
               onSubmit={handleSubmit(onSubmit)}
             >
-              {/* Email or Phone */}
-              <div>
-                <label className="block text-sm font-bold tracking-widest text-charcoal/80 ml-1 mb-2">
-                  Email
-                </label>
-                <div className="relative group">
-                  <input
-                    className="w-full pl-4 pr-10 py-3 bg-neutral-soft border border-gray-100 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all text-charcoal font-medium shadow-sm text-sm"
-                    placeholder="partner@example.com"
-                    type="email"
-                    {...register("email")}
-                  />
-                </div>
-                {errors.email && (
-                  <span className="text-xs text-red-500 ml-1 mt-1 block">
-                    {errors.email.message}
-                  </span>
-                )}
-              </div>
+              {/* Email */}
+              <FormInput
+                label="Email"
+                type="email"
+                placeholder="partner@example.com"
+                error={errors.email}
+                register={register("email")}
+              />
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-bold tracking-widest text-charcoal/80 ml-1 mb-2">
-                  Mật khẩu
-                </label>
-                <div className="relative group">
-                  <input
-                    className="w-full pl-4 pr-10 py-3 bg-neutral-soft border border-gray-100 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white outline-none transition-all text-charcoal font-medium shadow-sm text-sm"
-                    placeholder="Password"
-                    type={showPassword ? "text" : "password"}
-                    {...register("password")}
-                  />
-                  <button
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-charcoal/30 hover:text-charcoal transition-colors"
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    <span className="material-symbols-outlined">
-                      {showPassword ? "visibility" : "visibility_off"}
-                    </span>
-                  </button>
-                </div>
-                {errors.password && (
-                  <span className="text-xs text-red-500 ml-1 mt-1 block">
-                    {errors.password.message}
-                  </span>
-                )}
+                <FormInput
+                  label="Mật khẩu"
+                  type="password"
+                  placeholder="Password"
+                  error={errors.password}
+                  register={register("password")}
+                  showPasswordToggle={true}
+                />
                 <div className="flex justify-end mt-2">
                   <a
                     className="text-xs font-bold text-primary hover:text-wood-brown transition-colors cursor-pointer"

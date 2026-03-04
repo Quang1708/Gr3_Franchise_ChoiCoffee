@@ -37,11 +37,13 @@ const ROUTER_URL = {
     ADMIN_PRODUCT: `/admin/product`,
     ADMIN_USER: `/admin/user`,
     ADMIN_SETTINGS: `/admin/settings`,
+    ADMIN_PROFILE: `/admin/profile`,
     ADMIN_LOGOUT: `/admin/logout`,
     ADMIN_LOGIN: `/admin/login`,
     FORGOT_PASSWORD: `/admin/forgot-password`,
     RESET_PASSWORD: `/admin/reset-password`,
     VERIFY_TOKEN: "/admin/verify",
+    LOADING_SCREEN: "/admin/loading",
   },
 };
 

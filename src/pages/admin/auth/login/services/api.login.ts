@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { axiosAdminClient } from "@/api/axios.config";
 
 export type AdminLoginRequest = {
@@ -19,6 +20,7 @@ export type AdminProfileResponse = {
   data: any | { user: any } | null;
   message?: string;
 };
+
 
 export const loginAdmin = async (
   payload: AdminLoginRequest,

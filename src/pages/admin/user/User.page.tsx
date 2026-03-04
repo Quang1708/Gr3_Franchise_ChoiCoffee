@@ -1,12 +1,13 @@
-﻿import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
+﻿import { useEffect, useState, type SyntheticEvent } from "react";
 import { toastSuccess, toastError } from "../../../utils/toast.util";
 import {
+  createUser,
+  deleteUser,
   getUsers,
-  updateUserRole,
+  updateUser,
   type UserListItem,
 } from "../../../services/user.service";
-import { ROLE_SEED_DATA } from "../../../mocks/role.seed";
-import { useAuthStore } from "@/stores/auth.store";
+import ClientLoading from "@/components/Client/Client.Loading";
 
 interface UserFormData {
   email: string;
@@ -17,15 +18,9 @@ interface UserFormData {
   avatarUrl?: string;
 }
 
-const UserPage = () => {
-  const authUser = useAuthStore((state) => state.user);
-  const canChangeRole = useMemo(
-    () =>
-      Array.isArray(authUser?.roles) &&
-      authUser.roles.some((role: { role_code?: string }) => role.role_code === "ADMIN"),
-    [authUser],
-  );
+const ROLE_OPTIONS = ["ADMIN", "MANAGER", "STAFF", "CUSTOMER"];
 
+const UserPage = () => {
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -41,7 +36,18 @@ const UserPage = () => {
   });
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
+
+  const handleSearch = () => {
+    setSearchQuery(searchTerm);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -105,89 +111,74 @@ const UserPage = () => {
     });
   };
 
-  const handleSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (editingUser) {
-      setUsers(
-        users.map((user) =>
-          user.id === editingUser.id
-            ? {
-                ...user,
-                email: formData.email,
-                name: formData.name,
-                roleCode: formData.roleCode,
-                avatarUrl: formData.avatarUrl,
-                updatedAt: new Date().toISOString(),
-              }
-            : user,
-        ),
+      const result = await updateUser(editingUser.id, {
+        email: formData.email,
+        name: formData.name,
+        phone: formData.phone,
+        roleCode: formData.roleCode,
+        avatarUrl: formData.avatarUrl,
+        ...(formData.password ? { password: formData.password } : {}),
+      });
+
+      if (!result.ok) {
+        toastError(result.message);
+        return;
+      }
+
+      setUsers((prev) =>
+        prev.map((user) => (user.id === editingUser.id ? result.user : user)),
       );
       toastSuccess("Cập nhật user thành công");
     } else {
-      const newUser: UserListItem = {
-        id: Date.now(),
+      const result = await createUser({
         email: formData.email,
+        password: formData.password,
         name: formData.name,
-        phone: formData.phone, // use formData.phone
+        phone: formData.phone,
         roleCode: formData.roleCode,
         avatarUrl: formData.avatarUrl,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setUsers([...users, newUser]);
+      });
+
+      if (!result.ok) {
+        toastError(result.message);
+        return;
+      }
+
+      setUsers((prev) => [...prev, result.user]);
       toastSuccess("Tạo user mới thành công");
     }
 
     handleCloseModal();
   };
 
-  const handleDelete = (userId: number) => {
+  const handleDelete = async (userId: number) => {
     if (globalThis.confirm("Bạn có chắc chắn muốn xóa người dùng này?")) {
-      setUsers(users.filter((user) => user.id !== userId));
+      const result = await deleteUser(userId);
+      if (!result.ok) {
+        toastError(result.message);
+        return;
+      }
+
+      setUsers((prev) => prev.filter((user) => user.id !== userId));
       toastSuccess("Xóa user thành công");
     }
   };
 
-  const handleRoleChange = async (user: UserListItem, newRoleCode: string) => {
-    if (user.roleCode === newRoleCode) return;
-    const result = await updateUserRole(user.id.toString(), newRoleCode);
-    if (result.ok) {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === user.id
-            ? { ...u, roleCode: newRoleCode, updatedAt: new Date().toISOString() }
-            : u,
-        ),
-      );
-      toastSuccess("Cập nhật vai trò thành công");
-    } else {
-      toastError(result.message);
-    }
-  };
+
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRole = filterRole === "all" || user.roleCode === filterRole;
     return matchesSearch && matchesRole;
   });
 
-  const getRoleBadgeColor = (roleCode: string) => {
-    switch (roleCode) {
-      case "ADMIN":
-        return "bg-red-100 text-red-800";
-      case "MANAGER":
-        return "bg-blue-100 text-blue-800";
-      case "STAFF":
-        return "bg-green-100 text-green-800";
-      case "CUSTOMER":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+
 
   return (
     <div className="p-6">
@@ -212,14 +203,23 @@ const UserPage = () => {
             >
               Tìm kiếm
             </label>
-            <input
-              id="user-search"
-              type="text"
-              placeholder="Tìm theo tên hoặc email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="flex gap-2">
+              <input
+                id="user-search"
+                type="text"
+                placeholder="Tìm theo tên hoặc email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <button
+                onClick={handleSearch}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg whitespace-nowrap font-medium"
+              >
+                Tìm kiếm
+              </button>
+            </div>
           </div>
           <div>
             <label
@@ -235,9 +235,9 @@ const UserPage = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">Tất cả vai trò</option>
-              {ROLE_SEED_DATA.map((role) => (
-                <option key={role.id} value={role.code}>
-                  {role.code}
+              {ROLE_OPTIONS.map((roleCode) => (
+                <option key={roleCode} value={roleCode}>
+                  {roleCode}
                 </option>
               ))}
             </select>
@@ -260,12 +260,6 @@ const UserPage = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Phone
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ngày tạo
-                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Thao tác
                 </th>
@@ -273,11 +267,7 @@ const UserPage = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    Đang tải dữ liệu user...
-                  </td>
-                </tr>
+               <ClientLoading/>
               ) : null}
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => (
@@ -310,30 +300,7 @@ const UserPage = () => {
                       <div className="text-sm text-gray-900">{user.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        value={user.roleCode}
-                        disabled={!canChangeRole}
-                        onChange={(e) => handleRoleChange(user, e.target.value)}
-                        className={`min-w-[100px] px-2 py-1 text-xs font-semibold rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          canChangeRole
-                            ? "bg-white border-gray-300 cursor-pointer"
-                            : "bg-gray-100 border-gray-200 cursor-not-allowed opacity-75"
-                        } ${getRoleBadgeColor(user.roleCode)}`}
-                        title={
-                          canChangeRole
-                            ? "Phân quyền (Change Role)"
-                            : "Chỉ admin mới có quyền đổi vai trò"
-                        }
-                      >
-                        {ROLE_SEED_DATA.map((role) => (
-                          <option key={role.id} value={role.code}>
-                            {role.code}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(user.createdAt).toLocaleDateString("vi-VN")}
+                      <div className="text-sm text-gray-900">{user.phone}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
@@ -357,7 +324,7 @@ const UserPage = () => {
                 !isLoading && (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={4}
                       className="px-6 py-8 text-center text-gray-500"
                     >
                       Không tìm thấy người dùng nào
@@ -478,9 +445,9 @@ const UserPage = () => {
                     }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    {ROLE_SEED_DATA.map((role) => (
-                      <option key={role.id} value={role.code}>
-                        {role.code}
+                    {ROLE_OPTIONS.map((roleCode) => (
+                      <option key={roleCode} value={roleCode}>
+                        {roleCode}
                       </option>
                     ))}
                   </select>

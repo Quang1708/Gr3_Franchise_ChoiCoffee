@@ -30,6 +30,7 @@ const ProductPage = React.lazy(() => import("../../pages/admin/product"));
 const UserPage = React.lazy(() => import("../../pages/admin/user"));
 const SettingsPage = React.lazy(() => import("../../pages/admin/settings"));
 const LogoutPage = React.lazy(() => import("../../pages/admin/logout"));
+const ProfilePage = React.lazy(() => import("../../pages/admin/profile"));
 
 /* ==================== ROUTES ==================== */
 
@@ -103,6 +104,7 @@ const AdminRoutes = (
 
         {/* PUBLIC IN ADMIN */}
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="logout" element={<LogoutPage />} />
       </Route>
     </Route>

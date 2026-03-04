@@ -9,7 +9,6 @@ const LogoutPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // clear auth + token + reset session
     clearAdminAuth();
     removeItemInSessionStorage(SESSION_STORAGE.RESET_TOKEN);
     setTimeout(() => {

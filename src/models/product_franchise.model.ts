@@ -1,10 +1,17 @@
 export interface ProductFranchise {
-    id: number;
-    franchiseId: number;
-    productId: number;
-    priceBase: number; // Phải nằm trong khoảng [minPrice, maxPrice] của bảng Product
-    isActive: boolean;
-    isDeleted: boolean;
-    createdAt: string;
-    updatedAt: string;
+  id: string;
+  product_id: string;
+  product_name: string;
+  franchise_id: string;
+  franchise_name: string;
+  size: string;
+  price_base: number;
+  is_active: boolean;
+}
+
+export interface PageInfo {
+  pageNum: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
 }

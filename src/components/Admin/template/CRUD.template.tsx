@@ -54,7 +54,6 @@ export interface CRUDTableProps<T> {
   searchKeys?: (keyof T)[];
   filters?: FilterConfig<T>[];
 
-  /** ✅ NEW: chèn UI cạnh ô search (vd nút Low stock) */
   searchRight?: React.ReactNode;
 }
 
@@ -339,7 +338,6 @@ export function CRUDTable<T extends { id?: string | number }>({
             />
           </div>
 
-          {/* ✅ NEW: chỗ để nhét nút Low stock */}
           {searchRight ? <div className="shrink-0">{searchRight}</div> : null}
         </div>
 
@@ -501,8 +499,9 @@ export function CRUDTable<T extends { id?: string | number }>({
                 <td
                   colSpan={
                     columns.length +
-                    (statusField ? 2 : 1) +
-                    (onEdit || onDelete ? 1 : 0)
+                    1 +
+                    (statusField ? 1 : 0) +
+                    (onView || onEdit || onDelete ? 1 : 0)
                   }
                   className="px-6 py-12 text-center text-gray-500"
                 >

@@ -25,13 +25,16 @@ export type UserMutationResult =
   | { ok: true; user: UserListItem }
   | { ok: false; message: string };
 
+export type UserId = string | number;
+
 export type UserListItem = {
-  id: number;
+  id: UserId;
   email: string;
   name: string;
   phone: string;
   avatarUrl?: string;
   roleCode: string;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -50,14 +53,44 @@ const toSafeString = (value: unknown, fallback = ""): string => {
   return fallback;
 };
 
+const toSafeBoolean = (value: unknown, fallback = false): boolean => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const v = value.trim().toLowerCase();
+    if (v === "true" || v === "1" || v === "active") return true;
+    if (v === "false" || v === "0" || v === "inactive") return false;
+  }
+  return fallback;
+};
+
+const toSafeId = (value: unknown): UserId => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    if (/^\d+$/.test(trimmed)) return Number(trimmed);
+    return trimmed;
+  }
+  return "";
+};
+
 function mapUserRecord(raw: unknown): UserListItem {
   const user = raw as Record<string, unknown>;
   const roles = Array.isArray(user.roles)
     ? (user.roles as Array<Record<string, unknown>>)
     : [];
 
+  const rawId =
+    user.id ??
+    user._id ??
+    user.userId ??
+    user.user_id ??
+    user.userID ??
+    user.uid;
+
   return {
-    id: Number(user.id ?? 0),
+    id: toSafeId(rawId),
     email: toSafeString(user.email),
     name: toSafeString(user.name),
     phone: toSafeString(user.phone),
@@ -69,6 +102,7 @@ function mapUserRecord(raw: unknown): UserListItem {
       user.roleCode ?? user.role_code ?? roles[0]?.role_code,
       "STAFF",
     ),
+    isActive: toSafeBoolean(user.isActive ?? user.is_active, true),
     createdAt: toSafeString(
       user.createdAt ?? user.created_at,
       new Date().toISOString(),

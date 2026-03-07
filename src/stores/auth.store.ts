@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { LOCAL_STORAGE } from "@/consts/localstorage.const";
+import type { AdminLoginUserProfile } from "@/pages/admin/auth/login/models/api.model";
 import {
   getItemInLocalStorage,
   removeItemInLocalStorage,
@@ -7,15 +8,15 @@ import {
 } from "@/utils/localStorage.util";
 
 type AuthState = {
-  user: any;
+  user: AdminLoginUserProfile | null;
   token: string | null;
   isInitialized: boolean;
 
   // ✅ dùng cho login page
-  login: (user: any, token: string) => void;
+  login: (user: AdminLoginUserProfile, token: string) => void;
 
   // ✅ nội bộ
-  setAuth: (user: any, token: string) => void;
+  setAuth: (user: AdminLoginUserProfile, token: string) => void;
   hydrate: () => void;
   logout: () => void;
 };
@@ -39,8 +40,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   hydrate: () => {
-    const user = getItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_CMS);
-    const token = getItemInLocalStorage(LOCAL_STORAGE.CMS_TOKEN);
+    const user = getItemInLocalStorage<AdminLoginUserProfile>(
+      LOCAL_STORAGE.ACCOUNT_CMS,
+    );
+    const token = getItemInLocalStorage<string>(LOCAL_STORAGE.CMS_TOKEN);
     set({ user: user ?? null, token: token ?? null, isInitialized: true });
   },
 

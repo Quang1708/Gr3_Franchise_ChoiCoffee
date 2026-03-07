@@ -5,8 +5,9 @@ import ProfileHeader from "./components/ProfileHeader";
 import PersonalInformation from "./components/PersonalInformation";
 import SecuritySettings from "./components/SecuritySettings";
 import ChangePasswordModal from "../change-password/ClientChangePassword.page";
-import { getCustomerInfo, updateCustomerProfile } from "../partial/service/api";
-import { customerLogout } from "../../auth/services/authApi";
+import { getCustomerProfile } from "../partial/service/customerAuth02.service";
+import { updateCustomerProfile } from "../partial/service/customer05.service";
+import { customerLogout } from "../../auth/services/customerAuth06.service";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 import ROUTER_URL from "@/routes/router.const";
 
@@ -74,7 +75,7 @@ export default function ClientProfilePage() {
       });
 
       // Update localStorage with new info
-      const updatedInfo = await getCustomerInfo();
+      const updatedInfo = await getCustomerProfile();
       localStorage.setItem("customer_info", JSON.stringify(updatedInfo));
 
       toastSuccess("Cập nhật thông tin thành công!");

@@ -1,5 +1,5 @@
 export interface Franchise {
-  id: number;
+  id: string;
   code: string;
   name: string;
   logoUrl?: string;

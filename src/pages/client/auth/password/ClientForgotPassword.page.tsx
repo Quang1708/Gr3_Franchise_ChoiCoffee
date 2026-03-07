@@ -8,7 +8,7 @@ import {
 } from "./schema/clientForgotPassword.schema";
 import ROUTER_URL from "@/routes/router.const";
 import { toastSuccess, toastError } from "@utils/toast.util";
-import { forgotPassword } from "../services/authApi";
+import { forgotPassword } from "../services/customerAuth04.service";
 import FormInput from "@/components/Client/Form/FormInput";
 import ClientLoading from "@/components/Client/Client.Loading";
 import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";

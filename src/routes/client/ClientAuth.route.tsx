@@ -46,9 +46,12 @@ const ClientAuthRoutes = (
       path={ROUTER_URL.CLIENT_ROUTER.VERIFY}
       element={<ClientVerifyTokenPage />}
     />
-    <Route path="/client/verify/:token" element={<ClientVerifyTokenPage />} />
     <Route
-      path="/verify-customer-email/:token"
+      path={ROUTER_URL.CLIENT_ROUTER.VERIFY_TOKEN}
+      element={<ClientVerifyTokenPage />}
+    />
+    <Route
+      path={ROUTER_URL.CLIENT_ROUTER.VERIFY_CUSTOMER_EMAIL}
       element={<ClientVerifyTokenPage />}
     />
     <Route

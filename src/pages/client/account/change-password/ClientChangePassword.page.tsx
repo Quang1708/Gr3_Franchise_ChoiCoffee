@@ -4,8 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { Modal } from "@/components/UI/Modal";
 import { toastSuccess, toastError } from "@/utils/toast.util";
-import { changePassword } from "../partial/service/api";
-import { customerLogout } from "../../auth/services/authApi";
+import { changePassword } from "../partial/service/customerAuth05.service";
+import { customerLogout } from "../../auth/services/customerAuth06.service";
 import FormInput from "@/components/Client/Form/FormInput";
 import ROUTER_URL from "@/routes/router.const";
 import {

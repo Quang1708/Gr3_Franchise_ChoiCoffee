@@ -6,9 +6,9 @@ import {
 } from "@/utils/localStorage.util";
 
 type AdminContextState = {
-  selectedFranchiseId: number | null;
+  selectedFranchiseId: string | number | null;
   hydrate: () => void;
-  setSelectedFranchiseId: (id: number | null) => void;
+  setSelectedFranchiseId: (id: string | number | null) => void;
 };
 
 /**
@@ -19,8 +19,11 @@ export const useAdminContextStore = create<AdminContextState>((set) => ({
   selectedFranchiseId: null,
 
   hydrate: () => {
-    const saved = getItemInLocalStorage<number>(LOCAL_STORAGE.ADMIN_FRANCHISE_ID);
-    set({ selectedFranchiseId: typeof saved === "number" ? saved : null });
+    const saved = getItemInLocalStorage<string | number>(
+      LOCAL_STORAGE.ADMIN_FRANCHISE_ID,
+    );
+    const ok = typeof saved === "string" || typeof saved === "number";
+    set({ selectedFranchiseId: ok ? saved : null });
   },
 
   setSelectedFranchiseId: (id) => {

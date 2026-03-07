@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import ROUTER_URL from "../../../routes/router.const";
-import { SESSION_STORAGE } from "../../../consts/sessionstorage.const";
+import ROUTER_URL from "@/routes/router.const";
+import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
 import {
   getItemInSessionStorage,
   removeItemInSessionStorage,
   setItemInSessionStorage,
 } from "../../../utils/sessionStorage.util";
-import { verifyToken } from "../../../services/adminAuth.service";
+import { verifyToken } from "./login/services/adminAuth.service";
 
 type VerifyStatus = "idle" | "loading" | "success" | "error";
 type VerifyType = "verify" | "reset";
@@ -47,9 +47,10 @@ const AdminVerifyTokenPage: React.FC = () => {
       setMessage("Đang xác thực token...");
 
       const res = await verifyToken(token);
-      if (!res.ok) {
+
+      if (!res?.success) {
         setStatus("error");
-        setMessage("Token đã hết hạn hoặc không hợp lệ. Vui lòng thử lại.");
+        setMessage(res?.message || "Token không hợp lệ.");
         return;
       }
 

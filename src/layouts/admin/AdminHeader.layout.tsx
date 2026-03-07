@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { LogOut, Store, ChevronDown } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import { getAccessibleFranchises } from "@/auth/rbac";
+import ROUTER_URL from "@/routes/router.const";
 
 const initials = (name?: string) => {
   const s = (name ?? "").trim();
@@ -14,6 +16,7 @@ const initials = (name?: string) => {
 };
 
 const AdminHeader = () => {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
@@ -26,14 +29,19 @@ const AdminHeader = () => {
 
   const franchises = useMemo(() => getAccessibleFranchises(user), [user]);
 
-  // Auto pick default franchise (nếu chưa có hoặc không thuộc quyền)
   useEffect(() => {
     if (!franchises.length) return;
-    const ok =
-      selectedFranchiseId != null &&
-      franchises.some((f) => f.id === selectedFranchiseId);
-    if (!ok) setSelectedFranchiseId(franchises[0].id);
-  }, [franchises, selectedFranchiseId, setSelectedFranchiseId]);
+
+    const defaultId = user?.active_context?.franchise_id ?? franchises[0].id;
+
+    const ok = franchises.some((f) => f.id === defaultId);
+
+    if (!ok) {
+      setSelectedFranchiseId(franchises[0].id);
+    } else {
+      setSelectedFranchiseId(defaultId);
+    }
+  }, [franchises, user, setSelectedFranchiseId]);
 
   const [open, setOpen] = useState(false);
 
@@ -121,9 +129,14 @@ const AdminHeader = () => {
             <div className="text-xs text-gray-500">{user?.email ?? ""}</div>
           </div>
 
-          <div className="w-9 h-9 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_PROFILE)}
+            className="w-9 h-9 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold hover:bg-gray-800 transition cursor-pointer"
+            title="View Profile"
+          >
             {initials(user?.name)}
-          </div>
+          </button>
 
           <button
             type="button"

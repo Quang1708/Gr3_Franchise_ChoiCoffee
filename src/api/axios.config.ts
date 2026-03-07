@@ -1,6 +1,11 @@
 import { ENV } from "@/config";
+import type { ApiErrorResponse } from "@/models";
+import { useCustomerAuthStore } from "@/stores/customerAuth.store";
+import { useAuthStore } from "@/stores/auth.store";
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
+import { getItemInSessionStorage } from "@/utils/sessionStorage.util";
+import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
 
 // Message constants for token expiration
 export const MSG_CONSTANT = {
@@ -42,16 +47,16 @@ axiosClient.interceptors.response.use(
     };
 
     // Check if error response contains CUSTOMER_ACCESS_TOKEN_EXPIRED message
-    const errorData = error.response?.data as { data?: string };
+    const errorData = error.response?.data as ApiErrorResponse | undefined;
     const isAccessTokenExpired =
-      errorData?.data === MSG_CONSTANT.CUSTOMER_ACCESS_TOKEN_EXPIRED;
+      errorData?.message === MSG_CONSTANT.CUSTOMER_ACCESS_TOKEN_EXPIRED;
 
     // If access token expired and we haven't retried yet
     if (isAccessTokenExpired && !originalRequest._retry) {
       // Don't retry refresh token endpoint itself
       if (originalRequest.url?.includes("/refresh-token")) {
         // Refresh token expired, clear customer info and redirect to login
-        localStorage.removeItem("customer_info");
+        useCustomerAuthStore.getState().clearCustomer();
         return Promise.reject(error);
       }
 
@@ -69,7 +74,7 @@ axiosClient.interceptors.response.use(
 
       try {
         // Call refresh token API
-        await axiosClient.post("/api/customer-auth/refresh-token");
+        await axiosClient.get("/api/customer-auth/refresh-token");
 
         // Token refreshed successfully, process queued requests
         processQueue();
@@ -81,7 +86,7 @@ axiosClient.interceptors.response.use(
         // Refresh failed, clear auth (component will handle navigation)
         processQueue(refreshError as AxiosError);
         isRefreshing = false;
-        localStorage.removeItem("customer_info");
+        useCustomerAuthStore.getState().clearCustomer();
         return Promise.reject(refreshError);
       }
     }
@@ -97,6 +102,15 @@ export const axiosAdminClient = axios.create({
   withCredentials: true,
 });
 
+axiosAdminClient.interceptors.request.use((config) => {
+  const token = getItemInSessionStorage<string>(SESSION_STORAGE.ACCESS_TOKEN);
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
 // Track if we're currently refreshing admin token
 let isRefreshingAdmin = false;
 // Queue of admin requests waiting for token refresh
@@ -125,7 +139,7 @@ axiosAdminClient.interceptors.response.use(
     };
 
     // Check if error response contains ACCESS_TOKEN_EXPIRED message
-    const errorData = error.response?.data as { message?: string };
+    const errorData = error.response?.data as ApiErrorResponse | undefined;
     const isAccessTokenExpired =
       errorData?.message === MSG_CONSTANT.ADMIN_ACCESS_TOKEN_EXPIRED;
 
@@ -134,7 +148,7 @@ axiosAdminClient.interceptors.response.use(
       // Don't retry refresh token endpoint itself
       if (originalRequest.url?.includes("/refresh-token")) {
         // Refresh token expired, clear admin info and redirect to login
-        localStorage.removeItem("admin_info");
+        useAuthStore.getState().logout();
         return Promise.reject(error);
       }
 
@@ -152,7 +166,7 @@ axiosAdminClient.interceptors.response.use(
 
       try {
         // Call admin refresh token API
-        await axiosAdminClient.post("/api/auth/refresh-token");
+        await axiosAdminClient.get("/api/auth/refresh-token");
 
         // Token refreshed successfully, process queued requests
         processAdminQueue();
@@ -164,7 +178,7 @@ axiosAdminClient.interceptors.response.use(
         // Refresh failed, clear auth (component will handle navigation)
         processAdminQueue(refreshError as AxiosError);
         isRefreshingAdmin = false;
-        localStorage.removeItem("admin_info");
+        useAuthStore.getState().logout();
         return Promise.reject(refreshError);
       }
     }

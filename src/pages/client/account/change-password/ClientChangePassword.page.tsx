@@ -4,10 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { Modal } from "@/components/UI/Modal";
 import { toastSuccess, toastError } from "@/utils/toast.util";
-import { changePassword } from "../partial/service/api";
-import { customerLogout } from "../../auth/services/authApi";
+import { changePassword } from "../partial/service/customerAuth05.service";
+import { customerLogout } from "../../auth/services/customerAuth06.service";
 import FormInput from "@/components/Client/Form/FormInput";
 import ROUTER_URL from "@/routes/router.const";
+import { useCustomerAuthStore } from "@/stores/customerAuth.store";
 import {
   changePasswordSchema,
   type ChangePasswordFormData,
@@ -23,6 +24,7 @@ export default function ChangePasswordModal({
   onClose,
 }: ChangePasswordModalProps) {
   const navigate = useNavigate();
+  const clearCustomer = useCustomerAuthStore((state) => state.clearCustomer);
   const {
     register,
     handleSubmit,
@@ -64,8 +66,8 @@ export default function ChangePasswordModal({
         // Ignore logout error, proceed anyway
       }
 
-      // Clear customer info from localStorage
-      localStorage.removeItem("customer_info");
+      // Clear customer from Zustand store
+      clearCustomer();
 
       // Navigate to login page after a short delay
       navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN);

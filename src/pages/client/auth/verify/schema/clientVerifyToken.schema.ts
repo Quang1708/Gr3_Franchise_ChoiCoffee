@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-export const ClientVerifyTokenSchema = z.object({
-  token: z
+export const ClientResendTokenSchema = z.object({
+  email: z
     .string()
-    .length(6, "Mã OTP phải có 6 chữ số")
-    .regex(/^\d{6}$/, "Mã OTP chỉ bao gồm các chữ số"),
+    .min(1, "Email không được để trống")
+    .email("Email không hợp lệ"),
 });
 
-export type ClientVerifyTokenSchemaType = z.infer<
-  typeof ClientVerifyTokenSchema
+export type ClientResendTokenSchemaType = z.infer<
+  typeof ClientResendTokenSchema
 >;

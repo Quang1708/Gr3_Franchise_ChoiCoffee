@@ -3,9 +3,16 @@ import { Outlet, Navigate } from "react-router-dom";
 import ROUTER_URL from "../router.const";
 import { useCustomerAuthStore } from "@/stores/customerAuth.store";
 import { toastWarning } from "../../utils/toast.util";
+import ClientLoading from "@/components/Client/Client.Loading";
 
 const ClientGuard: React.FC = () => {
   const customer = useCustomerAuthStore((state) => state.customer);
+  const isInitialized = useCustomerAuthStore((state) => state.isInitialized);
+
+  // Show loading while checking authentication
+  if (!isInitialized) {
+    return <ClientLoading />;
+  }
 
   const isClientAuthenticated = Boolean(customer);
 

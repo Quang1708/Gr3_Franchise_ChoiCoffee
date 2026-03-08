@@ -1,97 +1,268 @@
-import { axiosClient } from "@/api/axios.config";
-import { USER_SEED_DATA } from "../mocks/user.seed";
-import { USER_FRANCHISE_ROLE_SEED_DATA } from "../mocks/user_franchise_role.seed";
-import { ROLE_SEED_DATA } from "../mocks/role.seed";
+import { userApi } from "@/api";
 
 export type UpdateRoleResult = { ok: true } | { ok: false; message: string };
+export type ServiceResult = { ok: true } | { ok: false; message: string };
+
+export type CreateUserPayload = {
+  email: string;
+  password: string;
+  name: string;
+  phone: string;
+  roleCode: string;
+  avatarUrl?: string;
+};
+
+export type UpdateUserPayload = {
+  email: string;
+  name: string;
+  phone: string;
+  roleCode: string;
+  avatarUrl?: string;
+  password?: string;
+};
+
+export type UserMutationResult =
+  | { ok: true; user: UserListItem }
+  | { ok: false; message: string };
+
+export type UserId = string | number;
+
 export type UserListItem = {
-  id: number;
+  id: UserId;
   email: string;
   name: string;
   phone: string;
   avatarUrl?: string;
   roleCode: string;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 };
 
-const USE_MOCK_ROLE_API =
-  !import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.VITE_MOCK_USER_API === "true";
+const getErrorMessage = (err: unknown, fallback: string) =>
+  (err as { response?: { data?: { message?: string } } })?.response?.data
+    ?.message ||
+  (err as Error)?.message ||
+  fallback;
 
-function mapSeedUsersToList(): UserListItem[] {
-  return USER_SEED_DATA.filter((user) => !user.isDeleted).map((user) => {
-    const userRole = USER_FRANCHISE_ROLE_SEED_DATA.find(
-      (role) => role.userId === user.id && !role.isDeleted,
-    );
-    const roleCode =
-      ROLE_SEED_DATA.find((role) => role.id === userRole?.roleId)?.code ??
-      "STAFF";
+const toSafeString = (value: unknown, fallback = ""): string => {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return `${value}`;
+  }
+  return fallback;
+};
 
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      phone: user.phone,
-      avatarUrl: user.avatarUrl,
-      roleCode,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
-  });
+const toSafeBoolean = (value: unknown, fallback = false): boolean => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const v = value.trim().toLowerCase();
+    if (v === "true" || v === "1" || v === "active") return true;
+    if (v === "false" || v === "0" || v === "inactive") return false;
+  }
+  return fallback;
+};
+
+const toSafeId = (value: unknown): UserId => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    if (/^\d+$/.test(trimmed)) return Number(trimmed);
+    return trimmed;
+  }
+  return "";
+};
+
+function mapUserRecord(raw: unknown): UserListItem {
+  const user = raw as Record<string, unknown>;
+  const roles = Array.isArray(user.roles)
+    ? (user.roles as Array<Record<string, unknown>>)
+    : [];
+
+  const rawId =
+    user.id ??
+    user._id ??
+    user.userId ??
+    user.user_id ??
+    user.userID ??
+    user.uid;
+
+  return {
+    id: toSafeId(rawId),
+    email: toSafeString(user.email),
+    name: toSafeString(user.name),
+    phone: toSafeString(user.phone),
+    avatarUrl:
+      (user.avatarUrl as string | undefined) ??
+      (user.avatar_url as string | undefined) ??
+      undefined,
+    roleCode: toSafeString(
+      user.roleCode ?? user.role_code ?? roles[0]?.role_code,
+      "STAFF",
+    ),
+    isActive: toSafeBoolean(user.isActive ?? user.is_active, true),
+    createdAt: toSafeString(
+      user.createdAt ?? user.created_at,
+      new Date().toISOString(),
+    ),
+    updatedAt: toSafeString(
+      user.updatedAt ?? user.updated_at,
+      new Date().toISOString(),
+    ),
+  };
 }
 
-export async function getUsers(): Promise<UserListItem[]> {
-  if (USE_MOCK_ROLE_API) {
-    await new Promise((r) => setTimeout(r, 250));
-    return mapSeedUsersToList();
-  }
+function extractUsersArray(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) return payload;
 
-  const { data } = await axiosClient.get("/users");
-  if (!Array.isArray(data)) {
+  if (!payload || typeof payload !== "object") {
     return [];
   }
 
-  return data.map((user) => ({
-    id: Number(user.id),
-    email: String(user.email ?? ""),
-    name: String(user.name ?? ""),
-    phone: String(user.phone ?? ""),
-    avatarUrl: user.avatarUrl ?? user.avatar_url ?? undefined,
-    roleCode: String(
-      user.roleCode ?? user.role_code ?? user.roles?.[0]?.role_code ?? "STAFF",
-    ),
-    createdAt: String(
-      user.createdAt ?? user.created_at ?? new Date().toISOString(),
-    ),
-    updatedAt: String(
-      user.updatedAt ?? user.updated_at ?? new Date().toISOString(),
-    ),
-  }));
+  const data = payload as {
+    data?: unknown;
+    items?: unknown;
+    rows?: unknown;
+  };
+
+  if (Array.isArray(data.data)) return data.data;
+  if (data.data && typeof data.data === "object") {
+    const nestedData = data.data as { items?: unknown; rows?: unknown };
+    if (Array.isArray(nestedData.items)) return nestedData.items;
+    if (Array.isArray(nestedData.rows)) return nestedData.rows;
+  }
+  if (Array.isArray(data.items)) return data.items;
+  if (Array.isArray(data.rows)) return data.rows;
+
+  return [];
 }
 
-/**
- * Gọi API cập nhật vai trò user (US-3.3 – Change User Role).
- * Backend: PUT /users/:userId/role với body { role }.
- * Khi chưa có backend (không set VITE_API_BASE_URL hoặc VITE_MOCK_USER_API=true), dùng mock thành công.
- */
+export async function getUsers(): Promise<UserListItem[]> {
+  try {
+    const data = await userApi.getAll();
+    const usersRaw = extractUsersArray(data);
+    if (usersRaw.length > 0) {
+      return usersRaw.map((raw) => mapUserRecord(raw));
+    }
+  } catch {
+    void 0;
+  }
+
+  try {
+    const data = await userApi.search({
+      keyword: "",
+      page: 1,
+      limit: 200,
+    });
+    const usersRaw = extractUsersArray(data);
+    return usersRaw.map((raw) => mapUserRecord(raw));
+  } catch {
+    return [];
+  }
+}
+
+export async function getUserById(
+  userId: number | string,
+): Promise<UserListItem | null> {
+  const data = await userApi.getById(userId);
+  const userRaw = data?.data ?? data;
+  if (!userRaw || typeof userRaw !== "object") {
+    return null;
+  }
+
+  return mapUserRecord(userRaw);
+}
+
+export async function createUser(
+  payload: CreateUserPayload,
+): Promise<UserMutationResult> {
+  try {
+    const data = await userApi.create({
+      email: payload.email,
+      password: payload.password,
+      name: payload.name,
+      phone: payload.phone,
+      role_code: payload.roleCode,
+      avatar_url: payload.avatarUrl,
+    });
+
+    const userRaw = data?.data ?? data;
+    return { ok: true, user: mapUserRecord(userRaw) };
+  } catch (err: unknown) {
+    return { ok: false, message: getErrorMessage(err, "Tạo user thất bại") };
+  }
+}
+
+export async function updateUser(
+  userId: number | string,
+  payload: UpdateUserPayload,
+): Promise<UserMutationResult> {
+  try {
+    const data = await userApi.update(userId, {
+      email: payload.email,
+      name: payload.name,
+      phone: payload.phone,
+      role_code: payload.roleCode,
+      avatar_url: payload.avatarUrl,
+      ...(payload.password ? { password: payload.password } : {}),
+    });
+
+    const userRaw = data?.data ?? data;
+    return { ok: true, user: mapUserRecord({ id: userId, ...userRaw }) };
+  } catch (err: unknown) {
+    return {
+      ok: false,
+      message: getErrorMessage(err, "Cập nhật user thất bại"),
+    };
+  }
+}
+
+export async function deleteUser(userId: number | string): Promise<ServiceResult> {
+  try {
+    await userApi.remove(userId);
+    return { ok: true };
+  } catch (err: unknown) {
+    return { ok: false, message: getErrorMessage(err, "Xóa user thất bại") };
+  }
+}
+
+export async function restoreUser(userId: number | string): Promise<ServiceResult> {
+  try {
+    await userApi.restore(userId);
+    return { ok: true };
+  } catch (err: unknown) {
+    return { ok: false, message: getErrorMessage(err, "Khôi phục user thất bại") };
+  }
+}
+
+export async function changeUserStatus(
+  userId: number | string,
+  status: string,
+): Promise<ServiceResult> {
+  try {
+    await userApi.changeStatus(userId, { status });
+    return { ok: true };
+  } catch (err: unknown) {
+    return {
+      ok: false,
+      message: getErrorMessage(err, "Đổi trạng thái user thất bại"),
+    };
+  }
+}
+
 export async function updateUserRole(
   userId: string,
   roleCode: string,
 ): Promise<UpdateRoleResult> {
-  if (USE_MOCK_ROLE_API) {
-    await new Promise((r) => setTimeout(r, 300));
-    return { ok: true };
-  }
   try {
-    await axiosClient.put(`/users/${userId}/role`, { role: roleCode });
+    await userApi.update(userId, { role: roleCode });
     return { ok: true };
   } catch (err: unknown) {
-    const message =
-      (err as { response?: { data?: { message?: string } } })?.response?.data
-        ?.message ||
-      (err as Error)?.message ||
-      "Cập nhật vai trò thất bại";
-    return { ok: false, message };
+    return {
+      ok: false,
+      message: getErrorMessage(err, "Cập nhật vai trò thất bại"),
+    };
   }
 }

@@ -54,7 +54,13 @@ export interface CRUDTableProps<T> {
   searchKeys?: (keyof T)[];
   filters?: FilterConfig<T>[];
 
-  /** ✅ NEW: chèn UI cạnh ô search (vd nút Low stock) */
+  /**
+   * When true, search/filter inputs are "pending" until user clicks the apply button (or presses Enter).
+   * Default: false (auto-apply on change).
+   */
+  deferToolsApply?: boolean;
+  applyButtonLabel?: string;
+
   searchRight?: React.ReactNode;
 }
 
@@ -215,9 +221,12 @@ export function CRUDTable<T extends { id?: string | number }>({
   searchKeys = [],
   filters = [],
   searchRight,
+  deferToolsApply = false,
+  applyButtonLabel = "Tìm kiếm",
 }: CRUDTableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(pageSize);
+  const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState<{
     key: keyof T;
@@ -226,6 +235,15 @@ export function CRUDTable<T extends { id?: string | number }>({
   const [activeFilters, setActiveFilters] = useState<
     Partial<Record<keyof T, string>>
   >({});
+  const [pendingFilters, setPendingFilters] = useState<
+    Partial<Record<keyof T, string>>
+  >({});
+
+  const handleApplyTools = () => {
+    if (!deferToolsApply) return;
+    setSearchTerm(searchInput);
+    setActiveFilters(pendingFilters);
+  };
 
   const filteredData = useMemo(() => {
     return data.filter((item) => {
@@ -334,12 +352,23 @@ export function CRUDTable<T extends { id?: string | number }>({
                          text-sm text-gray-900 placeholder-gray-400
                          focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
                          transition-all hover:border-gray-300"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => {
+                const nextValue = e.target.value;
+                setSearchInput(nextValue);
+                if (!deferToolsApply) {
+                  setSearchTerm(nextValue);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (!deferToolsApply) return;
+                if (e.key === "Enter") {
+                  handleApplyTools();
+                }
+              }}
             />
           </div>
 
-          {/* ✅ NEW: chỗ để nhét nút Low stock */}
           {searchRight ? <div className="shrink-0">{searchRight}</div> : null}
         </div>
 
@@ -349,13 +378,24 @@ export function CRUDTable<T extends { id?: string | number }>({
             {filters.map((filter) => (
               <CustomSelect
                 key={String(filter.key)}
-                value={activeFilters[filter.key] || "all"}
-                onChange={(newValue) =>
+                value={
+                  (deferToolsApply
+                    ? pendingFilters[filter.key]
+                    : activeFilters[filter.key]) || "all"
+                }
+                onChange={(newValue) => {
+                  if (deferToolsApply) {
+                    setPendingFilters((prev) => ({
+                      ...prev,
+                      [filter.key]: newValue,
+                    }));
+                    return;
+                  }
                   setActiveFilters((prev) => ({
                     ...prev,
                     [filter.key]: newValue,
-                  }))
-                }
+                  }));
+                }}
                 options={[
                   { value: "all", label: `Tất cả ${filter.label}` },
                   ...filter.options,
@@ -365,6 +405,18 @@ export function CRUDTable<T extends { id?: string | number }>({
             ))}
           </div>
         )}
+
+        {deferToolsApply ? (
+          <button
+            type="button"
+            onClick={handleApplyTools}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md active:scale-[0.98] cursor-pointer md:ml-auto w-full md:w-auto"
+            title={applyButtonLabel}
+          >
+            <Search className="w-4 h-4" />
+            <span>{applyButtonLabel}</span>
+          </button>
+        ) : null}
       </div>
 
       {/* Table */}
@@ -501,8 +553,9 @@ export function CRUDTable<T extends { id?: string | number }>({
                 <td
                   colSpan={
                     columns.length +
-                    (statusField ? 2 : 1) +
-                    (onEdit || onDelete ? 1 : 0)
+                    1 +
+                    (statusField ? 1 : 0) +
+                    (onView || onEdit || onDelete ? 1 : 0)
                   }
                   className="px-6 py-12 text-center text-gray-500"
                 >

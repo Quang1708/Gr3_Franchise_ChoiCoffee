@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import FranchiseSelect from "./partials/FranchiseSelect";
 import ClientLoading from "@/components/Client/Client.Loading";
-import { customerLogout } from "@/pages/client/auth/services/authApi";
+import { customerLogout } from "@/pages/client/auth/services/customerAuth06.service";
 import { toastSuccess, toastError } from "@/utils/toast.util";
 import type { CustomerInfo } from "@/pages/client/account/partial/service/api";
 import { getAllFranchise } from "./services/franchise.Service";
@@ -17,12 +17,10 @@ const ClientHeader = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Check localStorage for customer info
-  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(() => {
-    const saved = localStorage.getItem("customer_info");
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(!!customerInfo);
+  // Get customer from Zustand store
+  const customer = useCustomerAuthStore((state) => state.customer);
+  const clearCustomer = useCustomerAuthStore((state) => state.clearCustomer);
+  const isLoggedIn = !!customer;
 
   const navigate = useNavigate();
   const [selectedFranchise, setSelectedFranchise] = useState<string>(() => {
@@ -146,10 +144,8 @@ const ClientHeader = () => {
     try {
       await customerLogout();
 
-      // Clear customer info from localStorage
-      localStorage.removeItem("customer_info");
-      setCustomerInfo(null);
-      setIsLoggedIn(false);
+      // Clear customer from Zustand store
+      clearCustomer();
 
       toastSuccess("Đăng xuất thành công!");
       navigate(ROUTER_URL.HOME);
@@ -257,9 +253,7 @@ const ClientHeader = () => {
                   className="cursor-pointer flex items-center gap-1 sm:gap-2 p-0.5 sm:p-1 pl-1 sm:pl-2 pr-0.5 sm:pr-1 rounded-full hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all"
                 >
                   <img
-                    src={
-                      customerInfo?.avatar_url || "https://i.pravatar.cc/300"
-                    }
+                    src={customer?.avatarUrl || "https://i.pravatar.cc/300"}
                     alt="Avatar"
                     className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-200"
                   />
@@ -272,10 +266,10 @@ const ClientHeader = () => {
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 animate-in fade-in slide-in-from-top-2">
                     <div className="px-4 py-2 border-b border-gray-100 mb-1">
                       <p className="text-sm font-semibold text-gray-800">
-                        {customerInfo?.name || "User"}
+                        {customer?.name || "User"}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {customerInfo?.email || ""}
+                        {customer?.email || ""}
                       </p>
                     </div>
 

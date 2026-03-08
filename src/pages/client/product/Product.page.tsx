@@ -1,32 +1,29 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import ProductMenu from "../../../components/Client/Product/Client.MenuHeader";
 // import ProductList from "../../../components/Client/Product/ProductList";
-import type { Category } from "@/models/category.model";
-import { CATEGORY_SEED_DATA } from "@/mocks/category.seed";
 import ProductList from "@/components/Client/Product/ProductList";
 
 
 
 const ClientProductPage = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const categories: Category[] = CATEGORY_SEED_DATA;
-  const [activeCategory, setActiveCategory] = useState<number>(
-    categories[0].id,
-  );
-  const [category, setCategory] = useState<Category>();
+  const [activeCategory, setActiveCategory] = useState<string>("");
+  const [categoryInfo, setCategoryInfo] = useState<{
+    name?: string
+    description?: string
+  }>({});
 
-  const handleCategoryChange = (category: number) => {
-    setActiveCategory(category);
+  const handleCategoryChange = (
+    categoryId: string,
+    name?: string,
+    description?: string
+  ) => {
+    setActiveCategory(categoryId);
     setCurrentPage(1);
+    setCategoryInfo({ name, description });
   };
 
-  const CategoryRender = () => {
-    const cate = categories.find((cat) => cat.id === activeCategory);
-    setCategory(cate);
-  }
-  useEffect(() => {
-    CategoryRender();
-  }, [activeCategory]);
+  
   return (
     <>
       <img
@@ -46,6 +43,7 @@ const ClientProductPage = () => {
           <ProductMenu
             activeCategory={activeCategory}
             setActiveCategory={handleCategoryChange}
+
           />
         </nav>
         <div className="flex flex-1 justify-center">
@@ -53,11 +51,11 @@ const ClientProductPage = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-6">
               <div className="flex flex-col gap-1">
                 <h1 className="text-charcoal dark:text-white text-3xl font-black tracking-tight">
-                  {category?.name}
+                  {categoryInfo.name}
                 </h1>
-                <p className="text-wood-brown text-sm font-normal">
-                  {category?.description}
-                </p>
+                {/* <p className="text-wood-brown text-sm font-normal">
+                  {categoryInfo.description}
+                </p> */}
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 bg-white dark:bg-background-dark border border-charcoal/5 dark:border-white/5 rounded-lg px-3 py-2">

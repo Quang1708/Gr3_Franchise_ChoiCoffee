@@ -171,3 +171,33 @@ body {
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 transparent;
 }
+
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE và Edge cũ */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari, Edge */
+}
+
+.product-content h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 16px;
+  color: var(--charcoal);
+}
+
+.product-content p {
+  margin: 10px 0;
+  line-height: 1.6;
+}
+
+.product-content ul {
+  list-style: disc;
+  padding-left: 20px;
+}
+
+.product-content li {
+  margin: 5px 0;
+}

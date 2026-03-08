@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Product } from "@/models/product.model";
+import type { Product } from "./models/product.model";
 import ButtonSubmit from "../Button/ButtonSubmit";
 
 const MOCK_TOPPINGS = [
@@ -84,7 +84,7 @@ const ToppingModal = ({
     return sum + count * topping.price;
   }, 0);
 
-  const totalPrice = product.minPrice + toppingsPrice;
+  const totalPrice = (product.sizes[0]?.price || 0) + toppingsPrice;
 
   const handleIncrease = (id: string) => {
     if (totalSelectedCount < MAX_ITEMS) {
@@ -110,7 +110,10 @@ const ToppingModal = ({
   };
 
   const handleConfirm = () => {
-    onConfirm(product, quantities, totalPrice);
+    const selectedToppings = Object.entries(quantities)
+      .filter(([, count]) => count > 0)
+      .map(([id]) => id);
+    onConfirm(product, selectedToppings, totalPrice);
     setQuantities({});
   };
 

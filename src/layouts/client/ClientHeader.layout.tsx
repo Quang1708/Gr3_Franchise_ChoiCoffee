@@ -3,13 +3,16 @@ import ROUTER_URL from "../../routes/router.const";
 import MenuItemRender from "./partials/MenuItemRender";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FRANCHISE_SEED_DATA } from "@/mocks/franchise.seed";
 import FranchiseSelect from "./partials/FranchiseSelect";
 import ClientLoading from "@/components/Client/Client.Loading";
 import { customerLogout } from "@/pages/client/auth/services/authApi";
 import { toastSuccess, toastError } from "@/utils/toast.util";
 import type { CustomerInfo } from "@/pages/client/account/partial/service/api";
+import { getAllFranchise } from "./services/franchise.Service";
+import type { Franchise } from "./models/franchise.model";
+import { toast } from "react-toastify";
 const ClientHeader = () => {
+  const [franchises, setFranchises] = useState<Franchise[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -22,9 +25,9 @@ const ClientHeader = () => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(!!customerInfo);
 
   const navigate = useNavigate();
-  const [selectedFranchise, setSelectedFranchise] = useState<number>(() => {
+  const [selectedFranchise, setSelectedFranchise] = useState<string>(() => {
     const saved = localStorage.getItem("selectedFranchise");
-    return saved ? Number(saved) : 1;
+    return saved ? saved : "1";
   });
   const [isFranchiseDropdownOpen, setIsFranchiseDropdownOpen] = useState(false);
   const franchiseDropdownRef = useRef<HTMLDivElement>(null);
@@ -64,6 +67,28 @@ const ClientHeader = () => {
     },
   ];
 
+  const fetchFranchise = async () => {
+    try{
+      setIsLoading(true);
+      const response = await getAllFranchise();
+      if(response){
+        setIsLoading(false);
+        setFranchises(response);
+        console.log("franchise", response);
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      setIsLoading(false);
+      toast.error("Không thể tải danh sách chi nhánh. Vui lòng thử lại!", error);
+    }finally{
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchFranchise();
+  }, []);
+
   const handleClickOutside = (event: MouseEvent) => {
     if (
       franchiseDropdownRef.current &&
@@ -95,16 +120,16 @@ const ClientHeader = () => {
     };
   }, [isFranchiseDropdownOpen, isProfileOpen, isMobileMenuOpen]);
 
-  const franchise = FRANCHISE_SEED_DATA;
 
-  const handleFranchiseSelect = (franchiseId: number) => {
+
+  const handleFranchiseSelect = (franchiseId: string) => {
     setIsLoading(true);
     setIsFranchiseDropdownOpen(false);
 
     // Simulate loading time for better UX
     setTimeout(() => {
       setSelectedFranchise(franchiseId);
-      localStorage.setItem("selectedFranchise", franchiseId.toString());
+      localStorage.setItem("selectedFranchise", franchiseId);
 
       // Dispatch custom event để các component khác biết localStorage đã thay đổi
       window.dispatchEvent(
@@ -181,7 +206,7 @@ const ClientHeader = () => {
                 >
                   <FranchiseSelect
                     isOpen={isFranchiseDropdownOpen}
-                    franchises={franchise}
+                    franchises={franchises}
                     selectedFranchise={selectedFranchise}
                     onSelectFranchise={handleFranchiseSelect}
                   />
@@ -378,7 +403,7 @@ const ClientHeader = () => {
                     >
                       <FranchiseSelect
                         isOpen={isFranchiseDropdownOpen}
-                        franchises={franchise}
+                        franchises={franchises}
                         selectedFranchise={selectedFranchise}
                         onSelectFranchise={handleFranchiseSelect}
                       />

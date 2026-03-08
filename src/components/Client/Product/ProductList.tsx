@@ -1,14 +1,11 @@
-import { PRODUCT_SEED_DATA } from "@/mocks/product.seed";
 import ProductCard from "./ProductCard";
-import type { ProductCategoryFranchise } from "@/models/product_category_franchise.model";
 import { useEffect, useState } from "react";
-import { PRODUCT_CATEGORY_FRANCHISE_SEED_DATA } from "@/mocks/product_category_franchise.seed";
-import type { Product } from "./../../../models/product.model";
-import { PRODUCT_FRANCHISE_SEED_DATA } from "@/mocks/product_franchise.seed";
-import type { ProductFranchise } from "@/models/product_franchise.model";
+import type { Product } from "./models/product.model";
+import { getPublicProducts } from "./services/product.service";
+import ClientLoading from "../Client.Loading";
 
 type ProductListProps = {
-  category: number;
+  category: string;
   currentPage: number;
   onPageChange: (page: number) => void;
 };
@@ -17,16 +14,16 @@ type ProductListProps = {
 
 const ProductList = ({ category, currentPage, onPageChange }: ProductListProps) => {
   const ITEMS_PER_PAGE = 8;
-  const [productCategory, setProductCategory] = useState<ProductCategoryFranchise[]>([]);
-  const [product, setProduct] = useState<Product[]>([]);
-  const [franchiseid, setFranchiseid] = useState<string | null>(
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [franchiseId, setFranchiseId] = useState<string | null>(
     localStorage.getItem("selectedFranchise")
   );
-  const [currentFranchiseProduct, setCurrentFranchiseProduct] = useState<ProductFranchise[]>();
 
+  // Listen for franchise changes
   useEffect(() => {
     const handleStorageChange = () => {
-      setFranchiseid(localStorage.getItem("selectedFranchise"));
+      setFranchiseId(localStorage.getItem("selectedFranchise"));
     };
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("franchiseChanged" as string, handleStorageChange);
@@ -37,53 +34,32 @@ const ProductList = ({ category, currentPage, onPageChange }: ProductListProps) 
     };
   }, []);
 
+  // Fetch products when franchiseId or category changes
   useEffect(() => {
-  if (!franchiseid) return;
+    const fetchProducts = async () => {
+      if (!franchiseId || !category) return;
 
-  const current = PRODUCT_FRANCHISE_SEED_DATA.filter(
-    pf => pf.franchiseId === Number(franchiseid)
-  );
+      setIsLoading(true);
+      try {
+        const response = await getPublicProducts(franchiseId, category);
+        if (response) {
+          setProducts(response);
+        }
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        setProducts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  setCurrentFranchiseProduct(current);
-}, [franchiseid]);
+    fetchProducts();
+  }, [franchiseId, category]);
 
-  console.log("category",category);
-
-
-  useEffect(() => {
-  const productCt = PRODUCT_CATEGORY_FRANCHISE_SEED_DATA.filter(
-    pc => pc.categoryFranchiseId === category
-  );
-
-  setProductCategory(productCt);
-}, [category]);
-
-
-  useEffect(() => {
-  if (!currentFranchiseProduct || productCategory.length === 0) return;
-
-  const validProductFranchiseIds = productCategory.map(
-    pc => pc.productFranchiseId
-  );
-
-  const productIds = currentFranchiseProduct
-    .filter(pf => validProductFranchiseIds.includes(pf.id))
-    .map(pf => pf.productId);
-
-  const result = PRODUCT_SEED_DATA.filter(p =>
-    productIds.includes(p.id)
-  );
-
-  setProduct(result);
-}, [currentFranchiseProduct, productCategory]);
-  // console.log("currentFranchiseProducts", currentFranchiseProduct);
-  // console.log("productCategory", productCategory);
-  // const filteredProducts = product.filter(product => product.id === productCategory.find(pc => pc.productFranchiseId === product.id)?.productFranchiseId);
-  const totalPages = Math.ceil(product.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentProducts = product.slice(startIndex, endIndex);
-  // console.log("product",product);
+  const currentProducts = products.slice(startIndex, endIndex);
   const handlePrevPage = () => {
     if (currentPage > 1) {
       onPageChange(currentPage - 1);
@@ -184,13 +160,17 @@ const ProductList = ({ category, currentPage, onPageChange }: ProductListProps) 
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {currentProducts.map((product) => (
-          <ProductCard key={product.id} item={product} />
-        ))}
-      </div>
-      
-      {totalPages > 1 && (
+      {isLoading ? (
+        <ClientLoading />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {currentProducts.map((product) => (
+              <ProductCard key={product.product_id} item={product} />
+            ))}
+          </div>
+          
+          {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 py-10">
           <button
             title="previous-page"
@@ -220,6 +200,8 @@ const ProductList = ({ category, currentPage, onPageChange }: ProductListProps) 
             <span className="material-symbols-outlined">chevron_right</span>
           </button>
         </div>
+      )}
+        </>
       )}
     </>
   )

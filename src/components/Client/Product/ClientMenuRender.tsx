@@ -1,17 +1,18 @@
-import type { Category } from "@/models/category.model";
+import type { CategoryFranchise } from "./models/category.model";
+
 
 interface ClientMenuRenderProps {
-  item: Category;
-  activeCategory: number;
-  setActiveCategory: (category: number) => void;
+  item: CategoryFranchise;
+  activeCategory: string;
+  setActiveCategory: (category: string) => void;
 }
 
 const ClientMenuRender = ({item, activeCategory, setActiveCategory}: ClientMenuRenderProps) => {
-    const isActive = item.id === activeCategory;
+    const isActive = item.category_id === activeCategory;
     
     const handleClick = () => {
-        if (item.id) {
-            setActiveCategory(item.id);
+        if (item.category_id) {
+            setActiveCategory(item.category_id);
         }
     };
     // const backgroundCateRender = (cateId:number) => {
@@ -34,7 +35,7 @@ const ClientMenuRender = ({item, activeCategory, setActiveCategory}: ClientMenuR
             ${isActive 
                 ? 'text-primary dark:text-primary' 
                 : 'text-charcoal dark:text-white'}
-        `}>{item.name}</span>
+        `}>{item.category_name}</span>
         {/* <div className={`absolute -bottom-6.25 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary rounded-t-full transition-opacity duration-300
             ${isActive ? 'opacity-100' : 'opacity-0'}
         `}></div> */}

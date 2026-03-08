@@ -1,13 +1,16 @@
 import ProductCard from "@/components/Client/Product/ProductCard";
-import type { Product } from "@/models/product.model";
-import { PRODUCT_SEED_DATA } from "@/mocks/product.seed";
-import { PRODUCT_FRANCHISE_SEED_DATA } from "@/mocks/product_franchise.seed";
+
+// import { PRODUCT_SEED_DATA } from "@/mocks/product.seed";
+// import { PRODUCT_FRANCHISE_SEED_DATA } from "@/mocks/product_franchise.seed";
 // import type { ProductFranchise } from "@/models/product_franchise.model";
 // import { CheckCircle, Mail, PhoneCall } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ROUTER_URL from "@/routes/router.const";
 import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
+import { getPublicProducts } from "./client/product/services/product.service";
+import type { Product } from "./client/product/models/product.models";
+
 const HomePage = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
@@ -32,34 +35,19 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
-    if (franchiseid) {
-      // Lọc sản phẩm theo franchiseId
-      const franchiseProducts = PRODUCT_FRANCHISE_SEED_DATA.filter(
-        (pf) =>
-          pf.franchiseId === parseInt(franchiseid) &&
-          pf.isActive &&
-          !pf.isDeleted,
-      );
-
-      // Map với product để lấy thông tin đầy đủ
-      const fullProducts = franchiseProducts
-        .map((pf) => {
-          const product = PRODUCT_SEED_DATA.find((p) => p.id === pf.productId);
-          if (product && product.isActive && !product.isDeleted) {
-            return {
-              ...product,
-              priceBase: pf.priceBase,
-            };
-          }
-          return null;
-        })
-        .filter((p): p is Product & { priceBase: number } => p !== null);
-
-      setProducts(fullProducts);
-    } else {
-      // Nếu không có franchise được chọn, hiển thị tất cả sản phẩm
-      setProducts(PRODUCT_SEED_DATA.filter((p) => p.isActive && !p.isDeleted));
+    const fetchPublicProducts = async () => {
+      try{
+        // if (!franchiseid) return;
+        const response = await getPublicProducts({ franchiseId: franchiseid || "" });
+        console.log("response", response);
+        if(response) { 
+          setProducts(response); 
+        }
+      } catch (error) {
+        console.error("Error fetching public products:", error);
+      }
     }
+    fetchPublicProducts();
   }, [franchiseid]);
   return (
     <div>
@@ -186,8 +174,8 @@ const HomePage = () => {
           <div className="w-full overflow-x-auto">
             <div className="flex gap-6">
               {products.map((item) => (
-                <div key={item.id} className="w-70 shrink-0">
-                  <ProductCard key={item.id} item={item} />
+                <div key={item.product_id} className="w-70 shrink-0">
+                  <ProductCard key={item.product_id} item={item} />
                 </div>
               ))}
             </div>

@@ -3,19 +3,9 @@ export interface Customer {
   phone: string;
   email?: string;
   name: string;
-  avatarUrl?: string;
+  avatar_url?: string;
   isActive: boolean;
   isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
-}
-
-// Customer authentication profile (for store)
-export interface CustomerAuthProfile {
-  id: number | string;
-  email?: string;
-  phone: string;
-  name: string;
-  avatarUrl?: string;
-  address?: string;
 }

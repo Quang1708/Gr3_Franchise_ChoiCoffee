@@ -3,17 +3,30 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Modal } from "../../UI/Modal";
-import type { Franchise } from "../../../models/franchise.model";
+import type { Franchise } from "@/pages/admin/franchise/models/franchise.model";
 import { AlertTriangle } from "lucide-react";
 
-// --- Schema ---
+/* -------------------------------------------------- */
+/* SCHEMA                                             */
+/* -------------------------------------------------- */
+
 const franchiseSchema = z.object({
-  code: z.string().min(1, "Mã chi nhánh là bắt buộc").max(50, "Mã quá dài"),
+  code: z.string().min(1, "Mã chi nhánh là bắt buộc"),
   name: z.string().min(1, "Tên chi nhánh là bắt buộc"),
-  address: z.string().min(1, "Địa chỉ là bắt buộc"),
-  openedAt: z.string().min(1, "Giờ mở cửa là bắt buộc"),
-  closedAt: z.string().optional().or(z.literal("")),
-  isActive: z.boolean(),
+  address: z.string().optional(),
+  hotline: z
+    .string()
+    .min(1, "Hotline là bắt buộc")
+    .regex(/^[0-9]+$/, "Hotline chỉ được chứa số"),
+  logo_url: z.string().optional(),
+  opened_at: z
+    .string()
+    .min(1, "Giờ mở cửa là bắt buộc")
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Giờ phải theo format HH:mm"),
+  closed_at: z
+    .string()
+    .min(1, "Giờ đóng cửa là bắt buộc")
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Giờ phải theo format HH:mm"),
 });
 
 type FranchiseFormData = z.infer<typeof franchiseSchema>;
@@ -25,6 +38,10 @@ interface FranchiseFormProps {
   isLoading?: boolean;
   submitLabel: string;
 }
+
+/* -------------------------------------------------- */
+/* FORM                                               */
+/* -------------------------------------------------- */
 
 const FranchiseForm: React.FC<FranchiseFormProps> = ({
   defaultValues,
@@ -40,129 +57,98 @@ const FranchiseForm: React.FC<FranchiseFormProps> = ({
     reset,
   } = useForm<FranchiseFormData>({
     resolver: zodResolver(franchiseSchema),
-    defaultValues: {
-      ...defaultValues,
-      isActive: defaultValues?.isActive ?? true,
-    },
+    defaultValues,
   });
 
   useEffect(() => {
-    if (defaultValues) {
-      reset({
-        ...defaultValues,
-        isActive: defaultValues?.isActive ?? true,
-      });
-    }
+    if (defaultValues) reset(defaultValues);
   }, [defaultValues, reset]);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {/* Code */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Mã chi nhánh <span className="text-red-500">*</span>
-        </label>
+        <label className="block text-sm font-medium mb-1">Mã chi nhánh *</label>
         <input
           {...register("code")}
-          type="text"
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
-            ${errors.code ? "border-red-500 bg-red-50" : "border-gray-300"}
-          `}
-          placeholder="VD: FR-HCM-001"
+          className="w-full border px-3 py-2 rounded-lg"
         />
         {errors.code && (
-          <p className="text-red-500 text-xs mt-1">{errors.code.message}</p>
+          <p className="text-red-500 text-xs">{errors.code.message}</p>
         )}
       </div>
 
       {/* Name */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Tên chi nhánh <span className="text-red-500">*</span>
+        <label className="block text-sm font-medium mb-1">
+          Tên chi nhánh *
         </label>
         <input
           {...register("name")}
-          type="text"
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
-            ${errors.name ? "border-red-500 bg-red-50" : "border-gray-300"}
-          `}
-          placeholder="VD: Quận 1 - Nguyễn Huệ"
+          className="w-full border px-3 py-2 rounded-lg"
         />
         {errors.name && (
-          <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
+          <p className="text-red-500 text-xs">{errors.name.message}</p>
         )}
       </div>
 
       {/* Address */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Địa chỉ <span className="text-red-500">*</span>
-        </label>
+        <label className="block text-sm font-medium mb-1">Địa chỉ</label>
         <textarea
           {...register("address")}
-          rows={2}
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none
-            ${errors.address ? "border-red-500 bg-red-50" : "border-gray-300"}
-          `}
-          placeholder="VD: 123 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh"
+          className="w-full border px-3 py-2 rounded-lg"
         />
-        {errors.address && (
-          <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>
+      </div>
+
+      {/* Hotline */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Hotline *</label>
+        <input
+          {...register("hotline")}
+          className="w-full border px-3 py-2 rounded-lg"
+        />
+        {errors.hotline && (
+          <p className="text-red-500 text-xs">{errors.hotline.message}</p>
         )}
       </div>
 
-      {/* Hours */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Mở cửa (ISO/time) <span className="text-red-500">*</span>
-          </label>
-          <input
-            {...register("openedAt")}
-            type="text"
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
-              ${errors.openedAt ? "border-red-500 bg-red-50" : "border-gray-300"}
-            `}
-            placeholder="VD: 2023-01-15T08:00:00Z hoặc 08:00"
-          />
-          {errors.openedAt && (
-            <p className="text-red-500 text-xs mt-1">
-              {errors.openedAt.message}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Đóng cửa (ISO/time)
-          </label>
-          <input
-            {...register("closedAt")}
-            type="text"
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
-              ${errors.closedAt ? "border-red-500 bg-red-50" : "border-gray-300"}
-            `}
-            placeholder="VD: 22:00"
-          />
-          {errors.closedAt && (
-            <p className="text-red-500 text-xs mt-1">
-              {errors.closedAt.message}
-            </p>
-          )}
-        </div>
+      {/* Logo */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Logo URL</label>
+        <input
+          {...register("logo_url")}
+          className="w-full border px-3 py-2 rounded-lg"
+        />
       </div>
 
-      {/* Status */}
-      <div className="flex items-center gap-2">
-        <input
-          {...register("isActive")}
-          type="checkbox"
-          id="isActive"
-          className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-        />
-        <label htmlFor="isActive" className="text-sm text-gray-700">
-          Đang hoạt động
-        </label>
+      {/* Hours */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Giờ mở *</label>
+          <input
+            type="time"
+            {...register("opened_at")}
+            placeholder="08:00"
+            className="w-full border px-3 py-2 rounded-lg"
+          />
+          {errors.opened_at && (
+            <p className="text-red-500 text-xs">{errors.opened_at.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Giờ đóng *</label>
+          <input
+            type="time"
+            {...register("closed_at")}
+            placeholder="22:00"
+            className="w-full border px-3 py-2 rounded-lg"
+          />
+          {errors.closed_at && (
+            <p className="text-red-500 text-xs">{errors.closed_at.message}</p>
+          )}
+        </div>
       </div>
 
       {/* Actions */}
@@ -170,14 +156,15 @@ const FranchiseForm: React.FC<FranchiseFormProps> = ({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition"
+          className="px-4 py-2 border rounded-lg"
         >
           Hủy
         </button>
+
         <button
           type="submit"
           disabled={isLoading}
-          className="px-4 py-2 rounded-lg bg-primary text-white hover:opacity-90 transition disabled:opacity-60"
+          className="px-4 py-2 bg-primary text-white rounded-lg"
         >
           {submitLabel}
         </button>
@@ -186,30 +173,26 @@ const FranchiseForm: React.FC<FranchiseFormProps> = ({
   );
 };
 
-// --- Create Modal ---
+/* -------------------------------------------------- */
+/* CREATE MODAL                                       */
+/* -------------------------------------------------- */
+
 export const CreateFranchiseModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: FranchiseFormData) => void;
 }> = ({ isOpen, onClose, onSubmit }) => {
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Thêm chi nhánh"
-      description="Nhập thông tin chi nhánh mới"
-      size="md"
-    >
-      <FranchiseForm
-        submitLabel="Tạo mới"
-        onSubmit={onSubmit}
-        onCancel={onClose}
-      />
+    <Modal isOpen={isOpen} onClose={onClose} title="Thêm chi nhánh" size="md">
+      <FranchiseForm submitLabel="Tạo" onSubmit={onSubmit} onCancel={onClose} />
     </Modal>
   );
 };
 
-// --- Edit Modal ---
+/* -------------------------------------------------- */
+/* EDIT MODAL                                         */
+/* -------------------------------------------------- */
+
 export const EditFranchiseModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -223,7 +206,6 @@ export const EditFranchiseModal: React.FC<{
       isOpen={isOpen}
       onClose={onClose}
       title="Cập nhật chi nhánh"
-      description={`Chỉnh sửa: ${franchise.name}`}
       size="md"
     >
       <FranchiseForm
@@ -231,9 +213,10 @@ export const EditFranchiseModal: React.FC<{
           code: franchise.code,
           name: franchise.name,
           address: franchise.address,
-          openedAt: franchise.openedAt,
-          closedAt: franchise.closedAt ?? "",
-          isActive: franchise.isActive,
+          hotline: franchise.hotline,
+          logo_url: franchise.logo_url,
+          opened_at: franchise.opened_at,
+          closed_at: franchise.closed_at,
         }}
         submitLabel="Lưu"
         onSubmit={onSubmit}
@@ -243,7 +226,10 @@ export const EditFranchiseModal: React.FC<{
   );
 };
 
-// --- Delete Modal ---
+/* -------------------------------------------------- */
+/* DELETE MODAL                                       */
+/* -------------------------------------------------- */
+
 export const DeleteFranchiseModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -255,39 +241,27 @@ export const DeleteFranchiseModal: React.FC<{
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Xóa chi nhánh" size="sm">
       <div className="space-y-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-red-100 rounded-full">
-            <AlertTriangle className="text-red-600" size={20} />
-          </div>
+        <div className="flex gap-3">
+          <AlertTriangle className="text-red-600" />
           <div>
-            <p className="font-medium text-gray-900">
-              Bạn chắc chắn muốn xóa chi nhánh này?
-            </p>
-            <p className="text-sm text-gray-600 mt-1">
-              <span className="font-semibold">{franchise.name}</span> (
-              {franchise.code})
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Thao tác này không thể hoàn tác.
+            <p className="font-medium">Bạn chắc chắn muốn xóa?</p>
+            <p className="text-sm text-gray-600">
+              {franchise.name} ({franchise.code})
             </p>
           </div>
         </div>
 
         <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition"
-          >
+          <button onClick={onClose} className="px-4 py-2 border rounded-lg">
             Hủy
           </button>
+
           <button
-            type="button"
             onClick={() => {
               onConfirm();
               onClose();
             }}
-            className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+            className="px-4 py-2 bg-red-600 text-white rounded-lg"
           >
             Xóa
           </button>

@@ -1,19 +1,47 @@
-import { useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import {
   CRUDTable,
   type Column,
 } from "../../../components/Admin/template/CRUD.template";
-import { useFranchiseStore } from "@/stores/useFranchiseStore";
-import type { Franchise } from "@/models/franchise.model";
-const FranchisePage = () => {
-  const navigate = useNavigate();
 
-  const { items, fetchAll, loading, setSelected } = useFranchiseStore();
+import type { Franchise } from "./models/franchise.model";
+
+import { useFranchiseStore } from "./stores/useFranchiseStore";
+import { useAdminContextStore } from "@/stores/adminContext.store";
+
+import ClientLoading from "@/components/Client/Client.Loading";
+
+import {
+  CreateFranchiseModal,
+  EditFranchiseModal,
+  DeleteFranchiseModal,
+} from "@/components/Admin/franchise/FranchiseModals";
+
+const FranchisePage = () => {
+  const {
+    items,
+    loading,
+    fetchAll,
+    create,
+    update,
+    delete: deleteFranchise,
+    changeStatus,
+  } = useFranchiseStore();
+
+  const setSelectedFranchiseId = useAdminContextStore(
+    (s) => s.setSelectedFranchiseId,
+  );
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const [selected, setSelected] = useState<Franchise | null>(null);
 
   useEffect(() => {
+    setSelectedFranchiseId("ALL");
     fetchAll();
-  }, []);
+  }, [fetchAll, setSelectedFranchiseId]);
 
   const columns: Column<Franchise>[] = useMemo(
     () => [
@@ -21,50 +49,77 @@ const FranchisePage = () => {
         header: "Mã",
         accessor: "code",
         sortable: true,
-        className: "font-medium text-gray-900",
       },
       {
         header: "Chi nhánh",
         accessor: (item) => (
           <div>
             <div className="font-semibold">{item.name}</div>
+            <div className="text-xs text-gray-500">{item.address}</div>
           </div>
-        ),
-      },
-      {
-        header: "Trạng thái",
-        accessor: (item) => (
-          <span
-            className={`px-2 py-1 rounded-full text-xs font-medium ${
-              item.isActive
-                ? "bg-emerald-50 text-emerald-700"
-                : "bg-rose-50 text-rose-700"
-            }`}
-          >
-            {item.isActive ? "Hoạt động" : "Ngưng"}
-          </span>
         ),
       },
     ],
     [],
   );
 
+  if (loading) {
+    return (
+      <div className="h-[400px] flex items-center justify-center">
+        <ClientLoading />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <CRUDTable<Franchise>
-        title="Quản lý Chi nhánh (Franchise)"
+        title="Quản lý Chi nhánh"
         data={items}
         columns={columns}
-        pageSize={10}
-        loading={loading}
-        onView={(item) => {
-          setSelected(item.id);
-          navigate(`/admin/franchise/${item.id}`);
+        pageSize={5}
+        statusField="isActive"
+        onStatusChange={(item, status) => changeStatus(item.id, status)}
+        onAdd={() => setCreateOpen(true)}
+        onEdit={(item) => {
+          setSelected(item);
+          setEditOpen(true);
         }}
-        onAdd={undefined}
-        onEdit={undefined}
-        onDelete={undefined}
-        searchKeys={["name", "code"]}
+        onDelete={(item) => {
+          setSelected(item);
+          setDeleteOpen(true);
+        }}
+        searchKeys={["code", "name"]}
+      />
+
+      <CreateFranchiseModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={async (data) => {
+          await create(data);
+          setCreateOpen(false);
+        }}
+      />
+
+      <EditFranchiseModal
+        isOpen={editOpen}
+        franchise={selected}
+        onClose={() => setEditOpen(false)}
+        onSubmit={async (data) => {
+          if (!selected) return;
+          await update(selected.id, data);
+          setEditOpen(false);
+        }}
+      />
+
+      <DeleteFranchiseModal
+        isOpen={deleteOpen}
+        franchise={selected}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={async () => {
+          if (!selected) return;
+          await deleteFranchise(selected.id);
+        }}
       />
     </div>
   );

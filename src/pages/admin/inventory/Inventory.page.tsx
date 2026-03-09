@@ -3,97 +3,90 @@ import {
   CRUDTable,
   type Column,
 } from "@/components/Admin/template/CRUD.template";
-import { useInventoryStore } from "@/stores/useInventoryStore";
-import { useProductFranchiseStore } from "@/stores/useProductFranchiseStore";
-import { useAdminContextStore } from "@/stores/adminContext.store";
+
+import { useInventoryStore } from "../inventory/stores/useInventoryStore";
+
+import {
+  AdjustInventoryModal,
+  DeleteInventoryModal,
+  CreateInventoryModal,
+} from "@/components/Admin/inventory/InventoryModals";
+
+import ClientLoading from "@/components/Client/Client.Loading";
 
 type InventoryRow = {
   id: string;
   productName: string;
-  size: string;
+  franchiseName: string;
   quantity: number;
   alertThreshold: number;
-  isActive: boolean;
   lowStock: boolean;
+  isActive: boolean;
+  isDeleted: boolean;
 };
 
 const InventoryPage = () => {
-  const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
-
   const {
-    items: inventories,
-    fetchByFranchise,
-    loading: inventoryLoading,
+    items,
+    loading,
+    fetchAll,
+    adjust,
+    create,
+    delete: deleteInventory,
   } = useInventoryStore();
 
-  const {
-    items: productFranchises,
-    fetchByFranchise: fetchPF,
-    loading: productLoading,
-  } = useProductFranchiseStore();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [adjustId, setAdjustId] = useState<string | null>(null);
+  const [deleteItem, setDeleteItem] = useState<InventoryRow | null>(null);
 
   const [lowOnly, setLowOnly] = useState(false);
-
-  /* -------------------------------------------------- */
-  /* FETCH DATA                                         */
-  /* -------------------------------------------------- */
+  const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
-    if (!franchiseId) return;
+    const load = async () => {
+      setPageLoading(true);
+      await fetchAll();
+      setPageLoading(false);
+    };
 
-    fetchPF(String(franchiseId));
-    fetchByFranchise(String(franchiseId));
-  }, [franchiseId, fetchPF, fetchByFranchise]);
-
-  /* -------------------------------------------------- */
-  /* MAP INVENTORY (snake_case đúng API)                */
-  /* -------------------------------------------------- */
-
-  const inventoryMap = useMemo(() => {
-    return new Map(inventories.map((i) => [i.productFranchiseId, i]));
-  }, [inventories]);
-
-  /* -------------------------------------------------- */
-  /* VIEW MODEL                                          */
-  /* -------------------------------------------------- */
+    load();
+  }, [fetchAll]);
 
   const rows: InventoryRow[] = useMemo(() => {
-    if (!franchiseId) return [];
+    if (!Array.isArray(items)) return [];
 
-    const vm = productFranchises.map((pf) => {
-      const inv = inventoryMap.get(pf.id);
-
-      const quantity = inv?.quantity ?? 0;
-      const alertThreshold = inv?.alertThreshold ?? 0;
-      const lowStock = quantity <= alertThreshold;
+    const vm = items.map((i: any) => {
+      const quantity = i.quantity ?? 0;
+      const alertThreshold = i.alert_threshold ?? 0;
 
       return {
-        id: pf.id,
-        productName: pf.product_name,
-        size: pf.size,
+        id: i.id,
+        productName: i.product_name,
+        franchiseName: i.franchise_name,
         quantity,
         alertThreshold,
-        isActive: inv?.isActive ?? true,
-        lowStock,
+        lowStock: quantity <= alertThreshold,
+        isActive: i.is_active,
+        isDeleted: i.is_deleted,
       };
     });
 
     const filtered = lowOnly ? vm.filter((x) => x.lowStock) : vm;
 
     return filtered.sort((a, b) => a.productName.localeCompare(b.productName));
-  }, [franchiseId, productFranchises, inventoryMap, lowOnly]);
-
-  /* -------------------------------------------------- */
-  /* TABLE COLUMNS                                       */
-  /* -------------------------------------------------- */
+  }, [items, lowOnly]);
 
   const columns: Column<InventoryRow>[] = [
     {
       header: "Sản phẩm",
       accessor: (r) => (
-        <div>
+        <div
+          className={`p-2 rounded ${
+            r.lowStock ? "bg-red-50 border border-red-200" : ""
+          }`}
+        >
           <div className="font-medium">{r.productName}</div>
-          <div className="text-xs text-gray-500">Size: {r.size}</div>
+          <div className="text-xs text-gray-500">{r.franchiseName}</div>
         </div>
       ),
     },
@@ -101,9 +94,9 @@ const InventoryPage = () => {
       header: "Số lượng",
       accessor: (r) => (
         <span
-          className={
-            r.lowStock ? "text-rose-700 font-semibold" : "text-gray-900"
-          }
+          className={`font-semibold ${
+            r.lowStock ? "text-red-600" : "text-gray-800"
+          }`}
         >
           {r.quantity}
         </span>
@@ -113,53 +106,73 @@ const InventoryPage = () => {
       header: "Ngưỡng cảnh báo",
       accessor: (r) => r.alertThreshold,
     },
-    {
-      header: "Trạng thái",
-      accessor: (r) => (
-        <span
-          className={`px-2 py-1 rounded-full text-xs ${
-            r.isActive
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-rose-50 text-rose-700"
-          }`}
-        >
-          {r.isActive ? "AVAILABLE" : "OUT_OF_STOCK"}
-        </span>
-      ),
-    },
   ];
 
-  /* -------------------------------------------------- */
-  /* RENDER                                              */
-  /* -------------------------------------------------- */
-
-  if (!franchiseId) {
-    return (
-      <div className="p-6 text-gray-500">
-        Vui lòng chọn franchise để xem tồn kho.
-      </div>
-    );
-  }
+  if (pageLoading || loading) return <ClientLoading />;
 
   return (
     <div className="p-6">
       <CRUDTable
-        title="Danh sách tồn kho"
+        title="Quản lý tồn kho"
         data={rows}
         columns={columns}
-        pageSize={10}
-        loading={inventoryLoading || productLoading}
-        searchKeys={["productName"]}
-        searchRightSlot={
+        pageSize={5}
+        searchKeys={["productName", "franchiseName"]}
+        onCreate={() => setCreateOpen(true)}
+        onEdit={(row) => setAdjustId(row.id)}
+        onDelete={(row) => setDeleteItem(row)}
+        searchRight={
           <button
             onClick={() => setLowOnly((v) => !v)}
             className={`px-3 py-2 border rounded-lg text-sm ${
-              lowOnly ? "bg-rose-50 border-rose-200" : ""
+              lowOnly ? "bg-red-50 border-red-200" : ""
             }`}
           >
             {lowOnly ? "Đang lọc sản phẩm sắp hết" : "Lọc sản phẩm sắp hết"}
           </button>
         }
+      />
+
+      {/* Adjust Modal */}
+      <AdjustInventoryModal
+        isOpen={!!adjustId}
+        inventoryId={adjustId}
+        onClose={() => setAdjustId(null)}
+        onSubmit={async (data) => {
+          await adjust(data);
+          await fetchAll();
+        }}
+      />
+
+      {/* Delete Modal */}
+      <DeleteInventoryModal
+        isOpen={!!deleteItem}
+        inventory={
+          deleteItem
+            ? {
+                id: deleteItem.id,
+                ingredientName: deleteItem.productName,
+              }
+            : null
+        }
+        onClose={() => setDeleteItem(null)}
+        onConfirm={async () => {
+          if (!deleteItem) return;
+
+          await deleteInventory(deleteItem.id);
+          await fetchAll();
+          setDeleteItem(null);
+        }}
+      />
+
+      <CreateInventoryModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={async (data) => {
+          await create(data);
+          await fetchAll();
+          setCreateOpen(false);
+        }}
       />
     </div>
   );

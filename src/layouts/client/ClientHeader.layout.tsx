@@ -20,6 +20,7 @@ const ClientHeader = () => {
   // Get customer from Zustand store
   const customer = useCustomerAuthStore((state) => state.customer);
   const clearCustomer = useCustomerAuthStore((state) => state.clearCustomer);
+  const setLoggingOut = useCustomerAuthStore((state) => state.setLoggingOut);
   const isLoggedIn = !!customer;
 
   const navigate = useNavigate();
@@ -142,6 +143,9 @@ const ClientHeader = () => {
 
   const handleLogout = async () => {
     try {
+      // Set logging out flag first
+      setLoggingOut(true);
+
       await customerLogout();
 
       // Clear customer from Zustand store
@@ -155,6 +159,8 @@ const ClientHeader = () => {
       toastError(
         err?.response?.data?.message || "Đăng xuất thất bại. Vui lòng thử lại!",
       );
+      // Reset flag on error
+      setLoggingOut(false);
     }
   };
 
@@ -253,7 +259,7 @@ const ClientHeader = () => {
                   className="cursor-pointer flex items-center gap-1 sm:gap-2 p-0.5 sm:p-1 pl-1 sm:pl-2 pr-0.5 sm:pr-1 rounded-full hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all"
                 >
                   <img
-                    src={customer?.avatarUrl || "https://i.pravatar.cc/300"}
+                    src={customer?.avatar_url || "https://i.pravatar.cc/300"}
                     alt="Avatar"
                     className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-200"
                   />

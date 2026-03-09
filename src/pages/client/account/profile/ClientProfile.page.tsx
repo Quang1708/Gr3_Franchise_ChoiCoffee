@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import type { UserProfile } from "./types/profile.types";
+import type {
+  CustomerAuthProfile,
+  UpdateCustomerProfileRequest,
+} from "../model/account.model";
+import type { EditProfileFormData } from "./schema/clientProfile.schema";
 import ProfileHeader from "./components/ProfileHeader";
 import PersonalInformation from "./components/PersonalInformation";
 import SecuritySettings from "./components/SecuritySettings";
@@ -24,34 +28,32 @@ export default function ClientProfilePage() {
   const customer = useCustomerAuthStore((state) => state.customer);
   const setCustomer = useCustomerAuthStore((state) => state.setCustomer);
   const clearCustomer = useCustomerAuthStore((state) => state.clearCustomer);
-  const isInitialized = useCustomerAuthStore((state) => state.isInitialized);
+  const setLoggingOut = useCustomerAuthStore((state) => state.setLoggingOut);
 
-  const [profile, setProfile] = useState<UserProfile>({
+  const [profile, setProfile] = useState<CustomerAuthProfile>({
+    id: customer?.id || "",
     name: customer?.name || "",
     email: customer?.email || "",
     phone: customer?.phone || "",
-    avatar_url: customer?.avatarUrl || "",
+    avatar_url: customer?.avatar_url || "",
     address: customer?.address || "",
   });
 
-  // Redirect if not logged in (only after initialization)
+  // Sync profile with customer data when customer changes
   useEffect(() => {
-    if (isInitialized && !customer) {
-      toastError("Vui lòng đăng nhập để xem thông tin!");
-      navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN);
-    } else if (customer) {
-      // Sync profile with customer data
+    if (customer) {
       setProfile({
+        id: customer.id,
         name: customer.name,
         email: customer.email || "",
         phone: customer.phone,
-        avatar_url: customer.avatarUrl || "",
+        avatar_url: customer.avatar_url || "",
         address: customer.address || "",
       });
     }
-  }, [customer, isInitialized, navigate]);
+  }, [customer]);
 
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = async (data: EditProfileFormData) => {
     if (!customer?.id) {
       toastError("Không tìm thấy thông tin người dùng!");
       return;
@@ -59,13 +61,16 @@ export default function ClientProfilePage() {
 
     try {
       setIsLoading(true);
-      await updateCustomerProfile(String(customer.id), {
-        email: profile.email,
-        name: profile.name,
-        phone: profile.phone,
-        address: profile.address,
-        avatar_url: profile.avatar_url,
-      });
+
+      const updateData: UpdateCustomerProfileRequest = {
+        email: profile.email || "",
+        name: data.name,
+        phone: data.phone,
+        address: data.address || "",
+        avatar_url: profile.avatar_url || "",
+      };
+
+      await updateCustomerProfile(String(customer.id), updateData);
 
       // Update Zustand store with new info
       const updatedInfo = await getCustomerProfile();
@@ -74,7 +79,7 @@ export default function ClientProfilePage() {
         email: updatedInfo.email,
         phone: updatedInfo.phone,
         name: updatedInfo.name,
-        avatarUrl: updatedInfo.avatar_url,
+        avatar_url: updatedInfo.avatar_url,
         address: updatedInfo.address,
       });
 
@@ -90,8 +95,44 @@ export default function ClientProfilePage() {
     }
   };
 
-  const handleUpdateProfile = (updates: Partial<UserProfile>) => {
-    setProfile({ ...profile, ...updates });
+  const handleAvatarUpdate = async (avatarUrl: string) => {
+    if (!customer?.id) {
+      toastError("Không tìm thấy thông tin người dùng!");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const updateData: UpdateCustomerProfileRequest = {
+        email: profile.email || "",
+        name: profile.name,
+        phone: profile.phone,
+        address: profile.address || "",
+        avatar_url: avatarUrl,
+      };
+
+      await updateCustomerProfile(String(customer.id), updateData);
+
+      // Update Zustand store with new avatar
+      const updatedInfo = await getCustomerProfile();
+      setCustomer({
+        id: updatedInfo.id,
+        email: updatedInfo.email,
+        phone: updatedInfo.phone,
+        name: updatedInfo.name,
+        avatar_url: updatedInfo.avatar_url,
+        address: updatedInfo.address,
+      });
+
+      toastSuccess("Cập nhật ảnh đại diện thành công!");
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      toastError(err?.message || "Không thể cập nhật ảnh. Vui lòng thử lại!");
+      throw error; // Re-throw to handle in ProfileHeader
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChangePassword = () => {
@@ -100,6 +141,9 @@ export default function ClientProfilePage() {
 
   const handleLogout = async () => {
     try {
+      // Set logging out flag first
+      setLoggingOut(true);
+
       await customerLogout();
 
       // Clear customer from Zustand store
@@ -114,33 +158,26 @@ export default function ClientProfilePage() {
       toastError(
         err?.response?.data?.message || "Đăng xuất thất bại. Vui lòng thử lại!",
       );
+      // Reset flag on error
+      setLoggingOut(false);
     }
   };
 
-  // Show loading while checking authentication
-  if (!isInitialized || isLoading) {
+  if (isLoading) {
     return <ClientLoading />;
-  }
-
-  if (!customer) {
-    return null;
   }
 
   return (
     <div className="min-h-screen bg-background-light dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        <ProfileHeader
+        <ProfileHeader profile={profile} onAvatarUpdate={handleAvatarUpdate} />
+
+        <PersonalInformation
           profile={profile}
           isEditing={isEditing}
           onEdit={() => setIsEditing(true)}
           onSave={handleSaveProfile}
           onCancel={() => setIsEditing(false)}
-        />
-
-        <PersonalInformation
-          profile={profile}
-          isEditing={isEditing}
-          onUpdate={handleUpdateProfile}
         />
 
         <SecuritySettings

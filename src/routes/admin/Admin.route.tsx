@@ -1,13 +1,10 @@
-import React, { Suspense } from "react";
+import React from "react";
 import { Route } from "react-router-dom";
-
 import AdminLayout from "../../layouts/admin/Admin.layout";
 import AdminGuard from "../guard/AdminGuard.route";
 import RequirePermission from "../guard/RequirePermission.route";
 import ROUTER_URL from "../router.const";
 import { PERM } from "@/auth/rbac.permissions";
-
-const LoadingScreen = React.lazy(() => import("../../app/LoadingScreen"));
 
 /* ==================== PAGES ==================== */
 const DashboardPage = React.lazy(() => import("../../pages/admin/dashboard"));
@@ -37,25 +34,9 @@ const ProfilePage = React.lazy(() => import("../../pages/admin/profile"));
 
 const AdminRoutes = (
   <>
-    {/* ================= LOADING (NO GUARD) ================= */}
-    <Route
-      path={ROUTER_URL.ADMIN_ROUTER.LOADING_SCREEN}
-      element={
-        <Suspense fallback={<LoadingScreen />}>
-          <LoadingScreen />
-        </Suspense>
-      }
-    />
-
     {/* ================= ADMIN (GUARDED) ================= */}
     <Route path={ROUTER_URL.ADMIN} element={<AdminGuard />}>
-      <Route
-        element={
-          <Suspense fallback={<LoadingScreen />}>
-            <AdminLayout />
-          </Suspense>
-        }
-      >
+      <Route element={<AdminLayout />}>
         {/* DEFAULT */}
         <Route index element={<DashboardPage />} />
         <Route path="dashboard" element={<DashboardPage />} />

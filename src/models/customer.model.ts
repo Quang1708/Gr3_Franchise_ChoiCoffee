@@ -1,21 +1,13 @@
 export interface Customer {
-  id: number;
-  phone: string;
-  email?: string;
+  id: string;
+  is_active: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+  email: string;
   name: string;
-  avatarUrl?: string;
-  isActive: boolean;
-  isDeleted: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Customer authentication profile (for store)
-export interface CustomerAuthProfile {
-  id: number | string;
-  email?: string;
   phone: string;
-  name: string;
-  avatarUrl?: string;
-  address?: string;
+  avatar_url: string;
+  address: string;
+  is_verified: boolean;
 }

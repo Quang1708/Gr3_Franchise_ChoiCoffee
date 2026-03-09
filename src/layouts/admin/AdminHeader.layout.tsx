@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Store, ChevronDown } from "lucide-react";
@@ -5,6 +6,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import { getAccessibleFranchises } from "@/auth/rbac";
 import ROUTER_URL from "@/routes/router.const";
+import { franchiseService } from "@/services/franchise.service";
 
 const initials = (name?: string) => {
   const s = (name ?? "").trim();
@@ -17,34 +19,51 @@ const initials = (name?: string) => {
 
 const AdminHeader = () => {
   const navigate = useNavigate();
+
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
+  const franchisesFromStore = useAdminContextStore((s) => s.franchises);
+  const setFranchises = useAdminContextStore((s) => s.setFranchises);
   const selectedFranchiseId = useAdminContextStore(
     (s) => s.selectedFranchiseId,
   );
   const setSelectedFranchiseId = useAdminContextStore(
     (s) => s.setSelectedFranchiseId,
   );
-
-  const franchises = useMemo(() => getAccessibleFranchises(user), [user]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isAdmin = user?.roles?.some((r: any) => r.role === "ADMIN");
 
   useEffect(() => {
-    if (!franchises.length) return;
+    if (!isAdmin) return;
 
-    const defaultId = user?.active_context?.franchise_id ?? franchises[0].id;
+    const load = async () => {
+      const data = await franchiseService.getAllSelect();
 
-    const ok = franchises.some((f) => f.id === defaultId);
+      const mapped = data.map((f) => ({
+        id: f.value,
+        code: f.code,
+        name: f.name,
+      }));
 
-    if (!ok) {
-      setSelectedFranchiseId(franchises[0].id);
-    } else {
-      setSelectedFranchiseId(defaultId);
-    }
-  }, [franchises, user, setSelectedFranchiseId]);
+      setFranchises([
+        {
+          id: "ALL",
+          code: "ALL",
+          name: "Tất cả chi nhánh",
+        },
+        ...mapped,
+      ]);
+    };
+
+    load();
+  }, [isAdmin, setFranchises]);
+
+  const franchises = useMemo(() => {
+    return getAccessibleFranchises(user, franchisesFromStore);
+  }, [user, franchisesFromStore]);
 
   const [open, setOpen] = useState(false);
-
   return (
     <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-40">
       <div className="h-full px-4 flex items-center justify-between gap-3">

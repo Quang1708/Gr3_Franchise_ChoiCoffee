@@ -10,10 +10,12 @@ import {
   deleteUser,
   getUsers,
   updateUser,
+  updateUserRole,
   type UserListItem,
 } from "../../../services/user.service";
 import ClientLoading from "@/components/Client/Client.Loading";
 import { Modal } from "@/components/UI/Modal";
+import { ImageUpload } from "@/components/ImageUpload/ImageUpload";
 import {
   CRUDTable,
   type Column,
@@ -142,12 +144,12 @@ const UserPage = () => {
     e.preventDefault();
 
     if (editingUser) {
+      const prevRoleCode = editingUser.roleCode;
       const result = await updateUser(editingUser.id, {
         email: formData.email,
         name: formData.name,
         phone: formData.phone,
-        roleCode: formData.roleCode,
-        avatarUrl: formData.avatarUrl,
+        avatar_url: formData.avatarUrl,
         ...(formData.password ? { password: formData.password } : {}),
       });
 
@@ -156,8 +158,23 @@ const UserPage = () => {
         return;
       }
 
+      let updatedUser = result.user;
+
+      if (formData.roleCode !== prevRoleCode) {
+        const roleResult = await updateUserRole(
+          String(editingUser.id),
+          formData.roleCode,
+        );
+
+        if (roleResult.ok) {
+          updatedUser = { ...updatedUser, roleCode: formData.roleCode };
+        } else {
+          toastError(roleResult.message);
+        }
+      }
+
       setUsers((prev) =>
-        prev.map((user) => (user.id === editingUser.id ? result.user : user)),
+        prev.map((user) => (user.id === editingUser.id ? updatedUser : user)),
       );
       toastSuccess("Cập nhật user thành công");
     } else {
@@ -459,21 +476,17 @@ const UserPage = () => {
           </div>
 
           <div>
-            <label
-              htmlFor="user-avatar"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Avatar URL
-            </label>
-            <input
-              id="user-avatar"
-              type="url"
-              value={formData.avatarUrl}
-              onChange={(e) =>
-                setFormData({ ...formData, avatarUrl: e.target.value })
+            <div className="block text-sm font-medium text-gray-700 mb-2">
+              Avatar
+            </div>
+
+            <ImageUpload
+              folder="users"
+              multiple={false}
+              maxFiles={1}
+              onUploadSuccess={(imageUrl) =>
+                setFormData((prev) => ({ ...prev, avatarUrl: imageUrl }))
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-              placeholder="https://example.com/avatar.jpg"
             />
           </div>
 

@@ -1,37 +1,56 @@
-import type { Category } from "@/models/category.model";
 import ClientMenuRender from "./ClientMenuRender";
-import { CATEGORY_SEED_DATA } from "@/mocks/category.seed";
-import type { CategoryFranchise } from "@/models/category_franchise.model";
-import { CATEGORY_FRANCHISE_SEED_DATA } from "@/mocks/category_franchise.seed";
 import { useEffect, useState } from "react";
 import ClientLoading from "../Client.Loading";
+import { getCategoryFranchise } from "./services/category.service";
+import type { CategoryFranchise } from "./models/category.model";
 
 interface ProductMenuProps {
-    activeCategory: number;
-    setActiveCategory: (category: number) => void;
+    activeCategory: string;
+    setActiveCategory: (
+    categoryId: string,
+    name?: string,
+    description?: string) => void;
 }
 
 const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [franchise, setFranchise] = useState<string>(() => {
-        return localStorage.getItem("selectedFranchise") || "1";
+    const [franchiseId, setFranchiseId] = useState<string>(() => {
+        return localStorage.getItem("selectedFranchise") ?? "";
     });
-    const categoriesFranchise:CategoryFranchise[] =  CATEGORY_FRANCHISE_SEED_DATA;
-    const filteredCategories = categoriesFranchise.filter(category => 
-        category.franchiseId === Number(franchise)
+    const [categoryFranchise, setCategoryFranchise] = useState<CategoryFranchise[]>([]);
+
+    const mappedCategories = categoryFranchise.filter(
+        category => category.franchise_id === franchiseId
     );
-    const category:Category[] = CATEGORY_SEED_DATA;
-    const mappedCategories = filteredCategories.map(catFranchise => {
-        return category.find(cat => cat.id === catFranchise.categoryId);
-    }).filter((cat): cat is Category => cat !== undefined);   
-     
-    const handleCategorySelect = (categoryId: number) => {
-        setIsLoading(true);
-        setTimeout(() => {
-            setActiveCategory(categoryId);
-            setIsLoading(false);
-        }, 400);
+
+    const handleCategorySelect = (category: CategoryFranchise) => {
+        setActiveCategory(
+            category.category_id,
+            category.category_name,
+            category.category_name
+        );
     };
+
+    useEffect(() => {
+        const fetchCategory = async () => {
+            setIsLoading(true);
+            try{
+                const response = await getCategoryFranchise(franchiseId);
+                
+                if(response) {
+                    setCategoryFranchise(response);
+                    setIsLoading(false);
+                    setActiveCategory(response[0].category_id, response[0].category_name);
+                }
+            }catch(error) {
+                console.error("Error fetching category franchise:", error);
+                setIsLoading(false);
+            }finally {
+                setIsLoading(false);
+            }
+        }
+        fetchCategory();
+    }, [franchiseId]);
 
     useEffect(() => {
         const handleFranchiseChange = (event: Event) => {
@@ -39,27 +58,31 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
             const newFranchiseId = customEvent.detail.franchiseId.toString();
             
             setIsLoading(true);
-            setTimeout(() => {
-                setFranchise(newFranchiseId);
-                setIsLoading(false);
-            }, 500);
+            localStorage.setItem("selectedFranchise", newFranchiseId);
+            setFranchiseId(newFranchiseId);
         };
 
         window.addEventListener("franchiseChanged", handleFranchiseChange);
-
         return () => {
             window.removeEventListener("franchiseChanged", handleFranchiseChange);
         };
     }, []);
 
     useEffect(() => {
-        if(!mappedCategories.find(cat => cat.id === activeCategory)) {
-            if(mappedCategories.length > 0) {
-                setActiveCategory(mappedCategories[0].id);
-            }
+         if(
+            mappedCategories.length > 0 &&
+            !mappedCategories.some(cat => cat.category_id === activeCategory)
+        ){
+            setActiveCategory(mappedCategories[0].category_id);
         }
-    }, [franchise, mappedCategories, activeCategory, setActiveCategory]);
-    
+    }, [franchiseId, activeCategory]);
+
+    useEffect(() => {
+    if (mappedCategories.length > 0 && !activeCategory) {
+        setActiveCategory(mappedCategories[0].category_id);
+    }
+}, [mappedCategories, activeCategory, setActiveCategory]);
+
     if (isLoading) {
         return <ClientLoading />;
     }
@@ -71,10 +94,10 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
             <div className="flex flex-col gap-4">
                 {mappedCategories.map((category) => (
                     <ClientMenuRender 
-                        key={category.id} 
+                        key={category.category_id} 
                         item={category} 
                         activeCategory={activeCategory}
-                        setActiveCategory={handleCategorySelect}
+                        setActiveCategory={() => handleCategorySelect(category)}
                     />
                 ))}
             </div>

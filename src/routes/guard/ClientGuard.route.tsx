@@ -1,17 +1,22 @@
 import React from "react";
 import { Outlet, Navigate } from "react-router-dom";
 import ROUTER_URL from "../router.const";
-import { getCurrentClient } from "../../utils/localStorage.util";
-import { ROLE } from "../../models/role.model";
+import { useCustomerAuthStore } from "@/stores/customerAuth.store";
 import { toastWarning } from "../../utils/toast.util";
-
-const isClientAuthenticated = () => {
-  const user = getCurrentClient();
-  return Boolean(user && user.role === ROLE.CUSTOMER);
-};
+import ClientLoading from "@/components/Client/Client.Loading";
 
 const ClientGuard: React.FC = () => {
-  if (!isClientAuthenticated()) {
+  const customer = useCustomerAuthStore((state) => state.customer);
+  const isInitialized = useCustomerAuthStore((state) => state.isInitialized);
+
+  // Show loading while checking authentication
+  if (!isInitialized) {
+    return <ClientLoading />;
+  }
+
+  const isClientAuthenticated = Boolean(customer);
+
+  if (!isClientAuthenticated) {
     toastWarning("Vui lòng đăng nhập để tiếp tục");
     return <Navigate to={ROUTER_URL.CLIENT_ROUTER.LOGIN} />;
   }

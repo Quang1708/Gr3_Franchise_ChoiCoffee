@@ -1,52 +1,59 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ClientForgotPasswordSchema,
   type ClientForgotPasswordSchemaType,
 } from "./schema/clientForgotPassword.schema";
 import ROUTER_URL from "@/routes/router.const";
 import { toastSuccess, toastError } from "@utils/toast.util";
-import { forgotPassword } from "../services/authApi";
+import { forgotPassword } from "../services/customerAuth04.service";
+import FormInput from "@/components/Client/Form/FormInput";
 import ClientLoading from "@/components/Client/Client.Loading";
 import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
 
 const ClientForgotPasswordPage: React.FC = () => {
-  const [form, setForm] = useState<ClientForgotPasswordSchemaType>({
-    email: "",
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm<ClientForgotPasswordSchemaType>({
+    resolver: zodResolver(ClientForgotPasswordSchema),
+    mode: "onChange",
+    defaultValues: {
+      email: "",
+    },
   });
-  const [error, setError] = useState<string>("");
+
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ email: e.target.value });
-    setError("");
+  const errorMap: Record<string, string> = {
+    "Customer does not exist or is not eligible for password reset":
+      "Khách hàng không tồn tại hoặc không đủ điều kiện để đặt lại mật khẩu.",
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const result = ClientForgotPasswordSchema.safeParse(form);
-
-    if (!result.success) {
-      setError(result.error.issues[0].message);
-      return;
-    }
-
-    setError("");
+  const onSubmit = async (data: ClientForgotPasswordSchemaType) => {
     setIsLoading(true);
 
     try {
-      await forgotPassword({ email: form.email });
+      await forgotPassword({ email: data.email });
       toastSuccess("Đã gửi liên kết đặt lại mật khẩu tới email của bạn!");
-      setTimeout(() => {
-        navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN);
-      }, 2000);
+      navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toastError(
-        err?.response?.data?.message ||
-          "Không tìm thấy email này trong hệ thống!",
-      );
+      const err = error as { message?: string };
+      const errorMessage =
+        errorMap[err.message || ""] || "Đã có lỗi xảy ra. Vui lòng thử lại.";
+
+      // Set error cho email field
+      setError("email", {
+        type: "server",
+        message: errorMessage,
+      });
+
+      toastError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -129,32 +136,20 @@ const ClientForgotPasswordPage: React.FC = () => {
               </p>
             </div>
 
-            <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-slate-900 px-1">
-                  Email
-                </label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 group-focus-within:text-primary transition-colors">
-                    <span className="material-symbols-outlined text-[20px]">
-                      mail
-                    </span>
-                  </div>
-                  <input
-                    className="w-full h-14 pl-12 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-slate-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary/50 focus:border-primary focus:bg-white transition-all outline-none"
-                    placeholder="example@choicoffee.vn"
-                    type="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                  />
-                </div>
-                {error && (
-                  <span className="text-xs text-red-500 ml-1 mt-1">
-                    {error}
-                  </span>
-                )}
-              </div>
+            <form
+              className="flex flex-col gap-6"
+              onSubmit={handleSubmit(onSubmit)}
+            >
+              {/* Email Input */}
+              <FormInput
+                label="Email"
+                type="email"
+                placeholder="example@choicoffee.vn"
+                error={errors.email}
+                register={register("email")}
+                labelClassName="text-sm font-medium text-slate-900 px-1 mb-2 block"
+                inputClassName="w-full h-14 px-4 bg-gray-50 border border-gray-200 rounded-xl text-slate-900 placeholder:text-gray-400 focus:ring-2 focus:ring-primary/50 focus:border-primary focus:bg-white transition-all outline-none"
+              />
 
               {/* Submit Button */}
               <ButtonSubmit label="Gửi yêu cầu" icon="arrow_forward" />

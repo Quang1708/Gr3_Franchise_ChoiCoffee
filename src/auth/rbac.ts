@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ROLE_PERMISSIONS } from "./rbac.map";
 import type { PermissionCode } from "./rbac.permissions";
-import { FRANCHISE_SEED_DATA } from "@/mocks/franchise.seed";
+
 
 export type CmsUser = {
   id: string | number;
@@ -17,26 +18,31 @@ export type CmsUser = {
 
 const uniq = <T,>(arr: T[]) => Array.from(new Set(arr));
 
-export function getAccessibleFranchises(user: CmsUser | null) {
-  const list = FRANCHISE_SEED_DATA.filter((f) => !f.isDeleted);
+export type FranchiseOption = {
+  id: string;
+  name: string;
+  code?: string;
+};
+
+export const getAccessibleFranchises = (user: any): FranchiseOption[] => {
   if (!user?.roles?.length) return [];
 
-  const hasGlobal = user.roles.some(
-    (r) => r.scope === "GLOBAL" || r.franchise_id == null,
-  );
-  if (hasGlobal) return list;
+  const isAdmin = user.roles.some((r: any) => r.role === "ADMIN");
 
-  const allowedIds = new Set(
-    user.roles
-      .map((r) => r.franchise_id)
-      .filter((x): x is string | number =>
-        typeof x === "number" || typeof x === "string",
-      )
-      .map((x) => String(x)),
-  );
+  // 🟢 ADMIN → return tất cả franchise (từ API hoặc store)
+  if (isAdmin) {
+    return user.allFranchises ?? [];
+  }
 
-  return list.filter((f) => allowedIds.has(String(f.id)));
-}
+  // 🟡 MANAGER → chỉ return franchise trong roles
+  return user.roles
+    .filter((r: any) => r.scope === "FRANCHISE")
+    .map((r: any) => ({
+      id: r.franchise_id,
+      name: r.franchise_name ?? "Unnamed Franchise",
+      code: r.franchise_name?.split(" ").pop() ?? "",
+    }));
+};
 
 export function getEffectivePermissions(
   user: CmsUser | null,

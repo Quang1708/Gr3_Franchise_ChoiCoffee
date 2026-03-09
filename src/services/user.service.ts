@@ -16,8 +16,7 @@ export type UpdateUserPayload = {
   email: string;
   name: string;
   phone: string;
-  roleCode: string;
-  avatarUrl?: string;
+  avatar_url?: string;
   password?: string;
 };
 
@@ -204,8 +203,7 @@ export async function updateUser(
       email: payload.email,
       name: payload.name,
       phone: payload.phone,
-      role_code: payload.roleCode,
-      avatar_url: payload.avatarUrl,
+      avatar_url: payload.avatar_url,
       ...(payload.password ? { password: payload.password } : {}),
     });
 

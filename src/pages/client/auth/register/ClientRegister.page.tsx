@@ -8,7 +8,7 @@ import {
 } from "./schema/clientRegister.schema";
 import ROUTER_URL from "@/routes/router.const";
 import { toastSuccess, toastError } from "@utils/toast.util";
-import { customerRegister } from "../services/authApi";
+import { customerRegister } from "../services/customer01.service";
 import ClientLoading from "@/components/Client/Client.Loading";
 import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
 import FormInput from "@/components/Client/Form/FormInput";

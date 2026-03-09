@@ -5,6 +5,7 @@ import * as z from "zod";
 import { Modal } from "../../UI/Modal";
 import type { Product } from "../../../models/product.model";
 import { Trash2 } from "lucide-react";
+import { ImageUpload } from "@/components/ImageUpload/ImageUpload";
 
 // --- Schema ---
 const productSchema = z
@@ -77,6 +78,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -146,21 +148,26 @@ const ProductForm: React.FC<ProductFormProps> = ({
           )}
         </div>
 
-        {/* Image URL (New Field) */}
+        {/* Image Upload */}
         <div className="md:col-span-2">
-          <label
-            htmlFor="product-image"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            URL Hình ảnh
-          </label>
-          <input
-            id="product-image"
-            {...register("image")}
-            type="text"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-            placeholder="https://example.com/image.jpg"
+          <div className="block text-sm font-medium text-gray-700 mb-2">
+            Hình ảnh
+          </div>
+
+          <ImageUpload
+            folder="products"
+            multiple={false}
+            maxFiles={1}
+            onUploadSuccess={(imageUrl) =>
+              setValue("image", imageUrl, {
+                shouldDirty: true,
+                shouldTouch: true,
+                shouldValidate: true,
+              })
+            }
           />
+
+          <input type="hidden" {...register("image")} />
         </div>
       </div>
 

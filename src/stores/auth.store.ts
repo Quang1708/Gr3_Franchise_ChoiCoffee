@@ -43,7 +43,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     const user = getItemInLocalStorage<AdminLoginUserProfile>(
       LOCAL_STORAGE.ACCOUNT_CMS,
     );
-    const token = getItemInLocalStorage(LOCAL_STORAGE.CMS_TOKEN);
+    const token = getItemInLocalStorage<string>(LOCAL_STORAGE.CMS_TOKEN);
     set({ user: user ?? null, token: token ?? null, isInitialized: true });
   },
 

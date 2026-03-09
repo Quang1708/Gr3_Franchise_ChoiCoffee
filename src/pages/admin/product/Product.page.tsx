@@ -95,6 +95,10 @@ const ProductPage = () => {
 
   const handleEditSubmit = async (updatedData: Partial<Product>) => {
     if (!editingProduct) return;
+    if (editingProduct.id === 0 || editingProduct.id === "") {
+      toastError("ID sản phẩm không hợp lệ");
+      return;
+    }
 
     const result = await updateProduct(editingProduct.id, {
       SKU: updatedData.SKU,
@@ -126,6 +130,10 @@ const ProductPage = () => {
 
   const handleDeleteConfirm = async () => {
     if (!deletingProduct) return;
+    if (deletingProduct.id === 0 || deletingProduct.id === "") {
+      toastError("ID sản phẩm không hợp lệ");
+      return;
+    }
 
     const result = await deleteProduct(deletingProduct.id);
     if (!result.ok) {
@@ -138,6 +146,10 @@ const ProductPage = () => {
   };
 
   const handleStatusChange = async (item: Product, newStatus: boolean) => {
+    if (item.id === 0 || item.id === "") {
+      toastError("ID sản phẩm không hợp lệ");
+      return;
+    }
     const prevStatus = item.isActive;
     const prevUpdatedAt = item.updatedAt;
     const nextUpdatedAt = new Date().toISOString();

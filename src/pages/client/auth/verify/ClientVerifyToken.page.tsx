@@ -4,7 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ROUTER_URL from "@/routes/router.const";
 import { toastSuccess } from "@utils/toast.util";
-import { verifyToken, resendToken } from "../services/authApi";
+import { verifyToken, resendToken } from "../services";
+import type { VerifyTokenRequest, ResendTokenRequest } from "../models";
 import {
   ClientResendTokenSchema,
   type ClientResendTokenSchemaType,

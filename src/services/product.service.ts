@@ -112,8 +112,70 @@ const toSafeNumber = (value: unknown, fallback = 0): number => {
   return fallback;
 };
 
+const toSafeId = (value: unknown): ProductId => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    if (/^\d+$/.test(trimmed)) return Number(trimmed);
+    return trimmed;
+  }
+  return "";
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
+
+const buildStrictUpdatePayload = (payload: UpdateProductPayload) => {
+  const apiPayload: Record<string, unknown> = {};
+
+  if (payload.SKU !== undefined) {
+    apiPayload.SKU = toSafeString(payload.SKU).trim();
+  }
+  if (payload.name !== undefined) {
+    apiPayload.name = toSafeString(payload.name).trim();
+  }
+  if (payload.description !== undefined) {
+    apiPayload.description = toSafeString(payload.description, "").trim();
+  }
+  if (payload.content !== undefined) {
+    apiPayload.content = toSafeString(payload.content, "").trim();
+  }
+  if (payload.img !== undefined) {
+    const img = toSafeString(payload.img, "").trim();
+    apiPayload.image_url = img;
+    apiPayload.images_url = img ? [img] : [];
+  }
+  if (payload.minPrice !== undefined) apiPayload.min_price = payload.minPrice;
+  if (payload.maxPrice !== undefined) apiPayload.max_price = payload.maxPrice;
+
+  // Optional: keep current behavior for status toggle
+  if (payload.isActive !== undefined) apiPayload.is_active = payload.isActive;
+
+  return apiPayload;
+};
+
+const buildFallbackUpdatePayload = (
+  payload: UpdateProductPayload,
+  strictPayload: Record<string, unknown>,
+) => {
+  const fallback: Record<string, unknown> = { ...strictPayload };
+
+  // SKU might be expected as `sku` in some environments
+  if (payload.SKU !== undefined) {
+    delete fallback.SKU;
+    fallback.sku = payload.SKU;
+  }
+
+  // Image might be expected as `img` in some environments
+  if (payload.img !== undefined) {
+    delete fallback.image_url;
+    delete fallback.images_url;
+    fallback.img = payload.img;
+  }
+
+  return fallback;
+};
 
 function mapProductRecord(raw: unknown): ProductListItem {
   const product = raw as Record<string, unknown>;
@@ -136,7 +198,7 @@ function mapProductRecord(raw: unknown): ProductListItem {
     undefined;
 
   return {
-    id: toSafeNumber(rawId, 0),
+    id: toSafeId(rawId),
     SKU: toSafeString(rawSku),
     name: toSafeString(product.name),
     description: toSafeString(product.description, "") || undefined,
@@ -274,25 +336,15 @@ export async function updateProduct(
   payload: UpdateProductPayload,
 ): Promise<ProductMutationResult> {
   try {
-    const apiPayload: Record<string, unknown> = {};
-    if (payload.SKU !== undefined) apiPayload.sku = payload.SKU;
-    if (payload.name !== undefined) apiPayload.name = payload.name;
-    if (payload.img !== undefined) apiPayload.img = payload.img;
-    if (payload.description !== undefined) apiPayload.description = payload.description;
-    if (payload.content !== undefined) apiPayload.content = payload.content;
-    if (payload.minPrice !== undefined) apiPayload.min_price = payload.minPrice;
-    if (payload.maxPrice !== undefined) apiPayload.max_price = payload.maxPrice;
-    if (payload.isActive !== undefined) apiPayload.is_active = payload.isActive;
+    const apiPayload = buildStrictUpdatePayload(payload);
 
     let data: unknown;
     try {
       data = await productApi.update(productId, apiPayload);
     } catch (err: unknown) {
-      if (isRetryableBadRequest(err) && payload.SKU !== undefined) {
-        const altPayload = { ...apiPayload };
-        delete altPayload.sku;
-        altPayload.SKU = payload.SKU;
-        data = await productApi.update(productId, altPayload);
+      if (isRetryableBadRequest(err)) {
+        const fallbackPayload = buildFallbackUpdatePayload(payload, apiPayload);
+        data = await productApi.update(productId, fallbackPayload);
       } else {
         throw err;
       }

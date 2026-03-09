@@ -13,6 +13,7 @@ const LoadingScreen = React.lazy(() => import("../../app/LoadingScreen"));
 const DashboardPage = React.lazy(() => import("../../pages/admin/dashboard"));
 const MenuPage = React.lazy(() => import("../../pages/admin/menu"));
 const CategoryPage = React.lazy(() => import("../../pages/admin/category"));
+const CategoryFranchisePage = React.lazy(() => import("../../pages/admin/category/CategoryFranchise.page"));
 const CustomerPage = React.lazy(() => import("../../pages/admin/customer"));
 const FranchisePage = React.lazy(
   () => import("../../pages/admin/franchise/Franchise.page"),
@@ -70,6 +71,10 @@ const AdminRoutes = (
 
         <Route element={<RequirePermission perm={PERM.CATEGORY_READ} />}>
           <Route path="category" element={<CategoryPage />} />
+        </Route>
+
+        <Route element={<RequirePermission perm={PERM.CATEGORY_FRANCHISE_READ} />}>
+          <Route path="category-franchise" element={<CategoryFranchisePage />} />
         </Route>
 
         <Route element={<RequirePermission perm={PERM.CUSTOMER_READ} />}>

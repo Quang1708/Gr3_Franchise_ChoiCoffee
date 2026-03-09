@@ -40,7 +40,10 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
                 if(response) {
                     setCategoryFranchise(response);
                     setIsLoading(false);
-                    setActiveCategory(response[0].category_id, response[0].category_name);
+                    // Chỉ set category đầu tiên nếu chưa có category nào được chọn
+                    if (!activeCategory && response.length > 0) {
+                        setActiveCategory(response[0].category_id, response[0].category_name);
+                    }
                 }
             }catch(error) {
                 console.error("Error fetching category franchise:", error);
@@ -50,6 +53,7 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
             }
         }
         fetchCategory();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [franchiseId]);
 
     useEffect(() => {
@@ -71,17 +75,20 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
     useEffect(() => {
          if(
             mappedCategories.length > 0 &&
-            !mappedCategories.some(cat => cat.category_id === activeCategory)
+            !mappedCategories.some(cat => cat.category_id === activeCategory) &&
+            !activeCategory
         ){
             setActiveCategory(mappedCategories[0].category_id);
         }
-    }, [franchiseId, activeCategory]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [franchiseId]);
 
     useEffect(() => {
-    if (mappedCategories.length > 0 && !activeCategory) {
-        setActiveCategory(mappedCategories[0].category_id);
-    }
-}, [mappedCategories, activeCategory, setActiveCategory]);
+        if (mappedCategories.length > 0 && !activeCategory) {
+            setActiveCategory(mappedCategories[0].category_id);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mappedCategories.length]);
 
     if (isLoading) {
         return <ClientLoading />;

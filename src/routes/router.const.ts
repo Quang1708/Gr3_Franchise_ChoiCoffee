@@ -30,6 +30,7 @@ const ROUTER_URL = {
     ADMIN_DASHBOARD: `/admin/dashboard`,
     ADMIN_MENU: `/admin/menu`,
     ADMIN_CATEGORY: `/admin/category`,
+    ADMIN_CATEGORY_FRANCHISE: `/admin/category-franchise`,
     ADMIN_CUSTOMER: `/admin/customer`,
     ADMIN_FRANCHISE: `/admin/franchise`,
     ADMIN_INVENTORY: `/admin/inventory`,

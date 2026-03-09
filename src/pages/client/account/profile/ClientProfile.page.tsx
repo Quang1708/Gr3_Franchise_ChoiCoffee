@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import type { CustomerAuthProfile } from "../model/account.model";
+import type {
+  CustomerAuthProfile,
+  UpdateCustomerProfileRequest,
+} from "../model/account.model";
+import type { EditProfileFormData } from "./schema/clientProfile.schema";
 import ProfileHeader from "./components/ProfileHeader";
 import PersonalInformation from "./components/PersonalInformation";
 import SecuritySettings from "./components/SecuritySettings";
@@ -49,7 +53,7 @@ export default function ClientProfilePage() {
     }
   }, [customer]);
 
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = async (data: EditProfileFormData) => {
     if (!customer?.id) {
       toastError("Không tìm thấy thông tin người dùng!");
       return;
@@ -57,13 +61,16 @@ export default function ClientProfilePage() {
 
     try {
       setIsLoading(true);
-      await updateCustomerProfile(String(customer.id), {
+
+      const updateData: UpdateCustomerProfileRequest = {
         email: profile.email || "",
-        name: profile.name,
-        phone: profile.phone,
-        address: profile.address || "",
+        name: data.name,
+        phone: data.phone,
+        address: data.address || "",
         avatar_url: profile.avatar_url || "",
-      });
+      };
+
+      await updateCustomerProfile(String(customer.id), updateData);
 
       // Update Zustand store with new info
       const updatedInfo = await getCustomerProfile();
@@ -88,8 +95,44 @@ export default function ClientProfilePage() {
     }
   };
 
-  const handleUpdateProfile = (updates: Partial<CustomerAuthProfile>) => {
-    setProfile({ ...profile, ...updates });
+  const handleAvatarUpdate = async (avatarUrl: string) => {
+    if (!customer?.id) {
+      toastError("Không tìm thấy thông tin người dùng!");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const updateData: UpdateCustomerProfileRequest = {
+        email: profile.email || "",
+        name: profile.name,
+        phone: profile.phone,
+        address: profile.address || "",
+        avatar_url: avatarUrl,
+      };
+
+      await updateCustomerProfile(String(customer.id), updateData);
+
+      // Update Zustand store with new avatar
+      const updatedInfo = await getCustomerProfile();
+      setCustomer({
+        id: updatedInfo.id,
+        email: updatedInfo.email,
+        phone: updatedInfo.phone,
+        name: updatedInfo.name,
+        avatar_url: updatedInfo.avatar_url,
+        address: updatedInfo.address,
+      });
+
+      toastSuccess("Cập nhật ảnh đại diện thành công!");
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      toastError(err?.message || "Không thể cập nhật ảnh. Vui lòng thử lại!");
+      throw error; // Re-throw to handle in ProfileHeader
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChangePassword = () => {
@@ -127,7 +170,7 @@ export default function ClientProfilePage() {
   return (
     <div className="min-h-screen bg-background-light dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        <ProfileHeader profile={profile} />
+        <ProfileHeader profile={profile} onAvatarUpdate={handleAvatarUpdate} />
 
         <PersonalInformation
           profile={profile}
@@ -135,7 +178,6 @@ export default function ClientProfilePage() {
           onEdit={() => setIsEditing(true)}
           onSave={handleSaveProfile}
           onCancel={() => setIsEditing(false)}
-          onUpdate={handleUpdateProfile}
         />
 
         <SecuritySettings

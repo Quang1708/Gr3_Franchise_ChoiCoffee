@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -7,17 +7,55 @@ import type { Product } from "../../../models/product.model";
 import { Trash2 } from "lucide-react";
 
 // --- Schema ---
-const productSchema = z.object({
-  name: z.string().min(1, "Tên sản phẩm là bắt buộc"),
-  SKU: z.string().min(1, "SKU là bắt buộc"),
-  image: z.string().optional(),
-  minPrice: z.number({ message: "Giá phải là số" }).min(0, "Giá không được âm"),
-  maxPrice: z.number({ message: "Giá phải là số" }).min(0, "Giá không được âm"),
-  description: z.string().optional(),
-  content: z.string().optional(),
-});
+const productSchema = z
+  .object({
+    name: z.string().min(1, "Tên sản phẩm là bắt buộc"),
+    SKU: z.string().min(1, "SKU là bắt buộc"),
+    image: z.string().optional(),
+    minPrice: z
+      .number({ message: "Giá phải là số" })
+      .min(0, "Giá không được âm"),
+    maxPrice: z
+      .number({ message: "Giá phải là số" })
+      .min(0, "Giá không được âm"),
+    description: z.string().optional(),
+    content: z.string().optional(),
+  })
+  .refine((v) => v.maxPrice >= v.minPrice, {
+    path: ["maxPrice"],
+    message: "Giá tối đa phải lớn hơn hoặc bằng giá tối thiểu",
+  });
 
 type ProductFormData = z.input<typeof productSchema>;
+
+const toProductPartial = (data: ProductFormData): Partial<Product> => ({
+  name: data.name,
+  SKU: data.SKU,
+  img: data.image,
+  minPrice: data.minPrice,
+  maxPrice: data.maxPrice,
+  description: data.description,
+  content: data.content,
+});
+
+const submitProductForm = async (
+  data: ProductFormData,
+  opts: {
+    setIsLoading: (value: boolean) => void;
+    onSubmit: (data: Partial<Product>) => Promise<void> | void;
+    onClose: () => void;
+  },
+) => {
+  opts.setIsLoading(true);
+  try {
+    await opts.onSubmit(toProductPartial(data));
+    opts.onClose();
+  } catch {
+    // handled by caller (toast), keep modal open
+  } finally {
+    opts.setIsLoading(false);
+  }
+};
 
 interface ProductFormProps {
   defaultValues?: Partial<ProductFormData>;
@@ -66,10 +104,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Name */}
         <div className="md:col-span-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="product-name"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Tên sản phẩm <span className="text-red-500">*</span>
           </label>
           <input
+            id="product-name"
             {...register("name")}
             type="text"
             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
@@ -84,10 +126,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
         {/* SKU */}
         <div className="md:col-span-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="product-sku"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Mã SKU <span className="text-red-500">*</span>
           </label>
           <input
+            id="product-sku"
             {...register("SKU")}
             type="text"
             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
@@ -102,10 +148,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
         {/* Image URL (New Field) */}
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="product-image"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             URL Hình ảnh
           </label>
           <input
+            id="product-image"
             {...register("image")}
             type="text"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
@@ -118,10 +168,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Min Price */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="product-min-price"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Giá tối thiểu (VNĐ) <span className="text-red-500">*</span>
           </label>
           <input
+            id="product-min-price"
             {...register("minPrice", { valueAsNumber: true })}
             type="number"
             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
@@ -138,10 +192,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
         {/* Max Price */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="product-max-price"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Giá tối đa (VNĐ) <span className="text-red-500">*</span>
           </label>
           <input
+            id="product-max-price"
             {...register("maxPrice", { valueAsNumber: true })}
             type="number"
             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
@@ -159,10 +217,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="product-description"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Mô tả ngắn
         </label>
         <textarea
+          id="product-description"
           {...register("description")}
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none"
@@ -172,10 +234,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
       {/* Content */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="product-content"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Nội dung chi tiết
         </label>
         <textarea
+          id="product-content"
           {...register("content")}
           rows={5}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none"
@@ -216,7 +282,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
 interface CreateProductModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Partial<Product>) => void;
+  onSubmit: (data: Partial<Product>) => Promise<void> | void;
 }
 
 export const CreateProductModal: React.FC<CreateProductModalProps> = ({
@@ -224,12 +290,10 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
   onClose,
   onSubmit,
 }) => {
-  const handleSubmit = (data: ProductFormData) => {
-    // Transform formatting if needed
-    console.log("Creating Product:", data);
-    onSubmit(data as unknown as Partial<Product>);
-    onClose();
-  };
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = (data: ProductFormData) =>
+    submitProductForm(data, { setIsLoading, onSubmit, onClose });
 
   return (
     <Modal
@@ -241,6 +305,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
       <ProductForm
         onSubmit={handleSubmit}
         onCancel={onClose}
+        isLoading={isLoading}
         submitLabel="Thêm mới"
       />
     </Modal>
@@ -251,7 +316,7 @@ interface EditProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: Product | null;
-  onSubmit: (data: Partial<Product>) => void;
+  onSubmit: (data: Partial<Product>) => Promise<void> | void;
 }
 
 export const EditProductModal: React.FC<EditProductModalProps> = ({
@@ -260,13 +325,11 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   product,
   onSubmit,
 }) => {
+  const [isLoading, setIsLoading] = useState(false);
   if (!product) return null;
 
-  const handleSubmit = (data: ProductFormData) => {
-    console.log("Updating Product:", data);
-    onSubmit(data as unknown as Partial<Product>);
-    onClose();
-  };
+  const handleSubmit = (data: ProductFormData) =>
+    submitProductForm(data, { setIsLoading, onSubmit, onClose });
 
   // Map product to form data
   const defaultValues: Partial<ProductFormData> = {
@@ -290,6 +353,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
         defaultValues={defaultValues}
         onSubmit={handleSubmit}
         onCancel={onClose}
+        isLoading={isLoading}
         submitLabel="Lưu thay đổi"
       />
     </Modal>

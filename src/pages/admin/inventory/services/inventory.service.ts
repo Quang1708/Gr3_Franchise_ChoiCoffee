@@ -15,9 +15,9 @@ export const inventoryService = {
     axiosAdminClient.delete(`/api/inventories/${id}`),
 
   restore: (id: string) =>
-    axiosAdminClient.patch("/api/inventories/restore", { id }),
+    axiosAdminClient.patch(`/api/inventories/${id}/restore`),
 
-  adjust: (data: any) =>
+  adjust: (data: any) =>  
     axiosAdminClient.post("/api/inventories/adjust", data),
 
   getLowStock: (franchiseId: string) =>

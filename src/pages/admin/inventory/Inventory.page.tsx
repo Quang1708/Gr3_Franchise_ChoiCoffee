@@ -21,7 +21,6 @@ type InventoryRow = {
   quantity: number;
   alertThreshold: number;
   lowStock: boolean;
-  isActive: boolean;
   isDeleted: boolean;
 };
 
@@ -33,10 +32,11 @@ const InventoryPage = () => {
     adjust,
     create,
     delete: deleteInventory,
+    restore,
   } = useInventoryStore();
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [adjustId, setAdjustId] = useState<string | null>(null);
+  const [adjustItem, setAdjustItem] = useState<any | null>(null);
   const [deleteItem, setDeleteItem] = useState<InventoryRow | null>(null);
 
   const [lowOnly, setLowOnly] = useState(false);
@@ -52,29 +52,35 @@ const InventoryPage = () => {
     load();
   }, [fetchAll]);
 
+  /**
+   * VIEW MODEL
+   */
+
   const rows: InventoryRow[] = useMemo(() => {
-    if (!Array.isArray(items)) return [];
+    const vm =
+      items?.map((i: any) => {
+        const quantity = i.quantity ?? 0;
+        const alert = i.alert_threshold ?? 0;
 
-    const vm = items.map((i: any) => {
-      const quantity = i.quantity ?? 0;
-      const alertThreshold = i.alert_threshold ?? 0;
-
-      return {
-        id: i.id,
-        productName: i.product_name,
-        franchiseName: i.franchise_name,
-        quantity,
-        alertThreshold,
-        lowStock: quantity <= alertThreshold,
-        isActive: i.is_active,
-        isDeleted: i.is_deleted,
-      };
-    });
+        return {
+          id: i.id,
+          productName: i.product_name,
+          franchiseName: i.franchise_name,
+          quantity,
+          alertThreshold: alert,
+          lowStock: quantity <= alert,
+          isDeleted: i.is_deleted,
+        };
+      }) ?? [];
 
     const filtered = lowOnly ? vm.filter((x) => x.lowStock) : vm;
 
     return filtered.sort((a, b) => a.productName.localeCompare(b.productName));
   }, [items, lowOnly]);
+
+  /**
+   * COLUMNS
+   */
 
   const columns: Column<InventoryRow>[] = [
     {
@@ -83,13 +89,29 @@ const InventoryPage = () => {
         <div
           className={`p-2 rounded ${
             r.lowStock ? "bg-red-50 border border-red-200" : ""
-          }`}
+          } ${r.isDeleted ? "opacity-40 line-through" : ""}`}
         >
-          <div className="font-medium">{r.productName}</div>
+          <div className="font-medium flex items-center gap-2">
+            {r.productName}
+
+            {r.isDeleted && (
+              <span className="text-xs bg-gray-200 px-2 py-0.5 rounded">
+                Deleted
+              </span>
+            )}
+
+            {r.lowStock && !r.isDeleted && (
+              <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded">
+                Low
+              </span>
+            )}
+          </div>
+
           <div className="text-xs text-gray-500">{r.franchiseName}</div>
         </div>
       ),
     },
+
     {
       header: "Số lượng",
       accessor: (r) => (
@@ -102,6 +124,7 @@ const InventoryPage = () => {
         </span>
       ),
     },
+
     {
       header: "Ngưỡng cảnh báo",
       accessor: (r) => r.alertThreshold,
@@ -118,33 +141,63 @@ const InventoryPage = () => {
         columns={columns}
         pageSize={5}
         searchKeys={["productName", "franchiseName"]}
-        onCreate={() => setCreateOpen(true)}
-        onEdit={(row) => setAdjustId(row.id)}
-        onDelete={(row) => setDeleteItem(row)}
+        /**
+         * EDIT ICON
+         */
+
+        onEdit={(row) => {
+          const inventory = items.find((i: any) => i.id === row.id);
+          setAdjustItem(inventory);
+        }}
+        /**
+         * DELETE ICON
+         */
+
+        onDelete={async (row) => {
+          if (row.isDeleted) {
+            await restore(row.id);
+            await fetchAll();
+            return;
+          }
+
+          setDeleteItem(row);
+        }}
+        /**
+         * HEADER ACTIONS
+         */
+
         searchRight={
-          <button
-            onClick={() => setLowOnly((v) => !v)}
-            className={`px-3 py-2 border rounded-lg text-sm ${
-              lowOnly ? "bg-red-50 border-red-200" : ""
-            }`}
-          >
-            {lowOnly ? "Đang lọc sản phẩm sắp hết" : "Lọc sản phẩm sắp hết"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="px-3 py-2 bg-primary text-white rounded-lg text-sm"
+            >
+              + Tạo tồn kho
+            </button>
+
+            <button
+              onClick={() => setLowOnly((v) => !v)}
+              className={`px-3 py-2 border rounded-lg text-sm ${
+                lowOnly ? "bg-red-50 border-red-200" : ""
+              }`}
+            >
+              {lowOnly ? "Đang lọc sắp hết" : "Lọc sắp hết"}
+            </button>
+          </div>
         }
       />
 
-      {/* Adjust Modal */}
       <AdjustInventoryModal
-        isOpen={!!adjustId}
-        inventoryId={adjustId}
-        onClose={() => setAdjustId(null)}
+        isOpen={!!adjustItem}
+        inventory={adjustItem}
+        onClose={() => setAdjustItem(null)}
         onSubmit={async (data) => {
           await adjust(data);
           await fetchAll();
+          setAdjustItem(null);
         }}
       />
 
-      {/* Delete Modal */}
       <DeleteInventoryModal
         isOpen={!!deleteItem}
         inventory={

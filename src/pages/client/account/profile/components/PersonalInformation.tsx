@@ -31,7 +31,7 @@ export default function PersonalInformation({
     },
   });
 
-  // Reset form when profile changes or when switching to edit mode
+  // Reset form
   useEffect(() => {
     reset({
       name: profile.name,

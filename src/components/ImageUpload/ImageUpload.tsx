@@ -10,10 +10,6 @@ interface ImageUploadProps {
   acceptedFormats?: string[];
 }
 
-/**
- * Component mẫu để upload ảnh lên Cloudinary
- * Sử dụng component này làm tham khảo để tích hợp vào form của bạn
- */
 export const ImageUpload: React.FC<ImageUploadProps> = ({
   onUploadSuccess,
   folder = "uploads",

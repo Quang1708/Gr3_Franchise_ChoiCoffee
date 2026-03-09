@@ -129,7 +129,7 @@ export default function ClientProfilePage() {
     } catch (error: unknown) {
       const err = error as { message?: string };
       toastError(err?.message || "Không thể cập nhật ảnh. Vui lòng thử lại!");
-      throw error; // Re-throw to handle in ProfileHeader
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -141,24 +141,20 @@ export default function ClientProfilePage() {
 
   const handleLogout = async () => {
     try {
-      // Set logging out flag first
       setLoggingOut(true);
 
       await customerLogout();
 
-      // Clear customer from Zustand store
       clearCustomer();
 
       toastSuccess("Đăng xuất thành công!");
 
-      // Navigate to home page
       navigate(ROUTER_URL.HOME);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toastError(
         err?.response?.data?.message || "Đăng xuất thất bại. Vui lòng thử lại!",
       );
-      // Reset flag on error
       setLoggingOut(false);
     }
   };

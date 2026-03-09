@@ -4,8 +4,8 @@ export interface Customer {
   email?: string;
   name: string;
   avatar_url?: string;
-  isActive: boolean;
-  isDeleted: boolean;
-  createdAt: string;
-  updatedAt: string;
+  is_active: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
 }

@@ -25,7 +25,7 @@ export default function ProfileHeader({
     ];
     if (!acceptedFormats.includes(file.type)) {
       alert("Vui lòng chỉ chọn file ảnh (JPG, PNG, WebP, GIF)");
-      e.target.value = ""; // Reset input
+      e.target.value = "";
       return;
     }
 
@@ -36,12 +36,11 @@ export default function ProfileHeader({
         tags: ["avatar", "customer"],
       });
 
-      // Save uploaded URL for preview and later confirmation
       setUploadedUrl(response.secure_url);
     } catch (err) {
       console.error("Upload failed:", err);
     } finally {
-      e.target.value = ""; // Reset input to allow selecting the same file again
+      e.target.value = "";
     }
   };
 
@@ -50,10 +49,8 @@ export default function ProfileHeader({
 
     try {
       setIsConfirming(true);
-      // Update avatar in backend
       await onAvatarUpdate(uploadedUrl);
 
-      // Close modal and reset
       setIsModalOpen(false);
       setUploadedUrl(null);
     } catch (err) {

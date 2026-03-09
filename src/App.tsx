@@ -30,7 +30,7 @@ function App() {
           email: customerProfile.email,
           phone: customerProfile.phone,
           name: customerProfile.name,
-          avatarUrl: customerProfile.avatar_url,
+          avatar_url: customerProfile.avatar_url,
           address: customerProfile.address,
         });
       } catch (error) {

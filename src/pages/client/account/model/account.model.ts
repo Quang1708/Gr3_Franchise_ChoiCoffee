@@ -41,3 +41,15 @@ export interface CustomerProfileResponse {
   success: boolean;
   data: CustomerProfile;
 }
+
+/**
+ * Customer Authentication Profile (simplified for auth and UI)
+ */
+export interface CustomerAuthProfile {
+  id: number | string;
+  email?: string;
+  phone: string;
+  name: string;
+  avatar_url?: string;
+  address?: string;
+}

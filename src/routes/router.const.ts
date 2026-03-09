@@ -45,7 +45,6 @@ const ROUTER_URL = {
     FORGOT_PASSWORD: `/admin/forgot-password`,
     RESET_PASSWORD: `/admin/reset-password`,
     VERIFY_TOKEN: "/admin/verify",
-    LOADING_SCREEN: "/admin/loading",
   },
 };
 

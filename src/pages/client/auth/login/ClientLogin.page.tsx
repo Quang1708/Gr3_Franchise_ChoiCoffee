@@ -61,7 +61,7 @@ const ClientLoginPage: React.FC = () => {
             email: customerInfo.email,
             phone: customerInfo.phone,
             name: customerInfo.name,
-            avatarUrl: customerInfo.avatar_url,
+            avatar_url: customerInfo.avatar_url,
             address: customerInfo.address,
           });
         } catch (error) {

@@ -1,6 +1,6 @@
 export type { Role } from "./role.model";
 export type { User } from "./user.model";
-export type { Customer, CustomerAuthProfile } from "./customer.model";
+export type { Customer } from "./customer.model";
 export * from "./api.model";
 export type {
   CloudinaryUploadResponse,
@@ -9,6 +9,7 @@ export type {
 } from "./cloudinary.model";
 export type {
   CustomerProfile,
+  CustomerAuthProfile,
   UpdateCustomerProfileRequest,
   ChangePasswordRequest,
   CustomerProfileResponse,

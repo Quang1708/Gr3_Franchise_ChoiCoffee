@@ -43,7 +43,6 @@ const ClientProductPage = () => {
           <ProductMenu
             activeCategory={activeCategory}
             setActiveCategory={handleCategoryChange}
-
           />
         </nav>
         <div className="flex flex-1 justify-center">

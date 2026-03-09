@@ -7,10 +7,10 @@ import FranchiseSelect from "./partials/FranchiseSelect";
 import ClientLoading from "@/components/Client/Client.Loading";
 import { customerLogout } from "@/pages/client/auth/services/customerAuth06.service";
 import { toastSuccess, toastError } from "@/utils/toast.util";
-import type { CustomerInfo } from "@/pages/client/account/partial/service/api";
-import { getAllFranchise } from "./services/franchise.Service";
+import { getAllFranchise } from "./services/franchise.service";
 import type { Franchise } from "./models/franchise.model";
 import { toast } from "react-toastify";
+import { useCustomerAuthStore } from "@/stores";
 const ClientHeader = () => {
   const [franchises, setFranchises] = useState<Franchise[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);

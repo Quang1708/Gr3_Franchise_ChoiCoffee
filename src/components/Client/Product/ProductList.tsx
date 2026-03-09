@@ -79,6 +79,12 @@ const ProductList = ({ category, currentPage, onPageChange }: ProductListProps) 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  if (isLoading) {
+    return (
+      <ClientLoading />
+    )
+  }
+
   const renderPageNumbers = () => {
     const pages = [];
     
@@ -160,9 +166,7 @@ const ProductList = ({ category, currentPage, onPageChange }: ProductListProps) 
 
   return (
     <>
-      {isLoading ? (
-        <ClientLoading />
-      ) : (
+      
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {currentProducts.map((product) => (
@@ -202,7 +206,6 @@ const ProductList = ({ category, currentPage, onPageChange }: ProductListProps) 
         </div>
       )}
         </>
-      )}
     </>
   )
 }

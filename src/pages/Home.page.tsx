@@ -10,6 +10,7 @@ import ROUTER_URL from "@/routes/router.const";
 import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
 import { getPublicProducts } from "./client/product/services/product.service";
 import type { Product } from "./client/product/models/product.models";
+import MenuBanner from "@/components/Client/Product/Client.MenuBanner";
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -182,7 +183,9 @@ const HomePage = () => {
           </div>
         </div>
       </section>
-
+      <section className="max-w-7xl mx-auto p-4 md:p-8 lg:p-16">
+        <MenuBanner/>
+      </section>
       <section className="py-20">
         <div className="container mx-auto px-6 lg:px-20">
           <div className="bg-primary rounded-2xl p-8 lg:p-16 flex flex-col lg:flex-row items-center justify-between gap-10">

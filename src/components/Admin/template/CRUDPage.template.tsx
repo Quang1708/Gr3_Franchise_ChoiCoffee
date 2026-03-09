@@ -42,7 +42,7 @@ export interface CRUDPageTemplateProps<T> {
     columns: Column<T>[];
     pageSize?: number;
     tableMaxHeightClass?: string;
-
+    isAdmin?: boolean;
     onAdd?: () => void;
     onView?: (item: T) => void;
     onEdit?: (item: T) => void;
@@ -54,6 +54,7 @@ export interface CRUDPageTemplateProps<T> {
     searchKeys?: (keyof T)[];
     searchRight?: React.ReactNode;
     filters?: FilterConfig<T>[];
+    onRefresh?: () => void;
 }
 
 // --- Components ---
@@ -74,7 +75,7 @@ const ToggleSwitch = ({
         onClick={() => !disabled && onChange(!checked)}
         className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 
             ${checked ? "bg-primary" : "bg-gray-300"} 
-            ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+            ${disabled ? "opacity-80" : "cursor-pointer"}`}
     >
         <span className="sr-only">Toggle</span>
         <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out 
@@ -151,6 +152,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
     columns,
     pageSize = 5,
     tableMaxHeightClass,
+    isAdmin,
     onAdd,
     onView,
     onEdit,
@@ -161,6 +163,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
     searchKeys = [],
     filters = [],
     searchRight,
+    onRefresh,
 }: CRUDPageTemplateProps<T>) {
 
     const [currentPage, setCurrentPage] = useState(1);
@@ -170,7 +173,6 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
     const [filterInput, setFilterInput] = useState<Partial<Record<keyof T, string>>>({});
     const [activeFilters, setActiveFilters] = useState<Partial<Record<keyof T, string>>>({});
     const [sortConfig, setSortConfig] = useState<{ key: keyof T; direction: "asc" | "desc"; } | null>(null);
-
 
     const toggleStatus = (item: T) => {
         if (!statusField || !onStatusChange) return;
@@ -326,7 +328,8 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                             setSearchTerm(inputValue);
                             setActiveFilters(filterInput);
                         }}
-                        className="flex-1 lg:flex-none px-4 py-2 text-sm rounded-lg bg-primary text-white transition-all duration-200 active:scale-95 hover:brightness-110"
+                        title="Tìm kiếm khách hàng"
+                        className="flex-1 lg:flex-none px-4 py-2 text-sm rounded-lg bg-primary text-white transition-all duration-200 active:scale-95 hover:brightness-110 cursor-pointer"
                     >
                         Tìm kiếm
                     </button>
@@ -336,8 +339,12 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                             setSearchTerm("");
                             setFilterInput({});
                             setActiveFilters({});
+                            if (onRefresh) {
+                                onRefresh();
+                            }
                         }}
-                        className="px-3 py-2 text-sm rounded-lg bg-gray-200 text-gray-600 transition-all duration-200 active:scale-95 hover:bg-gray-300"
+                        title="Làm mới"
+                        className="px-3 py-2 text-sm rounded-lg bg-gray-200 text-gray-600 transition-all duration-200 active:scale-95 hover:bg-gray-300 cursor-pointer"
                     >
                         <RotateCw className="w-4 h-4" />
                     </button>
@@ -433,7 +440,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                                                             <ToggleSwitch
                                                                 checked={!!item[statusField]}
                                                                 onChange={() => toggleStatus(item)}
-                                                                disabled={!onStatusChange}
+                                                                disabled={!onStatusChange || !isAdmin}
                                                             />
                                                             <span
                                                                 className={`text-[9px] font-medium uppercase
@@ -466,7 +473,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                                                     {!isDeleted && onView && (
                                                         <button
                                                             onClick={() => onView(item)}
-                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition active:scale-90"
+                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition active:scale-90 cursor-pointer"
                                                         >
                                                             <Eye className="w-5 h-5" />
                                                         </button>
@@ -475,7 +482,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                                                     {!isDeleted && onEdit && (
                                                         <button
                                                             onClick={() => onEdit(item)}
-                                                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition active:scale-90"
+                                                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition active:scale-90 cursor-pointer"
                                                         >
                                                             <Edit className="w-5 h-5" />
                                                         </button>
@@ -484,7 +491,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                                                     {!isDeleted && onDelete && (
                                                         <button
                                                             onClick={() => onDelete(item)}
-                                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition active:scale-90"
+                                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition active:scale-90 cursor-pointer"
                                                         >
                                                             <Trash2 className="w-5 h-5" />
                                                         </button>
@@ -493,7 +500,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                                                     {isDeleted && onRestore && (
                                                         <button
                                                             onClick={() => onRestore(item)}
-                                                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition active:scale-90"
+                                                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition active:scale-90 cursor-pointer"
                                                         >
                                                             <RotateCw className="w-5 h-5" />
                                                         </button>

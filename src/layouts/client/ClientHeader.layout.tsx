@@ -3,28 +3,30 @@ import ROUTER_URL from "../../routes/router.const";
 import MenuItemRender from "./partials/MenuItemRender";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FRANCHISE_SEED_DATA } from "@/mocks/franchise.seed";
 import FranchiseSelect from "./partials/FranchiseSelect";
 import ClientLoading from "@/components/Client/Client.Loading";
-import { customerLogout } from "@/pages/client/auth/services/authApi";
+import { customerLogout } from "@/pages/client/auth/services/customerAuth06.service";
 import { toastSuccess, toastError } from "@/utils/toast.util";
-import type { CustomerInfo } from "@/pages/client/account/partial/service/api";
+import { getAllFranchise } from "./services/franchise.service";
+import type { Franchise } from "./models/franchise.model";
+import { toast } from "react-toastify";
+import { useCustomerAuthStore } from "@/stores";
 const ClientHeader = () => {
+  const [franchises, setFranchises] = useState<Franchise[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Check localStorage for customer info
-  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(() => {
-    const saved = localStorage.getItem("customer_info");
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(!!customerInfo);
+  // Get customer from Zustand store
+  const customer = useCustomerAuthStore((state) => state.customer);
+  const clearCustomer = useCustomerAuthStore((state) => state.clearCustomer);
+  const setLoggingOut = useCustomerAuthStore((state) => state.setLoggingOut);
+  const isLoggedIn = !!customer;
 
   const navigate = useNavigate();
-  const [selectedFranchise, setSelectedFranchise] = useState<number>(() => {
+  const [selectedFranchise, setSelectedFranchise] = useState<string>(() => {
     const saved = localStorage.getItem("selectedFranchise");
-    return saved ? Number(saved) : 1;
+    return saved ? saved : "1";
   });
   const [isFranchiseDropdownOpen, setIsFranchiseDropdownOpen] = useState(false);
   const franchiseDropdownRef = useRef<HTMLDivElement>(null);
@@ -64,6 +66,28 @@ const ClientHeader = () => {
     },
   ];
 
+  const fetchFranchise = async () => {
+    try{
+      setIsLoading(true);
+      const response = await getAllFranchise();
+      if(response){
+        setIsLoading(false);
+        setFranchises(response);
+        console.log("franchise", response);
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      setIsLoading(false);
+      toast.error("Không thể tải danh sách chi nhánh. Vui lòng thử lại!", error);
+    }finally{
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchFranchise();
+  }, []);
+
   const handleClickOutside = (event: MouseEvent) => {
     if (
       franchiseDropdownRef.current &&
@@ -95,16 +119,16 @@ const ClientHeader = () => {
     };
   }, [isFranchiseDropdownOpen, isProfileOpen, isMobileMenuOpen]);
 
-  const franchise = FRANCHISE_SEED_DATA;
 
-  const handleFranchiseSelect = (franchiseId: number) => {
+
+  const handleFranchiseSelect = (franchiseId: string) => {
     setIsLoading(true);
     setIsFranchiseDropdownOpen(false);
 
     // Simulate loading time for better UX
     setTimeout(() => {
       setSelectedFranchise(franchiseId);
-      localStorage.setItem("selectedFranchise", franchiseId.toString());
+      localStorage.setItem("selectedFranchise", franchiseId);
 
       // Dispatch custom event để các component khác biết localStorage đã thay đổi
       window.dispatchEvent(
@@ -119,12 +143,13 @@ const ClientHeader = () => {
 
   const handleLogout = async () => {
     try {
+      // Set logging out flag first
+      setLoggingOut(true);
+
       await customerLogout();
 
-      // Clear customer info from localStorage
-      localStorage.removeItem("customer_info");
-      setCustomerInfo(null);
-      setIsLoggedIn(false);
+      // Clear customer from Zustand store
+      clearCustomer();
 
       toastSuccess("Đăng xuất thành công!");
       navigate(ROUTER_URL.HOME);
@@ -134,6 +159,8 @@ const ClientHeader = () => {
       toastError(
         err?.response?.data?.message || "Đăng xuất thất bại. Vui lòng thử lại!",
       );
+      // Reset flag on error
+      setLoggingOut(false);
     }
   };
 
@@ -181,7 +208,7 @@ const ClientHeader = () => {
                 >
                   <FranchiseSelect
                     isOpen={isFranchiseDropdownOpen}
-                    franchises={franchise}
+                    franchises={franchises}
                     selectedFranchise={selectedFranchise}
                     onSelectFranchise={handleFranchiseSelect}
                   />
@@ -196,11 +223,13 @@ const ClientHeader = () => {
             </div>
             <button
               onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.CART)}
-              className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-8 w-8 sm:h-10 sm:w-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold"
+              className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-8 w-8 sm:h-10 sm:w-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold relative"
             >
               <span className="material-symbols-outlined text-lg sm:text-xl">
                 shopping_cart
               </span>
+              <span className="absolute top-1 right-1 w-2 h-2 text-primary">2</span>
+
             </button>
             <button className="hidden sm:flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold min-w-0 px-2.5 relative">
               <span className="material-symbols-outlined text-xl">
@@ -230,9 +259,7 @@ const ClientHeader = () => {
                   className="cursor-pointer flex items-center gap-1 sm:gap-2 p-0.5 sm:p-1 pl-1 sm:pl-2 pr-0.5 sm:pr-1 rounded-full hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all"
                 >
                   <img
-                    src={
-                      customerInfo?.avatar_url || "https://i.pravatar.cc/300"
-                    }
+                    src={customer?.avatar_url || "https://i.pravatar.cc/300"}
                     alt="Avatar"
                     className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-200"
                   />
@@ -245,10 +272,10 @@ const ClientHeader = () => {
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 animate-in fade-in slide-in-from-top-2">
                     <div className="px-4 py-2 border-b border-gray-100 mb-1">
                       <p className="text-sm font-semibold text-gray-800">
-                        {customerInfo?.name || "User"}
+                        {customer?.name || "User"}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {customerInfo?.email || ""}
+                        {customer?.email || ""}
                       </p>
                     </div>
 
@@ -376,7 +403,7 @@ const ClientHeader = () => {
                     >
                       <FranchiseSelect
                         isOpen={isFranchiseDropdownOpen}
-                        franchises={franchise}
+                        franchises={franchises}
                         selectedFranchise={selectedFranchise}
                         onSelectFranchise={handleFranchiseSelect}
                       />

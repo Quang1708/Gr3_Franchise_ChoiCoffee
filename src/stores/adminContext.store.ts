@@ -5,29 +5,43 @@ import {
   setItemInLocalStorage,
 } from "@/utils/localStorage.util";
 
-type AdminContextState = {
-  selectedFranchiseId: string | number | null;
-  hydrate: () => void;
-  setSelectedFranchiseId: (id: string | number | null) => void;
+export type FranchiseOption = {
+  id: string;
+  code: string;
+  name: string;
 };
 
-/**
- * Admin CMS context (tạm, vì chưa có API)
- * - selectedFranchiseId: franchise đang chọn, áp dụng cho toàn bộ trang admin
- */
+type AdminContextState = {
+  selectedFranchiseId: string | "ALL" | null;
+  franchises: FranchiseOption[];
+
+  hydrate: () => void;
+  setSelectedFranchiseId: (id: string | "ALL" | null) => void;
+  setFranchises: (list: FranchiseOption[]) => void;
+};
+
 export const useAdminContextStore = create<AdminContextState>((set) => ({
   selectedFranchiseId: null,
+  franchises: [],
 
   hydrate: () => {
     const saved = getItemInLocalStorage<string | number>(
       LOCAL_STORAGE.ADMIN_FRANCHISE_ID,
     );
+
     const ok = typeof saved === "string" || typeof saved === "number";
-    set({ selectedFranchiseId: ok ? saved : null });
+
+    set({
+      selectedFranchiseId: ok ? String(saved) : null,
+    });
   },
 
   setSelectedFranchiseId: (id) => {
     setItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID, id);
     set({ selectedFranchiseId: id });
+  },
+
+  setFranchises: (list) => {
+    set({ franchises: list });
   },
 }));

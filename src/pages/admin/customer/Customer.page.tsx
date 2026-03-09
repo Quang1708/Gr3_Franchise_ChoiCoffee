@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { type Column } from "@/components/Admin/template/CRUD.template";
 import { searchCustomersUsecase } from "./usecases/searchCustomers.usecase";
 import type { Customer } from "@/models/customer.model";
@@ -9,9 +8,15 @@ import { updateCustomerStatusUsecase } from "@/pages/admin/customer/usecases/upd
 import { deleteCustomerUsecase } from "@/pages/admin/customer/usecases/deleteCustomer.usecase";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import { restoreCustomerUsecase } from "@/pages/admin/customer/usecases/restoreCustomerUsecase";
+import { useAuthStore } from "@/stores/auth.store";
+import { CustomerForm, type CustomerFormValues } from "@/pages/admin/customer/components/CustomerForm";
+import { createCustomerUsecase } from "@/pages/admin/customer/usecases/createCustomer.usecase";
+import type { CustomerRequest } from "@/pages/admin/customer/models/customerRequest.model";
 
 const CustomerPage = () => {
-  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const role = user?.roles?.[0]?.role;
+  const isAdmin = role === "ADMIN";
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,6 +26,58 @@ const CustomerPage = () => {
     customer: Customer | null;
   }>({ isOpen: false, type: "delete", customer: null });
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Modal Form (Thêm/Sửa/Xem)
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  console.log(selectedCustomer)
+
+  // --- LOGIC MỞ FORM ---
+  const handleOpenForm = (
+    mode: "create" | "edit" | "view",
+    customer: Customer | null = null
+  ) => {
+    setFormMode(mode);
+
+    if (mode === "create") {
+      setSelectedCustomer(null);
+    } else {
+      setSelectedCustomer(customer);
+    }
+
+    setIsFormOpen(true);
+  };
+
+  const handleSubmitCustomer = async (data: CustomerFormValues) => {
+    try {
+      setIsProcessing(true);
+
+      const payload: CustomerRequest = {
+        email: data.email,
+        password: data.password || "",
+        phone: data.phone,
+        name: data.name,
+        address: data.address,
+        avatar_url: data.avatar_url,
+      };
+
+      if (formMode === "create") {
+        const res = await createCustomerUsecase(payload);
+
+        if (res?.success) {
+          await fetchCustomers();
+          setIsFormOpen(false);
+        }
+      }
+
+    } catch (error) {
+      console.error("Submit failed:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const columns: Column<Customer>[] = [
     {
@@ -92,14 +149,6 @@ const CustomerPage = () => {
     fetchCustomers();
   }, []);
 
-  const handleAdd = () => {
-    navigate("/admin/customer/create");
-  };
-
-  const handleView = (customer: Customer) => {
-    navigate(`/admin/customer/${customer.id}`);
-  };
-
   const handleStatusChange = async (customer: Customer, newStatus: boolean) => {
     try {
       const res = await updateCustomerStatusUsecase(customer.id, newStatus);
@@ -136,7 +185,6 @@ const CustomerPage = () => {
         : await restoreCustomerUsecase(customer.id);
 
       if (res?.success) {
-        // Sau khi xóa hoặc restore, thường ta sẽ fetch lại data hoặc filter state
         setCustomers((prev) =>
           prev.map((c) =>
             String(c.id) === String(customer.id)
@@ -164,8 +212,9 @@ const CustomerPage = () => {
         data={customers}
         columns={columns}
         pageSize={5}
+        isAdmin={isAdmin}
         statusField="is_active"
-        onStatusChange={handleStatusChange}
+        onStatusChange={isAdmin ? handleStatusChange : undefined}
         searchKeys={["name", "email", "phone"]}
         filters={[
           {
@@ -177,11 +226,21 @@ const CustomerPage = () => {
             ]
           }
         ]}
-        onAdd={handleAdd}
-        onView={handleView}
-        onDelete={handleDeleteClick}
-        onRestore={handleRestoreClick}
+        onAdd={() => handleOpenForm("create")}
+        onView={(item) => handleOpenForm("view", item)}
+        onDelete={isAdmin ? handleDeleteClick : undefined}
+        onRestore={isAdmin ? handleRestoreClick : undefined}
+        onRefresh={fetchCustomers}
       />
+      <CustomerForm
+        isOpen={isFormOpen}
+        mode={formMode}
+        initialData={selectedCustomer || undefined}
+        isLoading={isProcessing}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={handleSubmitCustomer}
+      />
+
       <ActionConfirmModal
         isOpen={modalConfig.isOpen}
         type={modalConfig.type}

@@ -8,8 +8,9 @@ import {
 } from "./schema/clientLogin.schema";
 import ROUTER_URL from "@/routes/router.const";
 import { toastSuccess, toastError } from "@/utils/toast.util";
-import { customerLogin } from "../services/authApi";
-import { getCustomerInfo } from "../../account/partial/service/api";
+import { customerLogin } from "../services/customerAuth01.service";
+import { getCustomerProfile } from "../../account/partial/service/customerAuth02.service";
+import { useCustomerAuthStore } from "@/stores/customerAuth.store";
 import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
 import ClientLoading from "@/components/Client/Client.Loading";
 import FormInput from "@/components/Client/Form/FormInput";
@@ -37,6 +38,7 @@ const ClientLoginPage: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const setCustomer = useCustomerAuthStore((state) => state.setCustomer);
 
   const onSubmit = async (data: ClientLoginSchemaType) => {
     setIsLoading(true);
@@ -49,10 +51,19 @@ const ClientLoginPage: React.FC = () => {
 
       // Check if login was successful
       if (loginResponse.success) {
-        // Fetch customer info and store in localStorage
+        // Fetch customer info and store in Zustand
         try {
-          const customerInfo = await getCustomerInfo();
-          localStorage.setItem("customer_info", JSON.stringify(customerInfo));
+          const customerInfo = await getCustomerProfile();
+
+          // Map CustomerProfile to CustomerAuthProfile and save to store
+          setCustomer({
+            id: customerInfo.id,
+            email: customerInfo.email,
+            phone: customerInfo.phone,
+            name: customerInfo.name,
+            avatar_url: customerInfo.avatar_url,
+            address: customerInfo.address,
+          });
         } catch (error) {
           console.error("Failed to fetch customer info:", error);
         }

@@ -20,6 +20,8 @@ const ROUTER_URL = {
     PROFILE: `/client/profile`,
     FORGOT_PASSWORD: `/client/forgot-password`,
     VERIFY: `/client/verify`,
+    VERIFY_TOKEN: `/client/verify/:token`,
+    VERIFY_CUSTOMER_EMAIL: `/verify-customer-email/:token`,
     LOYALTY: `/client/loyalty`,
   },
 
@@ -43,7 +45,6 @@ const ROUTER_URL = {
     FORGOT_PASSWORD: `/admin/forgot-password`,
     RESET_PASSWORD: `/admin/reset-password`,
     VERIFY_TOKEN: "/admin/verify",
-    LOADING_SCREEN: "/admin/loading",
   },
 };
 

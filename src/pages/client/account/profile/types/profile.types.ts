@@ -1,24 +1,17 @@
-export interface UserProfile {
-  id?: string;
-  name: string;
-  email: string;
-  phone: string;
-  avatar_url: string;
-  address: string;
-}
+import type { CustomerAuthProfile } from "@/pages/client/account/model/account.model";
+import type { EditProfileFormData } from "../schema/clientProfile.schema";
 
 export interface ProfileHeaderProps {
-  profile: UserProfile;
-  isEditing: boolean;
-  onEdit: () => void;
-  onSave: () => void;
-  onCancel: () => void;
+  profile: CustomerAuthProfile;
+  onAvatarUpdate: (avatarUrl: string) => Promise<void>;
 }
 
 export interface PersonalInformationProps {
-  profile: UserProfile;
+  profile: CustomerAuthProfile;
   isEditing: boolean;
-  onUpdate: (updates: Partial<UserProfile>) => void;
+  onEdit: () => void;
+  onSave: (data: EditProfileFormData) => Promise<void>;
+  onCancel: () => void;
 }
 
 export interface SecuritySettingsProps {

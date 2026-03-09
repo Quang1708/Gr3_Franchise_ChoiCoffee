@@ -1,168 +1,336 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  CRUDTable,
-  type Column,
-} from "@/components/Admin/template/CRUD.template";
-import { useInventoryStore } from "@/stores/useInventoryStore";
-import { useProductFranchiseStore } from "@/stores/useProductFranchiseStore";
-import { useAdminContextStore } from "@/stores/adminContext.store";
+import { Modal } from "@/components/UI/Modal";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
 
-type InventoryRow = {
-  id: string;
-  productName: string;
-  size: string;
-  quantity: number;
-  alertThreshold: number;
-  isActive: boolean;
-  lowStock: boolean;
-};
+/* ===============================
+   SCHEMA
+================================ */
 
-const InventoryPage = () => {
-  const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
+const schema = z.object({
+  product_id: z.string().min(1, "Sản phẩm bắt buộc"),
 
+  franchise_id: z.string().min(1, "Chi nhánh bắt buộc"),
+
+  quantity: z.coerce.number().min(0, "Số lượng phải >= 0"),
+
+  alert_threshold: z.coerce.number().min(0, "Ngưỡng cảnh báo phải >= 0"),
+});
+
+const adjustInventorySchema = z.object({
+  quantity: z.coerce.number().min(0, "Số lượng phải >= 0"),
+});
+
+/* ===============================
+   TYPES
+================================ */
+
+type FormData = z.infer<typeof schema>;
+type AdjustInventoryForm = z.infer<typeof adjustInventorySchema>;
+
+/* ===============================
+   CREATE INVENTORY MODAL
+================================ */
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: {
+    product_franchise_id: string;
+    quantity: number;
+    alert_threshold: number;
+  }) => Promise<void>;
+}
+
+export const CreateInventoryModal: React.FC<Props> = ({
+  isOpen,
+  onClose,
+  onSubmit,
+}) => {
   const {
-    items: inventories,
-    fetchByFranchise,
-    loading: inventoryLoading,
-  } = useInventoryStore();
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  });
 
-  const {
-    items: productFranchises,
-    fetchByFranchise: fetchPF,
-    loading: productLoading,
-  } = useProductFranchiseStore();
+  const [products, setProducts] = useState<any[]>([]);
+  const [franchises, setFranchises] = useState<any[]>([]);
 
-  const [lowOnly, setLowOnly] = useState(false);
-
-  /* -------------------------------------------------- */
-  /* FETCH DATA                                         */
-  /* -------------------------------------------------- */
+  /* ===============================
+     MOCK API
+  ================================ */
 
   useEffect(() => {
-    if (!franchiseId) return;
+    setProducts([
+      { id: "p1", name: "Coca Cola" },
+      { id: "p2", name: "Pepsi" },
+    ]);
 
-    fetchPF(String(franchiseId));
-    fetchByFranchise(String(franchiseId));
-  }, [franchiseId, fetchPF, fetchByFranchise]);
+    setFranchises([
+      { id: "f1", name: "Quận 1" },
+      { id: "f2", name: "Quận 3" },
+    ]);
+  }, []);
 
-  /* -------------------------------------------------- */
-  /* MAP INVENTORY (snake_case đúng API)                */
-  /* -------------------------------------------------- */
+  /* ===============================
+     SUBMIT
+  ================================ */
 
-  const inventoryMap = useMemo(() => {
-    return new Map(inventories.map((i) => [i.productFranchiseId, i]));
-  }, [inventories]);
+  const submitHandler = async (data: FormData) => {
+    const product_franchise_id = `${data.product_id}_${data.franchise_id}`;
 
-  /* -------------------------------------------------- */
-  /* VIEW MODEL                                          */
-  /* -------------------------------------------------- */
-
-  const rows: InventoryRow[] = useMemo(() => {
-    if (!franchiseId) return [];
-
-    const vm = productFranchises.map((pf) => {
-      const inv = inventoryMap.get(pf.id);
-
-      const quantity = inv?.quantity ?? 0;
-      const alertThreshold = inv?.alertThreshold ?? 0;
-      const lowStock = quantity <= alertThreshold;
-
-      return {
-        id: pf.id,
-        productName: pf.product_name,
-        size: pf.size,
-        quantity,
-        alertThreshold,
-        isActive: inv?.isActive ?? true,
-        lowStock,
-      };
+    await onSubmit({
+      product_franchise_id,
+      quantity: data.quantity,
+      alert_threshold: data.alert_threshold,
     });
 
-    const filtered = lowOnly ? vm.filter((x) => x.lowStock) : vm;
-
-    return filtered.sort((a, b) => a.productName.localeCompare(b.productName));
-  }, [franchiseId, productFranchises, inventoryMap, lowOnly]);
-
-  /* -------------------------------------------------- */
-  /* TABLE COLUMNS                                       */
-  /* -------------------------------------------------- */
-
-  const columns: Column<InventoryRow>[] = [
-    {
-      header: "Sản phẩm",
-      accessor: (r) => (
-        <div>
-          <div className="font-medium">{r.productName}</div>
-          <div className="text-xs text-gray-500">Size: {r.size}</div>
-        </div>
-      ),
-    },
-    {
-      header: "Số lượng",
-      accessor: (r) => (
-        <span
-          className={
-            r.lowStock ? "text-rose-700 font-semibold" : "text-gray-900"
-          }
-        >
-          {r.quantity}
-        </span>
-      ),
-    },
-    {
-      header: "Ngưỡng cảnh báo",
-      accessor: (r) => r.alertThreshold,
-    },
-    {
-      header: "Trạng thái",
-      accessor: (r) => (
-        <span
-          className={`px-2 py-1 rounded-full text-xs ${
-            r.isActive
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-rose-50 text-rose-700"
-          }`}
-        >
-          {r.isActive ? "AVAILABLE" : "OUT_OF_STOCK"}
-        </span>
-      ),
-    },
-  ];
-
-  /* -------------------------------------------------- */
-  /* RENDER                                              */
-  /* -------------------------------------------------- */
-
-  if (!franchiseId) {
-    return (
-      <div className="p-6 text-gray-500">
-        Vui lòng chọn franchise để xem tồn kho.
-      </div>
-    );
-  }
+    reset();
+    onClose();
+  };
 
   return (
-    <div className="p-6">
-      <CRUDTable
-        title="Danh sách tồn kho"
-        data={rows}
-        columns={columns}
-        pageSize={10}
-        loading={inventoryLoading || productLoading}
-        searchKeys={["productName"]}
-        searchRightSlot={
-          <button
-            onClick={() => setLowOnly((v) => !v)}
-            className={`px-3 py-2 border rounded-lg text-sm ${
-              lowOnly ? "bg-rose-50 border-rose-200" : ""
-            }`}
+    <Modal isOpen={isOpen} onClose={onClose} title="Tạo tồn kho">
+      <form onSubmit={handleSubmit(submitHandler)} className="space-y-4">
+        {/* PRODUCT */}
+
+        <div>
+          <label className="text-sm font-medium">Sản phẩm</label>
+
+          <select
+            {...register("product_id")}
+            className="w-full border px-3 py-2 rounded-lg"
           >
-            {lowOnly ? "Đang lọc sản phẩm sắp hết" : "Lọc sản phẩm sắp hết"}
+            <option value="">Chọn sản phẩm</option>
+
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+
+          {errors.product_id && (
+            <p className="text-red-500 text-sm">{errors.product_id.message}</p>
+          )}
+        </div>
+
+        {/* FRANCHISE */}
+
+        <div>
+          <label className="text-sm font-medium">Chi nhánh</label>
+
+          <select
+            {...register("franchise_id")}
+            className="w-full border px-3 py-2 rounded-lg"
+          >
+            <option value="">Chọn chi nhánh</option>
+
+            {franchises.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+
+          {errors.franchise_id && (
+            <p className="text-red-500 text-sm">
+              {errors.franchise_id.message}
+            </p>
+          )}
+        </div>
+
+        {/* QUANTITY */}
+
+        <div>
+          <label className="text-sm font-medium">Số lượng</label>
+
+          <input
+            type="number"
+            {...register("quantity", { valueAsNumber: true })}
+            className="w-full border px-3 py-2 rounded-lg"
+          />
+
+          {errors.quantity && (
+            <p className="text-red-500 text-sm">{errors.quantity.message}</p>
+          )}
+        </div>
+
+        {/* ALERT */}
+
+        <div>
+          <label className="text-sm font-medium">Ngưỡng cảnh báo</label>
+
+          <input
+            type="number"
+            {...register("alert_threshold", { valueAsNumber: true })}
+            className="w-full border px-3 py-2 rounded-lg"
+          />
+
+          {errors.alert_threshold && (
+            <p className="text-red-500 text-sm">
+              {errors.alert_threshold.message}
+            </p>
+          )}
+        </div>
+
+        {/* ACTION */}
+
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="border px-4 py-2 rounded-lg"
+          >
+            Hủy
           </button>
-        }
-      />
-    </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-primary text-white px-4 py-2 rounded-lg"
+          >
+            {isSubmitting ? "Đang tạo..." : "Tạo"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 };
 
-export default InventoryPage;
+/* ===============================
+   ADJUST INVENTORY MODAL
+================================ */
+
+interface AdjustInventoryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  inventoryId: string | null;
+  onSubmit: (data: { inventoryId: string; quantity: number }) => Promise<void>;
+}
+
+export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
+  isOpen,
+  onClose,
+  inventoryId,
+  onSubmit,
+}) => {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<AdjustInventoryForm>({
+    resolver: zodResolver(adjustInventorySchema),
+  });
+
+  const submitHandler = async (data: AdjustInventoryForm) => {
+    if (!inventoryId) return;
+
+    await onSubmit({
+      inventoryId,
+      quantity: data.quantity,
+    });
+
+    reset();
+    onClose();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Điều chỉnh tồn kho">
+      <form onSubmit={handleSubmit(submitHandler)} className="space-y-4">
+        <div>
+          <label className="text-sm font-medium">Số lượng mới</label>
+
+          <input
+            type="number"
+            {...register("quantity", { valueAsNumber: true })}
+            className="w-full border px-3 py-2 rounded-lg"
+          />
+
+          {errors.quantity && (
+            <p className="text-red-500 text-sm">{errors.quantity.message}</p>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="border px-4 py-2 rounded-lg"
+          >
+            Hủy
+          </button>
+
+          <button
+            disabled={isSubmitting}
+            type="submit"
+            className="bg-primary text-white px-4 py-2 rounded-lg"
+          >
+            {isSubmitting ? "Đang cập nhật..." : "Cập nhật"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+/* ===============================
+   DELETE INVENTORY MODAL
+================================ */
+
+interface DeleteInventoryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  inventory: {
+    id: string;
+    ingredientName: string;
+  } | null;
+  onConfirm: () => void;
+}
+
+export const DeleteInventoryModal: React.FC<DeleteInventoryModalProps> = ({
+  isOpen,
+  onClose,
+  inventory,
+  onConfirm,
+}) => {
+  if (!inventory) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Xóa tồn kho" size="sm">
+      <div className="space-y-4">
+        <div className="flex gap-3">
+          <AlertTriangle className="text-red-600" />
+
+          <div>
+            <p className="font-medium">Bạn chắc chắn muốn xóa tồn kho?</p>
+
+            <p className="text-sm text-gray-600">{inventory.ingredientName}</p>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 border rounded-lg">
+            Hủy
+          </button>
+
+          <button
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg"
+          >
+            Xóa
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};

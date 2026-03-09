@@ -10,9 +10,10 @@ export type CmsUser = {
   phone: string;
   avatar_url?: string | null;
   roles?: {
-    role_code?: string;
-    scope?: "GLOBAL" | "FRANCHISE";
-    franchise_id?: string | number | null;
+  role?: string;
+  scope?: "GLOBAL" | "FRANCHISE";
+  franchise_id?: string | number | null;
+  franchise_name?: string | null;
   }[];
 };
 
@@ -20,27 +21,30 @@ const uniq = <T,>(arr: T[]) => Array.from(new Set(arr));
 
 export type FranchiseOption = {
   id: string;
+  code: string;
   name: string;
-  code?: string;
 };
 
-export const getAccessibleFranchises = (user: any): FranchiseOption[] => {
+export const getAccessibleFranchises = (
+  user: any,
+  allFranchises: FranchiseOption[],
+): FranchiseOption[] => {
   if (!user?.roles?.length) return [];
 
   const isAdmin = user.roles.some((r: any) => r.role === "ADMIN");
 
-  // 🟢 ADMIN → return tất cả franchise (từ API hoặc store)
+  // 🟢 ADMIN → return full list
   if (isAdmin) {
-    return user.allFranchises ?? [];
+    return allFranchises;
   }
 
-  // 🟡 MANAGER → chỉ return franchise trong roles
+  // 🟡 MANAGER → only roles franchise
   return user.roles
     .filter((r: any) => r.scope === "FRANCHISE")
     .map((r: any) => ({
       id: r.franchise_id,
-      name: r.franchise_name ?? "Unnamed Franchise",
       code: r.franchise_name?.split(" ").pop() ?? "",
+      name: r.franchise_name ?? "Unnamed Franchise",
     }));
 };
 
@@ -50,21 +54,21 @@ export function getEffectivePermissions(
 ): PermissionCode[] {
   if (!user?.roles?.length) return [];
 
-  const roleCodes = user.roles
-    .filter((r) => {
-      if (!r.role_code) return false;
-      // GLOBAL role: franchise_id null or scope GLOBAL
-      if (r.scope === "GLOBAL" || r.franchise_id == null) return true;
+const roleCodes = user.roles
+  .filter((r) => {
+    if (!r.role) return false;
 
-      // FRANCHISE role: match context franchise
-      if (typeof franchiseId === "number" || typeof franchiseId === "string") {
-        return String(r.franchise_id) === String(franchiseId);
-      }
+    // GLOBAL
+    if (r.scope === "GLOBAL" || r.franchise_id == null) return true;
 
-      // No context: deny franchise-scoped permissions by default
-      return false;
-    })
-    .map((r) => r.role_code as string);
+    // FRANCHISE
+    if (typeof franchiseId === "number" || typeof franchiseId === "string") {
+      return String(r.franchise_id) === String(franchiseId);
+    }
+
+    return false;
+  })
+  .map((r) => r.role as string);
 
   const perms = roleCodes.flatMap((code) => ROLE_PERMISSIONS[code] ?? []);
   return uniq(perms);
@@ -82,13 +86,17 @@ export function can(
  * Dùng cho route-level guard khi chưa có franchise context.
  * Nếu user có perm ở BẤT KỲ franchise nào (hoặc global) => true
  */
-export function canAny(user: CmsUser | null, perm: PermissionCode) {
+
+export function canAny(
+  user: CmsUser | null,
+  perm: PermissionCode,
+  allFranchises: FranchiseOption[] = [],
+) {
   if (!user?.roles?.length) return false;
 
-  // Global roles
   if (can(user, perm, undefined)) return true;
 
-  // Any accessible franchise
-  const fr = getAccessibleFranchises(user);
+  const fr = getAccessibleFranchises(user, allFranchises);
+
   return fr.some((f) => can(user, perm, f.id));
 }

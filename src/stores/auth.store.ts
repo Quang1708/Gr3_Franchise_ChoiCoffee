@@ -6,6 +6,11 @@ import {
   removeItemInLocalStorage,
   setItemInLocalStorage,
 } from "@/utils/localStorage.util";
+import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
+import {
+  removeItemInSessionStorage,
+  setItemInSessionStorage,
+} from "@/utils/sessionStorage.util";
 
 type AuthState = {
   user: AdminLoginUserProfile | null;
@@ -30,12 +35,22 @@ export const useAuthStore = create<AuthState>((set) => ({
     // lưu đúng key để AdminGuard đọc được
     setItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_CMS, user);
     setItemInLocalStorage(LOCAL_STORAGE.CMS_TOKEN, token);
+    if (token && token !== "SESSION") {
+      setItemInSessionStorage(SESSION_STORAGE.ACCESS_TOKEN, token);
+    } else {
+      removeItemInSessionStorage(SESSION_STORAGE.ACCESS_TOKEN);
+    }
     set({ user, token, isInitialized: true });
   },
 
   setAuth: (user, token) => {
     setItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_CMS, user);
     setItemInLocalStorage(LOCAL_STORAGE.CMS_TOKEN, token);
+    if (token && token !== "SESSION") {
+      setItemInSessionStorage(SESSION_STORAGE.ACCESS_TOKEN, token);
+    } else {
+      removeItemInSessionStorage(SESSION_STORAGE.ACCESS_TOKEN);
+    }
     set({ user, token, isInitialized: true });
   },
 
@@ -51,6 +66,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     removeItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_CMS);
     removeItemInLocalStorage(LOCAL_STORAGE.CMS_TOKEN);
     removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID);
+    removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
+    removeItemInSessionStorage(SESSION_STORAGE.ACCESS_TOKEN);
     set({ user: null, token: null, isInitialized: true });
   },
 }));

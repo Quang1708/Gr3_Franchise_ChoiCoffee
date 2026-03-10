@@ -23,8 +23,9 @@ export const loginAdmin = async (
 
 export const getAdminProfile = async (): Promise<AdminProfileResponse> => {
   const token = getItemInLocalStorage<string>(LOCAL_STORAGE.CMS_TOKEN);
+  const authToken = token && token !== "SESSION" ? token : null;
   const { data } = await axiosAdminClient.get<AdminProfileResponse>("/api/auth", {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
   });
   return data;
 };
@@ -33,7 +34,8 @@ export const switchAdminContext = async (
   payload: SwitchContextPayload,
 ): Promise<void> => {
   const token = getItemInLocalStorage<string>(LOCAL_STORAGE.CMS_TOKEN);
+  const authToken = token && token !== "SESSION" ? token : null;
   await axiosAdminClient.post("/api/auth/switch-context", payload, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
   });
 };

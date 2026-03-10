@@ -28,6 +28,9 @@ const UserPage = React.lazy(() => import("../../pages/admin/user"));
 const SettingsPage = React.lazy(() => import("../../pages/admin/settings"));
 const LogoutPage = React.lazy(() => import("../../pages/admin/logout"));
 const ProfilePage = React.lazy(() => import("../../pages/admin/profile"));
+const AdminSelectContextPage = React.lazy(
+  () => import("../../pages/admin/auth/context/AdminSelectContext.page"),
+);
 
 /* ==================== ROUTES ==================== */
 
@@ -35,6 +38,13 @@ const AdminRoutes = (
   <>
     {/* ================= ADMIN (GUARDED) ================= */}
     <Route path={ROUTER_URL.ADMIN} element={<AdminGuard />}>
+      <Route
+        path={ROUTER_URL.ADMIN_ROUTER.ADMIN_SELECT_CONTEXT.replace(
+          `${ROUTER_URL.ADMIN}/`,
+          "",
+        )}
+        element={<AdminSelectContextPage />}
+      />
       <Route element={<AdminLayout />}>
         {/* DEFAULT */}
         <Route index element={<DashboardPage />} />

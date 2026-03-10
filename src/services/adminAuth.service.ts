@@ -55,3 +55,12 @@ export const changePassword = async (
     return { ok: false, message: getErrorMessage(error) };
   }
 };
+
+export const logout = async (): Promise<AdminAuthResult> => {
+  try {
+    await axiosAdminClient.post("/api/auth/log-out");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: getErrorMessage(error) };
+  }
+};

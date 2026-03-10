@@ -5,6 +5,7 @@ interface ApiResponse<T = unknown> {
   success: boolean;
   data: T;
   message?: string;
+  errors?: Array<{ message: string; field?: string }>;
 }
 
 
@@ -17,7 +18,16 @@ export const forgotPassword = async (email: string) => {
     );
     return res.data;
   } catch (error: any) {
-    return error.response?.data;
+    if (error?.response?.data) {
+      return error.response.data as ApiResponse;
+    }
+
+    return {
+      success: false,
+      data: null,
+      message: error?.message || "Không thể xử lý yêu cầu.",
+      errors: [],
+    } as ApiResponse;
   }
 };
 

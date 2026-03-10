@@ -1,8 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Store } from "lucide-react";
-import { useAuthStore } from "@/stores/auth.store";
 import { useAdminContextStore } from "@/stores/adminContext.store";
+import { useAuthStore } from "@/stores/auth.store";
+import ClientLoading from "@/components/Client/Client.Loading";
+import { logout as logoutApi } from "@/services/adminAuth.service";
+import { removeItemInSessionStorage } from "@/utils/sessionStorage.util";
+import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
 
 import ROUTER_URL from "@/routes/router.const";
 import { LOCAL_STORAGE } from "@/consts/localstorage.const";
@@ -25,6 +29,7 @@ const AdminHeader = () => {
   const selectedFranchiseId = useAdminContextStore(
     (s) => s.selectedFranchiseId,
   );
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const contextRequired = Boolean(
     getItemInLocalStorage<boolean>(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED),
   );
@@ -45,9 +50,24 @@ const AdminHeader = () => {
     return selected.franchise_name ?? `FRANCHISE ${selected.franchise_id}`;
   }, [user, selectedFranchiseId]);
 
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+
+    try {
+      await logoutApi();
+    } finally {
+      logout();
+      removeItemInSessionStorage(SESSION_STORAGE.RESET_TOKEN);
+      setIsLoggingOut(false);
+      navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, { replace: true });
+    }
+  };
+
   return (
     <>
       <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-40">
+        {isLoggingOut && <ClientLoading />}
         <div className="h-full px-4 flex items-center justify-between gap-3">
         {/* Franchise Switcher */}
         <div className="flex items-center gap-3 min-w-0">
@@ -99,7 +119,8 @@ const AdminHeader = () => {
 
           <button
             type="button"
-            onClick={() => logout()}
+            onClick={handleLogout}
+            disabled={isLoggingOut}
             className="inline-flex items-center gap-2 h-9 px-3 rounded-xl
                        border border-gray-200 bg-white text-sm font-medium text-gray-800
                        hover:bg-gray-50 transition"

@@ -13,6 +13,7 @@ import {
   Eye,
   Check,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 
 // --- Types ---
@@ -47,6 +48,8 @@ export interface CRUDTableProps<T> {
   onView?: (item: T) => void;
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
+  onRestore?: (item: T) => void;
+  showRestore?: (item: T) => boolean;
 
   statusField?: keyof T;
   onStatusChange?: (item: T, newStatus: boolean) => void;
@@ -216,6 +219,8 @@ export function CRUDTable<T extends { id?: string | number }>({
   onView,
   onEdit,
   onDelete,
+  onRestore,
+  showRestore,
   statusField,
   onStatusChange,
   searchKeys = [],
@@ -461,7 +466,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                 </th>
               )}
 
-              {(onView || onEdit || onDelete) && (
+              {(onView || onEdit || onDelete || onRestore) && (
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right whitespace-nowrap">
                   Hành động
                 </th>
@@ -513,7 +518,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                     </td>
                   )}
 
-                  {(onView || onEdit || onDelete) && (
+                  {(onView || onEdit || onDelete || onRestore) && (
                     <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         {onView && (
@@ -534,6 +539,16 @@ export function CRUDTable<T extends { id?: string | number }>({
                             <Edit className="w-5 h-5" />
                           </button>
                         )}
+                        {onRestore &&
+                          (showRestore ? showRestore(item) : true) && (
+                            <button
+                              onClick={() => onRestore(item)}
+                              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                              title="Khôi phục"
+                            >
+                              <RotateCcw className="w-5 h-5" />
+                            </button>
+                          )}
                         {onDelete && (
                           <button
                             onClick={() => onDelete(item)}
@@ -555,7 +570,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                     columns.length +
                     1 +
                     (statusField ? 1 : 0) +
-                    (onView || onEdit || onDelete ? 1 : 0)
+                    (onView || onEdit || onDelete || onRestore ? 1 : 0)
                   }
                   className="px-6 py-12 text-center text-gray-500"
                 >

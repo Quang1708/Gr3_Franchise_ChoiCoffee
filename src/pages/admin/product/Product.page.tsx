@@ -15,6 +15,7 @@ import {
   createProduct,
   deleteProduct,
   getProducts,
+  searchProducts,
   updateProduct,
 } from "@/services/product.service";
 
@@ -31,6 +32,18 @@ const ProductPage = () => {
 
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  const handleSearch = async (keyword: string) => {
+    setIsLoading(true);
+    try {
+      const items = await searchProducts(keyword);
+      setData(items);
+    } catch {
+      toastError("Không thể tìm kiếm sản phẩm");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -272,8 +285,10 @@ const ProductPage = () => {
         // Status
         statusField="isActive"
         onStatusChange={handleStatusChange}
+        deferToolsApply
         // Search & Filter
         searchKeys={["name", "SKU"]}
+        onSearch={handleSearch}
         filters={[
           {
             key: "isActive",

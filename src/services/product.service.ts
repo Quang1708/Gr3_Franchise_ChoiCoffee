@@ -252,7 +252,16 @@ export async function getProducts(): Promise<ProductListItem[]> {
   }
 
   try {
-    const data = await productApi.search({ keyword: "", page: 1, limit: 200 });
+    const data = await productApi.search({ keyword: "", pageNum: 1, pageSize: 200 });
+    return extractArray(data).map(mapProductRecord);
+  } catch {
+    return [];
+  }
+}
+
+export async function searchProducts(keyword: string): Promise<ProductListItem[]> {
+  try {
+    const data = await productApi.search({ keyword, pageNum: 1, pageSize: 200 });
     return extractArray(data).map(mapProductRecord);
   } catch {
     return [];

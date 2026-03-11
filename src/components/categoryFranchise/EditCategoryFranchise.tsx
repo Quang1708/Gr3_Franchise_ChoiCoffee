@@ -15,6 +15,7 @@ type EditCategoryFranchiseProps = {
     category: CategoryItem ;
     onClose: () => void;
     onSuccess: () => void;
+    onView: boolean;
 }
 
 export type EditCategoryFranchiseRef = {
@@ -24,7 +25,7 @@ export type EditCategoryFranchiseRef = {
 const EditCategoryFranchise = forwardRef<
   EditCategoryFranchiseRef,
   EditCategoryFranchiseProps
->(({ category, onClose, onSuccess }, ref) => {
+>(({ category, onClose, onSuccess, onView }, ref) => {
   const [categoryFranchise, setCategoryFranchise] = useState<CategoryFranchise | null>(null);
   const [categoryData, setCategoryData] = useState<GetCategoryByIdResponse | null>(null);
   const [franchiseName, setFranchiseName] = useState<string>("");
@@ -36,6 +37,7 @@ const EditCategoryFranchise = forwardRef<
       display_order: 0,
     },
   });
+
   const onSubmit = async (data: { display_order: number }) => {
     if (isSaving || !categoryFranchise) return; 
     if (data.display_order < 0) {
@@ -45,16 +47,13 @@ const EditCategoryFranchise = forwardRef<
     console.log("data", data.display_order);
     setIsSaving(true);
     try {
-      const response = await updateDisplayOrder(categoryFranchise.id, {
-        display_order: data.display_order,
-      });
-      if (response?.success===true) {
+       await updateDisplayOrder(
+        categoryFranchise.id, 
+        data.display_order,
+      );
         toastSuccess("Cập nhật thứ tự hiển thị thành công");
         onSuccess();
         onClose();
-      } else {
-        toastError("Cập nhật thất bại");
-      }
     } catch (error) {
       console.error("Error updating display order:", error);
       toastError("Cập nhật thất bại");
@@ -169,7 +168,7 @@ const EditCategoryFranchise = forwardRef<
               valueAsNumber: true,
             })}
             error={errors.display_order}
-            isDisabled={isSaving}
+            isDisabled={isSaving || onView}
           />
         </div>
         <div className="flex flex-col gap-6">

@@ -1,12 +1,8 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   type Column,
 } from "../../../components/Admin/template/CRUD.template";
 import { toast } from "sonner";
-import {
-  EditCategoryModal,
-  DeleteCategoryModal,
-} from "../../../components/Admin/category/CategoryModals";
 
 // ✅ RBAC
 import { useAuthStore } from "@/stores/auth.store";
@@ -20,7 +16,10 @@ import ClientLoading from "@/components/Client/Client.Loading";
 import CategoryFranchiseCreateModal from "@/components/categoryFranchise/CategoryFranchise.Modal";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
 import EditCategoryFranchise, { type EditCategoryFranchiseRef } from "@/components/categoryFranchise/EditCategoryFranchise";
-import { useRef } from "react";
+import { updateStatusCategoryFranchsie } from "./services/categoryFranchise06.service";
+import { restoreCategoryFranchise } from "./services/categoryFranchise05.service";
+import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
+import { deleteCategoryFranchise } from "./services/categoryFranchise04.service";
 
 const CategoryPage = () => {
   const user = useAuthStore((s) => s.user);
@@ -34,6 +33,7 @@ const CategoryPage = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const [deletingCategory, setDeletingCategory] = useState<CategoryItem | null>(
@@ -41,19 +41,18 @@ const CategoryPage = () => {
   );
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const editRef = useRef<EditCategoryFranchiseRef>(null);
-
+   // Assuming this is set during login
   // Extract fetch function để có thể gọi lại sau khi create
   const fetchCategoryFranchise = useCallback(async () => {
-    if (!franchiseId) return;
     try {
       setIsLoading(true);
       const response = await getCategoryFranchise({
         searchCondition: {
-          franchise_id: franchiseId,
+          franchise_id : franchiseId,
         },
         pageInfo: {
           pageNum: 1,
-          pageSize: 5,
+          pageSize: 1000,
         },
       });
       if (response) {
@@ -78,11 +77,18 @@ const CategoryPage = () => {
       sortable: true,
       className: "font-semibold",
     },
+
+    {
+      header: "Tên chi nhánh",
+      accessor: "franchise_name",
+      sortable: true,
+    },
     {
       header: "Ngày tạo",
       accessor: (item) => new Date(item.created_at).toLocaleDateString("vi-VN"),
       sortable: true,
     },
+    
     {
       header: "Ngày cập nhật",
       accessor: (item) => new Date(item.updated_at).toLocaleDateString("vi-VN"),
@@ -97,33 +103,26 @@ const CategoryPage = () => {
   };
 
   // Edit
-  const handleEditOpen = (item: CategoryItem) => {
+  const handleEditOpen = (
+    // mode: "create" | "edit" | "view",
+    item: CategoryItem) => {
     if (!canWrite) return;
     setEditingCategory(item);
     setIsEditOpen(true);
   };
 
-  const handleEditSubmit = (updatedData: Partial<CategoryItem>) => {
-    if (!canWrite || !editingCategory) return;
 
-    setData((prev) =>
-      prev.map((c) =>
-        c.category_id === editingCategory.category_id
-          ? {
-              ...c,
-              ...updatedData,
-              // Check specifically for undefined to allow false
-              is_active: updatedData.is_active ?? c.is_active,
-              updated_at: new Date().toISOString(),
-            }
-          : c,
-      ),
-    );
-
-    toast.success("Cập nhật danh mục thành công");
-    setIsEditOpen(false);
-    setEditingCategory(null);
-  };
+  const handleRestore = async (item: CategoryItem) => {
+    if (!canWrite) return;
+    try{
+      await restoreCategoryFranchise(item.id);
+      toast.success("Đã khôi phục danh mục thành công");
+    }catch(error){
+      console.error("Error restoring category franchise:", error);
+      toast.error("Có lỗi xảy ra khi khôi phục danh mục");
+    }  
+    fetchCategoryFranchise();
+  }
 
   // Delete
   const handleDeleteOpen = (item: CategoryItem) => {
@@ -132,13 +131,29 @@ const CategoryPage = () => {
     setIsDeleteOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
-    if (!canWrite || !deletingCategory) return;
+  const handleDeleteConfirm = async () => {
+  if (!canWrite || !deletingCategory) return;
 
-    setData((prev) => prev.filter((c) => c.category_id !== deletingCategory.category_id));
+  try {
+    await deleteCategoryFranchise(deletingCategory.id);
+
+    setData((prev) =>
+      prev.filter((c) => c.category_id !== deletingCategory.category_id)
+    );
+
     toast.success("Đã xóa danh mục thành công");
     setIsDeleteOpen(false);
     setDeletingCategory(null);
+    fetchCategoryFranchise();
+  } catch (error) {
+    console.error("Error deleting category franchise:", error);
+    toast.error("Có lỗi xảy ra khi xóa danh mục");
+  }
+};
+
+  const handleViewOpen = (item: CategoryItem) => {
+    setEditingCategory(item);
+    setIsViewOpen(true);
   };
 
   if (isLoading) {
@@ -148,19 +163,27 @@ const CategoryPage = () => {
   }
 
   // Status
-  const handleStatusChange = (item: CategoryItem, newStatus: boolean) => {
-    if (!canWrite) return;
+  const handleStatusChange = async (item: CategoryItem, newStatus: boolean) => {
+    // if (!isManager) return;
 
-    setData((prev) =>
-      prev.map((c) =>
-        c.category_id === item.category_id
-          ? { ...c, is_active: newStatus, updated_at: new Date().toISOString() }
-          : c,
-      ),
-    );
-    toast.success(
-      `Đã cập nhật trạng thái: ${newStatus ? "Hoạt động" : "Ngưng hoạt động"}`,
-    );
+    try {
+      await updateStatusCategoryFranchsie(item.id, newStatus);
+      
+      setData((prev) =>
+        prev.map((c) =>
+          c.id === item.id
+            ? { ...c, is_active: newStatus, updated_at: new Date().toISOString() }
+            : c,
+        ),
+      );
+      
+      toast.success(
+        `Đã cập nhật trạng thái: ${newStatus ? "Hoạt động" : "Ngưng hoạt động"}`,
+      );
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Có lỗi xảy ra khi cập nhật trạng thái");
+    }
   };
 
   return (
@@ -172,14 +195,17 @@ const CategoryPage = () => {
         pageSize={5}
         tableMaxHeightClass="max-h-[60vh]"
         // ✅ RBAC: STAFF không thấy Add/Edit/Delete
+        // onView={}
         onAdd={canWrite ? handleCreateOpen : undefined}
         onEdit={canWrite ? handleEditOpen : undefined}
         onDelete={canWrite ? handleDeleteOpen : undefined}
+        onView={canWrite ? handleViewOpen : undefined} // STAFF vẫn có thể xem chi tiết
         // ✅ Status vẫn hiển thị nhưng sẽ disable (nhờ CRUD.template.tsx đã sửa)
         statusField="is_active"
         onStatusChange={canWrite ? handleStatusChange : undefined}
         searchKeys={["category_name", "category_id"]}
         onRefresh={fetchCategoryFranchise}
+        onRestore={canWrite ? handleRestore : undefined}
         filters={[
           {
             key: "is_active",
@@ -187,6 +213,14 @@ const CategoryPage = () => {
             options: [
               { value: "true", label: "Hoạt động" },
               { value: "false", label: "Ngưng hoạt động" },
+            ],
+          },
+          {
+            key: "is_deleted",
+            label: "",
+            options: [
+              { value: "true", label: "Đã xóa" },
+              { value: "false", label: "Chưa xóa" },
             ],
           },
         ]}
@@ -201,6 +235,9 @@ const CategoryPage = () => {
             onSuccess={fetchCategoryFranchise}
             franchiseId={franchiseId || "unknown"}
           />
+          <>
+            {handleStatusChange}
+          </>
 
           <CRUDModalTemplate
             isOpen={isEditOpen}
@@ -217,7 +254,8 @@ const CategoryPage = () => {
             isLoading={false}
             maxWidth="max-w-1/2"
             children={
-              <EditCategoryFranchise 
+              <EditCategoryFranchise
+                onView={false} 
                 ref={editRef}
                 category={editingCategory as CategoryItem}
                 onClose={() => {
@@ -228,14 +266,43 @@ const CategoryPage = () => {
             }
           />
 
-          <DeleteCategoryModal
+          <CRUDModalTemplate
+            isOpen={isViewOpen}
+            onClose={() => {
+              setIsViewOpen(false);
+              setEditingCategory(null);
+            }}
+            onSave={() => {
+              // Trigger submit trong EditCategoryModal
+              editRef.current?.submit();
+            }}
+            title="Danh mục"
+            mode="view"
+            isLoading={false}
+            maxWidth="max-w-1/2"
+            children={
+              <EditCategoryFranchise 
+                onView={true}
+                ref={editRef}
+                category={editingCategory as CategoryItem}
+                onClose={() => {
+                  setIsViewOpen(false);
+                }}
+                onSuccess={fetchCategoryFranchise}
+              />
+            }
+          />
+
+          <ActionConfirmModal
             isOpen={isDeleteOpen}
             onClose={() => {
               setIsDeleteOpen(false);
               setDeletingCategory(null);
             }}
-            category={deletingCategory}
             onConfirm={handleDeleteConfirm}
+            type="delete"
+            title="Xác nhận xóa"
+            message={`Bạn đang thực hiện xóa danh mục "${deletingCategory?.category_name}". Hành động này không thể hoàn tác.`}
           />
         </>
       ) : null}

@@ -1,4 +1,5 @@
 export type DisplayOrderResponse = {
     success: boolean;
-    message: string;
+    data: string;
+    message?: string;
 }

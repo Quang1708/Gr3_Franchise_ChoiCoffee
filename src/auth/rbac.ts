@@ -17,8 +17,6 @@ export type CmsUser = {
   }[];
 };
 
-const uniq = <T,>(arr: T[]) => Array.from(new Set(arr));
-
 export type FranchiseOption = {
   id: string;
   code: string;
@@ -54,26 +52,32 @@ export function getEffectivePermissions(
 ): PermissionCode[] {
   if (!user?.roles?.length) return [];
 
-const roleCodes = user.roles
-  .filter((r) => {
-    if (!r.role) return false;
+  const roleCodes = user.roles
+    .filter((r) => {
+      if (!r.role) return false;
 
-    // GLOBAL
-    if (r.scope === "GLOBAL" || r.franchise_id == null) return true;
+      /**
+       * GLOBAL role chỉ dùng khi KHÔNG có franchise context
+       */
+      if (!franchiseId && r.scope === "GLOBAL") {
+        return true;
+      }
 
-    // FRANCHISE
-    if (typeof franchiseId === "number" || typeof franchiseId === "string") {
-      return String(r.franchise_id) === String(franchiseId);
-    }
+      /**
+       * FRANCHISE role
+       */
+      if (franchiseId && r.franchise_id != null) {
+        return String(r.franchise_id) === String(franchiseId);
+      }
 
-    return false;
-  })
-  .map((r) => r.role as string);
+      return false;
+    })
+    .map((r) => r.role as string);
 
   const perms = roleCodes.flatMap((code) => ROLE_PERMISSIONS[code] ?? []);
-  return uniq(perms);
-}
 
+  return Array.from(new Set(perms));
+}
 export function can(
   user: CmsUser | null,
   perm: PermissionCode,

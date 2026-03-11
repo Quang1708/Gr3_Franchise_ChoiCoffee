@@ -18,13 +18,19 @@ export type MenuPath =
 
 export function isMenuVisible(
   user: CmsUser | null,
-  franchiseId: number | null,
+  franchiseId: string | "ALL" | null,
   path: MenuPath,
 ) {
-  // Always
+  if (!user) return false;
+
+  // always visible
   if (path === "dashboard" || path === "logout") return true;
 
-  const fid = franchiseId ?? undefined;
+  /**
+   * convert context
+   */
+  const fid =
+    franchiseId && franchiseId !== "ALL" ? String(franchiseId) : undefined;
 
   if (path === "franchise") return can(user, PERM.FRANCHISE_MGMT, fid);
   if (path === "user") return can(user, PERM.USER_MANAGE, fid);

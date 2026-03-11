@@ -318,3 +318,54 @@ export const DeleteFranchiseModal: React.FC<{
     </Modal>
   );
 };
+/* -------------------------------------------------- */
+/* RESTORE MODAL                                      */
+/* -------------------------------------------------- */
+
+export const RestoreFranchiseModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  franchise: Franchise | null;
+  onConfirm: () => void;
+}> = ({ isOpen, onClose, franchise, onConfirm }) => {
+  if (!franchise) return null;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Khôi phục chi nhánh"
+      size="sm"
+    >
+      <div className="space-y-4">
+        <div className="flex gap-3">
+          <AlertTriangle className="text-yellow-600" />
+
+          <div>
+            <p className="font-medium">Bạn muốn khôi phục chi nhánh này?</p>
+
+            <p className="text-sm text-gray-600">
+              {franchise.name} ({franchise.code})
+            </p>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 border rounded-lg">
+            Hủy
+          </button>
+
+          <button
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            Khôi phục
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};

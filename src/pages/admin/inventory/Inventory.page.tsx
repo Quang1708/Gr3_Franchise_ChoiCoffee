@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import {
   CRUDTable,
@@ -17,6 +18,7 @@ import { useAdminContextStore } from "@/stores/adminContext.store";
 
 type InventoryRow = {
   id: string;
+  product_franchise_id: string;
   productName: string;
   franchiseName: string;
   quantity: number;
@@ -68,6 +70,7 @@ const InventoryPage = () => {
 
         return {
           id: i.id,
+          product_franchise_id: i.product_franchise_id,
           productName: i.product_name,
           franchiseName: i.franchise_name,
           quantity,
@@ -145,6 +148,7 @@ const InventoryPage = () => {
         columns={columns}
         pageSize={5}
         searchKeys={["productName", "franchiseName"]}
+        onAdd={() => setCreateOpen(true)}
         /**
          * EDIT ICON
          */
@@ -172,13 +176,6 @@ const InventoryPage = () => {
 
         searchRight={
           <div className="flex gap-2">
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="px-3 py-2 bg-primary text-white rounded-lg text-sm"
-            >
-              + Tạo tồn kho
-            </button>
-
             <button
               onClick={() => setLowOnly((v) => !v)}
               className={`px-3 py-2 border rounded-lg text-sm ${

@@ -3,8 +3,15 @@ export interface Category {
     code: string;
     name: string;
     description?: string;
-    isActive: boolean;
-    isDeleted: boolean;
-    createdAt: string;
-    updatedAt: string;
+    parent_id?: string | number;
+    is_active: boolean;
+    is_deleted: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CategorySelectItem {
+    value: string | number;
+    code: string;
+    name: string;
 }

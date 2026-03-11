@@ -24,23 +24,47 @@ export const useAdminContextStore = create<AdminContextState>((set) => ({
   selectedFranchiseId: null,
   franchises: [],
 
+  /**
+   * Load context từ localStorage khi app start
+   */
   hydrate: () => {
     const saved = getItemInLocalStorage<string | number>(
       LOCAL_STORAGE.ADMIN_FRANCHISE_ID,
     );
 
-    const ok = typeof saved === "string" || typeof saved === "number";
+    if (!saved) {
+      set({ selectedFranchiseId: null });
+      return;
+    }
 
     set({
-      selectedFranchiseId: ok ? String(saved) : null,
+      selectedFranchiseId: String(saved),
     });
   },
 
+  /**
+   * Update franchise context
+   */
   setSelectedFranchiseId: (id) => {
+    if (id === null) {
+      setItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID, null);
+      set({ selectedFranchiseId: null });
+      return;
+    }
+
+    if (id === "ALL") {
+      setItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID, "ALL");
+      set({ selectedFranchiseId: "ALL" });
+      return;
+    }
+
     setItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID, id);
-    set({ selectedFranchiseId: id });
+    set({ selectedFranchiseId: String(id) });
   },
 
+  /**
+   * Update franchise list
+   */
   setFranchises: (list) => {
     set({ franchises: list });
   },

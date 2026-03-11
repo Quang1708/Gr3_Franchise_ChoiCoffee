@@ -9,8 +9,14 @@ import {
   getItemInLocalStorage,
   removeItemInLocalStorage,
 } from "@/utils/localStorage.util";
-import type { AdminLoginUserProfile, AdminRoleLike } from "../login/models/api.model";
-import { getAdminProfile, switchAdminContext } from "../login/services/login.service";
+import type {
+  AdminLoginUserProfile,
+  AdminRoleLike,
+} from "../login/models/api.model";
+import {
+  getAdminProfile,
+  switchAdminContext,
+} from "../login/services/login.service";
 
 const normalizeRoles = (rolesInput: unknown) =>
   Array.isArray(rolesInput)
@@ -70,13 +76,7 @@ const AdminSelectContextPage: React.FC = () => {
       removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
       navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
     }
-  }, [
-    user,
-    token,
-    roles,
-    navigate,
-    setSelectedFranchiseId,
-  ]);
+  }, [user, token, roles, navigate, setSelectedFranchiseId]);
 
   useEffect(() => {
     if (selectedRoleIndex != null) return;
@@ -109,17 +109,22 @@ const AdminSelectContextPage: React.FC = () => {
       await switchAdminContext({ franchise_id: selected.franchise_id ?? "" });
 
       const profile = await getAdminProfile();
+
       if (profile.success && profile.data) {
         const profileUser =
           (profile.data as { user?: AdminLoginUserProfile } | null)?.user ??
           (profile.data as AdminLoginUserProfile);
+
         const normalizedRoles = normalizeRoles(
           (profile.data as { roles?: unknown } | null)?.roles,
         );
+
         const fallbackRoles = normalizeRoles(profileUser?.roles);
+
         const mergedRoles = Array.isArray(normalizedRoles)
           ? normalizedRoles
           : fallbackRoles;
+
         const userWithRoles =
           profileUser && Array.isArray(mergedRoles)
             ? {
@@ -128,19 +133,29 @@ const AdminSelectContextPage: React.FC = () => {
               }
             : profileUser;
 
+        if (selected.franchise_id != null) {
+          setSelectedFranchiseId(String(selected.franchise_id));
+        } else {
+          setSelectedFranchiseId(null);
+        }
+
+        /**
+         * ⚠️ UPDATE AUTH SAU
+         */
+
         if (userWithRoles && token) {
           setAuth(userWithRoles as AdminLoginUserProfile, token);
         }
       }
 
-      if (selected.franchise_id != null) {
-        setSelectedFranchiseId(String(selected.franchise_id));
-      } else {
-        setSelectedFranchiseId(null);
-      }
-
       removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
-      navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
+
+      /**
+       * ⚠️ FORCE RESET APP
+       * đảm bảo guard + menu + profile render lại
+       */
+
+      window.location.href = ROUTER_URL.ADMIN;
     } catch (error) {
       console.error(error);
       setContextError("Không thể chuyển ngữ cảnh. Vui lòng thử lại.");
@@ -150,7 +165,7 @@ const AdminSelectContextPage: React.FC = () => {
   };
 
   const handleExit = () => {
-    navigate(ROUTER_URL.HOME, { replace: true });
+    navigate(-1);
   };
 
   return (
@@ -161,23 +176,19 @@ const AdminSelectContextPage: React.FC = () => {
           <div className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
             ChoiCoffee Admin
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">
-           Chọn Chi Nhánh 
-          </h1>
-          <p className="text-sm text-gray-500">
-            Vui lòng chọn chi nhánh của bạn.
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Chọn Roles</h1>
+          <p className="text-sm text-gray-500">Vui lòng chọn Roles của bạn.</p>
         </div>
 
         {contextRequired && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-            Vui lòng chọn chi nhánh để vào hệ thống.
+            Vui lòng chọn Roles để vào hệ thống.
           </div>
         )}
 
         <div className="mt-5 flex items-center justify-between text-xs text-gray-500">
-          <div>Danh sách chi nhánh</div>
-          <div>{roles.length} chi nhánh</div>
+          <div>Danh sách Roles</div>
+          <div>{roles.length} Roles</div>
         </div>
 
         <div className="mt-3 grid gap-2">

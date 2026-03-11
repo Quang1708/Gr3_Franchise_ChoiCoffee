@@ -4,8 +4,8 @@ import { useCustomerAuthStore } from "@/stores/customerAuth.store";
 import { useAuthStore } from "@/stores/auth.store";
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
-import { getItemInSessionStorage } from "@/utils/sessionStorage.util";
-import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
+// import { getItemInSessionStorage } from "@/utils/sessionStorage.util";
+// import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
 
 // Message constants for token expiration
 export const MSG_CONSTANT = {
@@ -18,7 +18,6 @@ export const axiosClient = axios.create({
   timeout: 300000,
   withCredentials: true,
 });
-
 
 // Track if we're currently refreshing token
 let isRefreshing = false;
@@ -54,9 +53,7 @@ axiosClient.interceptors.response.use(
 
     // If access token expired and we haven't retried yet
     if (isAccessTokenExpired && !originalRequest._retry) {
-      // Don't retry refresh token endpoint itself
       if (originalRequest.url?.includes("/refresh-token")) {
-        // Refresh token expired, clear customer info and redirect to login
         useCustomerAuthStore.getState().clearCustomer();
         return Promise.reject(error);
       }
@@ -103,15 +100,15 @@ export const axiosAdminClient = axios.create({
   withCredentials: true,
 });
 
-axiosAdminClient.interceptors.request.use((config) => {
-  const token = getItemInSessionStorage<string>(SESSION_STORAGE.ACCESS_TOKEN);
+// axiosAdminClient.interceptors.request.use((config) => {
+//   const token = getItemInSessionStorage<string>(SESSION_STORAGE.ACCESS_TOKEN);
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+//   if (token) {
+//     config.headers.Authorization = `Bearer ${token}`;
+//   }
 
-  return config;
-});
+//   return config;
+// });
 // Track if we're currently refreshing admin token
 let isRefreshingAdmin = false;
 // Queue of admin requests waiting for token refresh

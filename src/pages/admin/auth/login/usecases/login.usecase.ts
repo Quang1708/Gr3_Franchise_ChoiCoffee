@@ -25,11 +25,16 @@ const normalizeRoles = (roles: unknown) =>
 const buildUser = (data: unknown): AdminLoginUserProfile | null => {
   const user = (data as { user?: AdminLoginUserProfile } | null)?.user ?? data;
   const roles = normalizeRoles((data as { roles?: unknown } | null)?.roles);
+  const userRoles = normalizeRoles(
+    (user as AdminLoginUserProfile | null)?.roles,
+  );
 
   if (!user) return null;
 
-  return Array.isArray(roles)
-    ? { ...(user as AdminLoginUserProfile), roles }
+  const mergedRoles = Array.isArray(roles) ? roles : userRoles;
+
+  return Array.isArray(mergedRoles)
+    ? { ...(user as AdminLoginUserProfile), roles: mergedRoles }
     : (user as AdminLoginUserProfile);
 };
 

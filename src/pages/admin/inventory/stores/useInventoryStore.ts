@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { inventoryService } from "../services/inventory.service";
 import type { Inventory } from "../models/inventory.model";
+import { useAdminContextStore } from "@/stores/adminContext.store";
 
 type InventoryState = {
   items: Inventory[];
@@ -22,9 +23,17 @@ export const useInventoryStore = create<InventoryState>((set) => ({
     try {
       set({ loading: true });
 
+      const selectedFranchiseId =
+        useAdminContextStore.getState().selectedFranchiseId;
+      const franchiseId =
+        selectedFranchiseId && selectedFranchiseId !== "ALL"
+          ? String(selectedFranchiseId)
+          : null;
+
       const res = await inventoryService.search({
         searchCondition: {
           is_deleted: false,
+          ...(franchiseId ? { franchise_id: franchiseId } : {}),
         },
         pageInfo: {
           pageNum: 1,

@@ -1,12 +1,12 @@
-/* eslint-disable react-hooks/rules-of-hooks */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Store, ChevronDown } from "lucide-react";
+import { LogOut, Store } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useAdminContextStore } from "@/stores/adminContext.store";
-import { getAccessibleFranchises } from "@/auth/rbac";
+
 import ROUTER_URL from "@/routes/router.const";
-import { franchiseService } from "@/services/franchise.service";
+import { LOCAL_STORAGE } from "@/consts/localstorage.const";
+import { getItemInLocalStorage } from "@/utils/localStorage.util";
 
 const initials = (name?: string) => {
   const s = (name ?? "").trim();
@@ -22,51 +22,33 @@ const AdminHeader = () => {
 
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-
-  const franchisesFromStore = useAdminContextStore((s) => s.franchises);
-  const setFranchises = useAdminContextStore((s) => s.setFranchises);
   const selectedFranchiseId = useAdminContextStore(
     (s) => s.selectedFranchiseId,
   );
-  const setSelectedFranchiseId = useAdminContextStore(
-    (s) => s.setSelectedFranchiseId,
+  const contextRequired = Boolean(
+    getItemInLocalStorage<boolean>(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED),
   );
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const isAdmin = user?.roles?.some((r: any) => r.role === "ADMIN");
 
-  useEffect(() => {
-    if (!isAdmin) return;
+  const contextLabel = useMemo(() => {
+    if (!user?.roles?.length) return "Chua chon";
 
-    const load = async () => {
-      const data = await franchiseService.getAllSelect();
+    const selected = user.roles.find((role) =>
+      selectedFranchiseId == null
+        ? role.scope === "GLOBAL" || role.franchise_id == null
+        : String(role.franchise_id) === String(selectedFranchiseId),
+    );
 
-      const mapped = data.map((f) => ({
-        id: f.value,
-        code: f.code,
-        name: f.name,
-      }));
+    if (!selected) return "Chua chon";
+    if (selected.scope === "GLOBAL" || selected.franchise_id == null) {
+      return "GLOBAL";
+    }
+    return selected.franchise_name ?? `FRANCHISE ${selected.franchise_id}`;
+  }, [user, selectedFranchiseId]);
 
-      setFranchises([
-        {
-          id: "ALL",
-          code: "ALL",
-          name: "Tất cả chi nhánh",
-        },
-        ...mapped,
-      ]);
-    };
-
-    load();
-  }, [isAdmin, setFranchises]);
-
-  const franchises = useMemo(() => {
-    return getAccessibleFranchises(user, franchisesFromStore);
-  }, [user, franchisesFromStore]);
-
-  const [open, setOpen] = useState(false);
   return (
-    <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-40">
-      <div className="h-full px-4 flex items-center justify-between gap-3">
+    <>
+      <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="h-full px-4 flex items-center justify-between gap-3">
         {/* Franchise Switcher */}
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center">
@@ -74,68 +56,26 @@ const AdminHeader = () => {
           </div>
 
           <div className="min-w-0">
-            <div className="text-xs text-gray-500 font-medium">Franchise</div>
-
-            {franchises.length <= 1 ? (
+            <div className="text-xs text-gray-500 font-medium">Chi nhánh</div>
+            <div className="flex items-center gap-2">
               <div className="text-sm font-semibold text-gray-900 truncate">
-                {franchises[0]?.name ?? "—"}
+                {contextLabel}
               </div>
-            ) : (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setOpen((v) => !v)}
-                  className="h-9 px-3 pr-9 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-900
-                             hover:bg-gray-50 transition w-[320px] max-w-[55vw] truncate text-left"
-                >
-                  {(() => {
-                    const cur = franchises.find(
-                      (f) => f.id === selectedFranchiseId,
-                    );
-                    return cur ? `${cur.code} — ${cur.name}` : "Chọn chi nhánh";
-                  })()}
-                  <ChevronDown
-                    size={16}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-                  />
-                </button>
-
-                {open && (
-                  <div
-                    className="absolute mt-2 w-[360px] max-w-[70vw] bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden"
-                    onMouseLeave={() => setOpen(false)}
-                  >
-                    <div className="max-h-72 overflow-auto">
-                      {franchises.map((f) => {
-                        const active = f.id === selectedFranchiseId;
-                        return (
-                          <button
-                            key={f.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedFranchiseId(f.id);
-                              setOpen(false);
-                            }}
-                            className={`w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition flex items-center justify-between gap-3 ${
-                              active ? "bg-primary/5" : ""
-                            }`}
-                          >
-                            <span className="truncate font-medium text-gray-900">
-                              {f.code} — {f.name}
-                            </span>
-                            {active ? (
-                              <span className="text-xs font-semibold text-primary">
-                                Đang chọn
-                              </span>
-                            ) : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+              {contextRequired && (
+                <span className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                  Vui lòng chọn!
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_SELECT_CONTEXT)
+                }
+                className="h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-800 hover:bg-gray-50"
+              >
+                Đổi chi nhánh
+              </button>
+            </div>
           </div>
         </div>
 
@@ -168,8 +108,9 @@ const AdminHeader = () => {
             <span className="hidden md:inline">Đăng xuất</span>
           </button>
         </div>
-      </div>
-    </header>
+        </div>
+      </header>
+    </>
   );
 };
 

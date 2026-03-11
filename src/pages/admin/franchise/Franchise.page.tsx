@@ -7,7 +7,6 @@ import {
 import type { Franchise } from "./models/franchise.model";
 
 import { useFranchiseStore } from "./stores/useFranchiseStore";
-import { useAdminContextStore } from "@/stores/adminContext.store";
 
 import ClientLoading from "@/components/Client/Client.Loading";
 
@@ -28,10 +27,6 @@ const FranchisePage = () => {
     changeStatus,
   } = useFranchiseStore();
 
-  const setSelectedFranchiseId = useAdminContextStore(
-    (s) => s.setSelectedFranchiseId,
-  );
-
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -39,9 +34,8 @@ const FranchisePage = () => {
   const [selected, setSelected] = useState<Franchise | null>(null);
 
   useEffect(() => {
-    setSelectedFranchiseId("ALL");
     fetchAll();
-  }, [fetchAll, setSelectedFranchiseId]);
+  }, [fetchAll]);
 
   const columns: Column<Franchise>[] = useMemo(
     () => [

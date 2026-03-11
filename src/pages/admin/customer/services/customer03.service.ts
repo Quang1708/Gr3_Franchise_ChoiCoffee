@@ -1,21 +1,11 @@
 import { axiosAdminClient } from "@/api";
-import type { CustomerSearchResponse } from "@/pages/admin/customer/models/customerSearchResponse.model";
+import type { SearchCustomerResponse } from "../models/searchCustomerResponse.model";
+import type { SearchCustomerRequest } from "../models/searchCustomerRequest.model";
 
-export const searchCustomersApi = async (payload: {
-    searchCondition: {
-        keyword?: string;
-        is_active?: string | boolean;
-        is_deleted?: string | boolean;
-    };
-    pageInfo: {
-        pageNum: number;
-        pageSize: number;
-    };
-}) => {
-    const res = await axiosAdminClient.post<CustomerSearchResponse>(
+export const searchCustomersApi = async (payload: SearchCustomerRequest) => {
+    const res = await axiosAdminClient.post<SearchCustomerResponse>(
         "/api/customers/search",
         payload
     );
-
     return res.data;
 };

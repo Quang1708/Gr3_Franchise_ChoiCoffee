@@ -50,7 +50,7 @@ const menuItems: MenuItem[] = [
 
 type AdminSidebarProps = {
   collapsed?: boolean;
-  onToggle?: () => void; // ✅ NEW: để layout điều khiển state
+  onToggle?: () => void;
 };
 
 const AdminSidebar = ({ collapsed = false, onToggle }: AdminSidebarProps) => {

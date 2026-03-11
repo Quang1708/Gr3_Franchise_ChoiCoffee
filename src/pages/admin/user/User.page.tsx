@@ -9,6 +9,7 @@ import {
   createUser,
   deleteUser,
   getUsers,
+  searchUsers,
   updateUser,
   updateUserRole,
   type UserListItem,
@@ -52,12 +53,16 @@ const UserPage = () => {
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [detailUser, setDetailUser] = useState<UserListItem | null>(null);
+
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deletingUser, setDeletingUser] = useState<UserListItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState<UserFormData>({
     email: "",
     password: "",
     name: "",
     phone: "", // initialize phone
-    roleCode: "STAFF",
+    roleCode: "",
     avatarUrl: "",
   });
 
@@ -85,6 +90,18 @@ const UserPage = () => {
     };
   }, []);
 
+  const handleSearch = async (keyword: string) => {
+    setIsLoading(true);
+    try {
+      const data = await searchUsers(keyword);
+      setUsers(data);
+    } catch {
+      toastError("Không thể tìm kiếm user");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleOpenModal = (user?: UserListItem) => {
     if (user) {
       setEditingUser(user);
@@ -103,7 +120,7 @@ const UserPage = () => {
         password: "",
         name: "",
         phone: "", // include default phone
-        roleCode: "STAFF",
+        roleCode: "",
         avatarUrl: "",
       });
     }
@@ -118,7 +135,7 @@ const UserPage = () => {
       password: "",
       name: "",
       phone: "",
-      roleCode: "STAFF",
+      roleCode: "",
       avatarUrl: "",
     });
   };
@@ -199,16 +216,37 @@ const UserPage = () => {
     handleCloseModal();
   };
 
-  const handleDelete = async (userId: number | string) => {
-    if (globalThis.confirm("Bạn có chắc chắn muốn xóa người dùng này?")) {
-      const result = await deleteUser(userId);
+  const handleDelete = (user: UserListItem) => {
+    setDeletingUser(user);
+    setIsDeleteOpen(true);
+  };
+
+  const handleCloseDelete = () => {
+    if (isDeleting) return;
+    setIsDeleteOpen(false);
+    setDeletingUser(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingUser) return;
+    setIsDeleting(true);
+    try {
+      const result = await deleteUser(deletingUser.id);
       if (!result.ok) {
         toastError(result.message);
         return;
       }
 
-      setUsers((prev) => prev.filter((user) => user.id !== userId));
+      setUsers((prev) => prev.filter((user) => user.id !== deletingUser.id));
+      if (detailUser?.id === deletingUser.id) {
+        setIsDetailOpen(false);
+        setDetailUser(null);
+      }
       toastSuccess("Xóa user thành công");
+      setIsDeleteOpen(false);
+      setDeletingUser(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -316,7 +354,7 @@ const UserPage = () => {
 
   return (
     <div className="p-6 h-[calc(100vh-4rem)] min-h-0 flex flex-col overflow-hidden transition-all animate-fade-in">
-      {isLoading ? <ClientLoading /> : null}
+      {isLoading && <ClientLoading />}
 
       <div className="mb-4">
         <CRUDTable<UserListItem>
@@ -330,12 +368,13 @@ const UserPage = () => {
           onAdd={() => handleOpenModal()}
           onView={handleOpenDetails}
           onEdit={handleOpenModal}
-          onDelete={(user) => handleDelete(user.id)}
+          onDelete={(user) => handleDelete(user)}
           // Status (giống Product)
           statusField="isActive"
           onStatusChange={handleStatusChange}
           // Search & Filter
           searchKeys={["name", "email", "phone"]}
+          onSearch={handleSearch}
           filters={[
             {
               key: "roleCode",
@@ -467,6 +506,9 @@ const UserPage = () => {
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all cursor-pointer"
             >
+              <option value="" disabled>
+                -- Chọn vai trò --
+              </option>
               {ROLE_OPTIONS.map((roleCode) => (
                 <option key={roleCode} value={roleCode}>
                   {roleCode}
@@ -622,6 +664,47 @@ const UserPage = () => {
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      {/* Modal for Delete confirmation */}
+      <Modal
+        isOpen={isDeleteOpen && !!deletingUser}
+        onClose={handleCloseDelete}
+        title="Xóa người dùng"
+        maxWidth="max-w-md"
+      >
+        {deletingUser ? (
+          <div className="space-y-5">
+            <div className="text-sm text-gray-700">
+              Bạn có chắc chắn muốn xóa người dùng
+              {" "}
+              <span className="font-semibold text-gray-900">{deletingUser.name}</span>
+              {deletingUser.email ? (
+                <span className="text-gray-500"> ({deletingUser.email})</span>
+              ) : null}
+              ?
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={handleCloseDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? "Đang xóa..." : "Xóa"}
               </button>
             </div>
           </div>

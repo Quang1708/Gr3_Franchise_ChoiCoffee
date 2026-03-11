@@ -10,8 +10,7 @@ export const customerSearchSchema = z.object({
 export const customerSchema = z.object({
     email: z.string().email("Email không hợp lệ"),
     password: z.string().min(6, "Password tối thiểu 6 ký tự"),
-    phone: z.string().min(10, "SĐT không hợp lệ"),
-    name: z.string().optional(),
+    phone: z.string().min(10, "SĐT không hợp lệ").max(12, "Số điện không vượt quá 12 số"),
     address: z.string().optional(),
     avatar_url: z.string().optional(),
 });

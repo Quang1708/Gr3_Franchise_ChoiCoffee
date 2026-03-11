@@ -4,18 +4,19 @@ import { useImageUpload } from "@/hooks/useImageUpload";
 
 interface FormInputProps {
     label: string;
-    type?: "text" | "email" | "password" | "file" | "tel";
+    type?: "text" | "email" | "password" | "file" | "tel" | "number";
     register: any;
     error?: any;
-    defaultValue?: string;
+    defaultValue?: string | number;
     placeholder?: string;
     isView?: boolean;
     className?: string;
     onUploadSuccess?: (url: string) => void;
+    isDisabled?: boolean;
 }
 
 export const FormInput = ({
-    label, type = "text", register, error, defaultValue, placeholder, isView, className, onUploadSuccess
+    label, type = "text", register, error, defaultValue, placeholder, isView, className, onUploadSuccess, isDisabled
 }: FormInputProps) => {
     const [showPassword, setShowPassword] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(defaultValue);
@@ -58,11 +59,11 @@ export const FormInput = ({
                         {isUploading && <div className="absolute inset-0 bg-black/20 flex items-center justify-center rounded-full"><Loader2 className="animate-spin text-white" /></div>}
                     </div>
                     {!isView && !isUploading && (
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full shadow-lg hover:scale-110 transition-all">
+                        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isDisabled} className="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full shadow-lg hover:scale-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                             <Camera className="w-3 h-3" />
                         </button>
                     )}
-                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*" />
+                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} accept="image/*" disabled={isDisabled} />
                 </div>
                 <span className="text-[10px] font-bold text-gray-400 uppercase">{label}</span>
             </div>
@@ -77,11 +78,12 @@ export const FormInput = ({
                     type={type === "password" && showPassword ? "text" : type}
                     defaultValue={defaultValue}
                     placeholder={placeholder}
+                    disabled={isDisabled}
                     {...register}
-                    className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm transition-all outline-none focus:ring-2 focus:ring-primary/20 ${error ? "border-red-500" : "border-gray-200 focus:border-primary"}`}
+                    className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm transition-all outline-none focus:ring-2 focus:ring-primary/20 ${error ? "border-red-500" : "border-gray-200 focus:border-primary"} ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
                 />
                 {type === "password" && (
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} disabled={isDisabled} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 disabled:opacity-50">
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                 )}

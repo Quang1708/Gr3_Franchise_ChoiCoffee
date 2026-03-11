@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
-  CRUDTable,
   type Column,
 } from "../../../components/Admin/template/CRUD.template";
 import { toast } from "sonner";
 import {
-  CreateCategoryModal,
   EditCategoryModal,
   DeleteCategoryModal,
 } from "../../../components/Admin/category/CategoryModals";
@@ -17,8 +15,12 @@ import { can } from "@/auth/rbac";
 import { PERM } from "@/auth/rbac.permissions";
 import type { CategoryItem } from "./models/categoryFranchise02.model";
 import { getCategoryFranchise } from "./services/categoryFranchise02.service";
-import CategoryFranchiseCreateModal from "@/components/categoryFranchise/categoryFranchise.Create.Modal";
-
+import { CRUDPageTemplate } from "@/components/Admin/template/CRUDPage.template";
+import ClientLoading from "@/components/Client/Client.Loading";
+import CategoryFranchiseCreateModal from "@/components/categoryFranchise/CategoryFranchise.Modal";
+import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
+import EditCategoryFranchise, { type EditCategoryFranchiseRef } from "@/components/categoryFranchise/EditCategoryFranchise";
+import { useRef } from "react";
 
 const CategoryPage = () => {
   const user = useAuthStore((s) => s.user);
@@ -28,38 +30,46 @@ const CategoryPage = () => {
     () => can(user, PERM.CATEGORY_WRITE, franchiseId ?? undefined),
     [user, franchiseId],
   );
-
   const [data, setData] = useState<CategoryItem[]>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [deletingCategory, setDeletingCategory] = useState<CategoryItem | null>(
     null,
   );
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const editRef = useRef<EditCategoryFranchiseRef>(null);
 
-  useEffect(() => {
-    const fetchCategoryFranchise = async () => {
-      try {
-        const response = await getCategoryFranchise({
-          searchCondition: {
-            franchise_id: franchiseId,
-          },
-          pageInfo: {
-            pageNum: 1,
-            pageSize: 5,
-          },
-        });
-        if (response) {
-          setData(response);
-        }
-      } catch (error) {
-        console.error("Error fetching category franchise data:", error);
+  // Extract fetch function để có thể gọi lại sau khi create
+  const fetchCategoryFranchise = useCallback(async () => {
+    if (!franchiseId) return;
+    try {
+      setIsLoading(true);
+      const response = await getCategoryFranchise({
+        searchCondition: {
+          franchise_id: franchiseId,
+        },
+        pageInfo: {
+          pageNum: 1,
+          pageSize: 5,
+        },
+      });
+      if (response) {
+        setData(response);
       }
-    };
-    fetchCategoryFranchise();
+    } catch (error) {
+      console.error("Error fetching category franchise data:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [franchiseId]);
+
+  
+  useEffect(() => {
+    fetchCategoryFranchise();
+  }, [fetchCategoryFranchise]);
 
   const columns: Column<CategoryItem>[] = [
     {
@@ -84,29 +94,6 @@ const CategoryPage = () => {
   const handleCreateOpen = () => {
     if (!canWrite) return;
     setIsCreateOpen(true);
-  };
-
-  const handleCreateSubmit = (newData: Partial<CategoryItem>) => {
-    if (!canWrite) return;
-    if (!newData.category_id || !newData.category_name) return;
-
-    // const nextId = data.length > 0 ? Math.max(...data.map((c) => c.id)) + 1 : 1;
-
-    const category: CategoryItem = {
-      category_id: newData.category_id,
-      category_name: newData.category_name,
-      is_active: newData.is_active ?? true,
-      is_deleted: false,
-      display_order: data.length + 1,
-      franchise_id: franchiseId || "unknown",
-      franchise_name: "unknown",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    setData((prev) => [category, ...prev]);
-    toast.success("Thêm danh mục thành công");
-    setIsCreateOpen(false);
   };
 
   // Edit
@@ -154,6 +141,12 @@ const CategoryPage = () => {
     setDeletingCategory(null);
   };
 
+  if (isLoading) {
+    return (
+        <ClientLoading/>
+    );
+  }
+
   // Status
   const handleStatusChange = (item: CategoryItem, newStatus: boolean) => {
     if (!canWrite) return;
@@ -171,8 +164,8 @@ const CategoryPage = () => {
   };
 
   return (
-    <div className="p-6 h-[calc(100vh-4rem)] min-h-0 flex flex-col overflow-hidden transition-all animate-fade-in">
-      <CRUDTable<CategoryItem>
+    < >       
+      <CRUDPageTemplate<CategoryItem>
         title="Quản lý Danh mục"
         data={data}
         columns={columns}
@@ -186,6 +179,7 @@ const CategoryPage = () => {
         statusField="is_active"
         onStatusChange={canWrite ? handleStatusChange : undefined}
         searchKeys={["category_name", "category_id"]}
+        onRefresh={fetchCategoryFranchise}
         filters={[
           {
             key: "is_active",
@@ -204,17 +198,34 @@ const CategoryPage = () => {
           <CategoryFranchiseCreateModal
             isOpen={isCreateOpen}
             onClose={() => setIsCreateOpen(false)}
-            onSubmit={handleCreateSubmit}
+            onSuccess={fetchCategoryFranchise}
+            franchiseId={franchiseId || "unknown"}
           />
 
-          <EditCategoryModal
+          <CRUDModalTemplate
             isOpen={isEditOpen}
             onClose={() => {
               setIsEditOpen(false);
               setEditingCategory(null);
             }}
-            category={editingCategory}
-            onSubmit={handleEditSubmit}
+            onSave={() => {
+              // Trigger submit trong EditCategoryModal
+              editRef.current?.submit();
+            }}
+            title="Danh mục"
+            mode="edit"
+            isLoading={false}
+            maxWidth="max-w-1/2"
+            children={
+              <EditCategoryFranchise 
+                ref={editRef}
+                category={editingCategory as CategoryItem}
+                onClose={() => {
+                  setIsEditOpen(false);
+                }}
+                onSuccess={fetchCategoryFranchise}
+              />
+            }
           />
 
           <DeleteCategoryModal
@@ -228,7 +239,7 @@ const CategoryPage = () => {
           />
         </>
       ) : null}
-    </div>
+    </>
   );
 };
 

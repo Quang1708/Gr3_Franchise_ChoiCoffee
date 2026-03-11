@@ -1,8 +1,8 @@
 import { axiosAdminClient } from "@/api";
-import type { Customer } from "@/models/customer.model";
+import type { GetCustomerResponse } from "../models/getCustomerResponse.model";
 
 export const getCustomerDetailService = async (id: string | number) => {
-    const response = await axiosAdminClient.get<{ success: boolean; data: Customer }>(
+    const response = await axiosAdminClient.get<GetCustomerResponse>(
         `/api/customers/${id}`
     );
     return response.data;

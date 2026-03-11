@@ -3,10 +3,9 @@ import { getCustomerDetailService } from "@/pages/admin/customer/services/custom
 export const getCustomerDetailUsecase = async (id: string | number) => {
     try {
         const res = await getCustomerDetailService(id);
-        if (!res.success) throw new Error();
-        return res.data;
+        return res;
     } catch (error) {
-        console.error(error);
-        return null;
+        console.error("Get Detail Error:", error);
+        throw error;
     }
 };

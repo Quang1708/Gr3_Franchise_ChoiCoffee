@@ -21,34 +21,63 @@ const AdminHeader = () => {
   const navigate = useNavigate();
 
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
+
   const selectedFranchiseId = useAdminContextStore(
     (s) => s.selectedFranchiseId,
   );
+
   const contextRequired = Boolean(
     getItemInLocalStorage<boolean>(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED),
   );
 
-  const contextLabel = useMemo(() => {
-    if (!user?.roles?.length) return "Chua chon";
+  /**
+   * Determine current role + franchise label
+   */
+  const currentRole = useMemo(() => {
+    if (!user?.roles?.length) return null;
 
-    const selected = user.roles.find((role) =>
-      selectedFranchiseId == null
-        ? role.scope === "GLOBAL" || role.franchise_id == null
-        : String(role.franchise_id) === String(selectedFranchiseId),
-    );
+    return user.roles.find((role) => {
+      if (selectedFranchiseId == null) {
+        return role.scope === "GLOBAL";
+      }
 
-    if (!selected) return "Chua chon";
-    if (selected.scope === "GLOBAL" || selected.franchise_id == null) {
-      return "GLOBAL";
-    }
-    return selected.franchise_name ?? `FRANCHISE ${selected.franchise_id}`;
+      return String(role.franchise_id) === String(selectedFranchiseId);
+    });
   }, [user, selectedFranchiseId]);
 
+  /**
+   * Context label for left side
+   */
+  const contextLabel = useMemo(() => {
+    if (!currentRole) return "Chưa chọn";
+
+    const franchise =
+      currentRole.scope === "GLOBAL"
+        ? "GLOBAL"
+        : (currentRole.franchise_name ??
+          `FRANCHISE ${currentRole.franchise_id}`);
+
+    return `${currentRole.role} - ${franchise}`;
+  }, [currentRole]);
+
+  /**
+   * Display name changes when switching context
+   */
+  const displayName = useMemo(() => {
+    if (!currentRole) return user?.name ?? "—";
+
+    const franchise =
+      currentRole.scope === "GLOBAL"
+        ? "GLOBAL"
+        : (currentRole.franchise_name ??
+          `FRANCHISE ${currentRole.franchise_id}`);
+
+    return `${currentRole.role} (${franchise})`;
+  }, [currentRole, user]);
+
   return (
-    <>
-      <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="h-full px-4 flex items-center justify-between gap-3">
+    <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-40">
+      <div className="h-full px-4 flex items-center justify-between gap-3">
         {/* Franchise Switcher */}
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center">
@@ -56,16 +85,17 @@ const AdminHeader = () => {
           </div>
 
           <div className="min-w-0">
-            <div className="text-xs text-gray-500 font-medium">Chi nhánh</div>
             <div className="flex items-center gap-2">
               <div className="text-sm font-semibold text-gray-900 truncate">
                 {contextLabel}
               </div>
+
               {contextRequired && (
                 <span className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
                   Vui lòng chọn!
                 </span>
               )}
+
               <button
                 type="button"
                 onClick={() =>
@@ -73,7 +103,7 @@ const AdminHeader = () => {
                 }
                 className="h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-800 hover:bg-gray-50"
               >
-                Đổi chi nhánh
+                Đổi Roles
               </button>
             </div>
           </div>
@@ -83,7 +113,7 @@ const AdminHeader = () => {
         <div className="flex items-center gap-3">
           <div className="hidden sm:block text-right">
             <div className="text-sm font-semibold text-gray-900 leading-4">
-              {user?.name ?? "—"}
+              {displayName}
             </div>
             <div className="text-xs text-gray-500">{user?.email ?? ""}</div>
           </div>
@@ -94,23 +124,22 @@ const AdminHeader = () => {
             className="w-9 h-9 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold hover:bg-gray-800 transition cursor-pointer"
             title="View Profile"
           >
-            {initials(user?.name)}
+            {initials(displayName)}
           </button>
 
           <button
             type="button"
-            onClick={() => logout()}
+            onClick={() => navigate("/admin/logout")}
             className="inline-flex items-center gap-2 h-9 px-3 rounded-xl
-                       border border-gray-200 bg-white text-sm font-medium text-gray-800
-                       hover:bg-gray-50 transition"
+                     border border-gray-200 bg-white text-sm font-medium text-gray-800
+                     hover:bg-gray-50 transition"
           >
             <LogOut size={16} />
             <span className="hidden md:inline">Đăng xuất</span>
           </button>
         </div>
-        </div>
-      </header>
-    </>
+      </div>
+    </header>
   );
 };
 

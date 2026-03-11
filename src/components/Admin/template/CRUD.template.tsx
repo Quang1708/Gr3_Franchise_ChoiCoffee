@@ -65,6 +65,7 @@ export interface CRUDTableProps<T> {
   applyButtonLabel?: string;
 
   searchRight?: React.ReactNode;
+  onSearch?: (term: string) => void;
 }
 
 // --- Components ---
@@ -228,6 +229,7 @@ export function CRUDTable<T extends { id?: string | number }>({
   searchRight,
   deferToolsApply = false,
   applyButtonLabel = "Tìm kiếm",
+  onSearch,
 }: CRUDTableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(pageSize);
@@ -248,6 +250,7 @@ export function CRUDTable<T extends { id?: string | number }>({
     if (!deferToolsApply) return;
     setSearchTerm(searchInput);
     setActiveFilters(pendingFilters);
+    onSearch?.(searchInput);
   };
 
   const filteredData = useMemo(() => {

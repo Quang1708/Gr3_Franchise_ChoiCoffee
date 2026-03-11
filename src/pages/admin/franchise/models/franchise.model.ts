@@ -11,17 +11,19 @@ export interface FranchiseResponse {
   is_deleted?: boolean
 }
 
-export interface Franchise {
+export type Franchise = {
   id: string
   code: string
   name: string
   address?: string
-  hotline?: string
+  hotline: string
   logo_url?: string
-  opened_at?: string
-  closed_at?: string
-  isActive?: boolean
-  isDeleted?: boolean
+
+  isActive: boolean
+  isDeleted: boolean
+
+  opened_at: string
+  closed_at: string
 }
 
 export const mapFranchise = (raw: FranchiseResponse): Franchise => ({

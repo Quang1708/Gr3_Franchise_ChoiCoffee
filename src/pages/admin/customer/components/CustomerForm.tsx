@@ -2,19 +2,41 @@ import { FormInput } from "@/components/Admin/Form/FormInput";
 import { useForm } from "react-hook-form";
 import { useEffect } from "react";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { customerSchema } from "@/pages/admin/customer/schema/customer.schema";
 
 export type CustomerFormValues = { email: string; password: string; name?: string; phone: string; address?: string; avatar_url?: string; full_name?: string };
 
-export const CustomerForm = ({ mode, initialData, onSubmit, isOpen, isLoading, onClose }: {
+export const CustomerForm = ({
+    mode,
+    initialData,
+    onSubmit,
+    isOpen,
+    isLoading,
+    onClose,
+    setIsLoadingGlobal,
+    isDisabled
+}: {
     mode: "view" | "create" | "edit";
     initialData?: any;
-    onSubmit: (data: any) => void;
+    onSubmit: (data: any, setError: any) => void;
     isOpen: boolean;
     isLoading?: boolean;
-    onClose: () => void
+    onClose: () => void;
+    setIsLoadingGlobal?: (val: boolean) => void;
+    isDisabled?: boolean;
 }) => {
-    const { register, handleSubmit, setValue, reset, formState: { errors } } = useForm<CustomerFormValues>({
-        defaultValues: initialData || {}
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        reset,
+        setError,
+        formState: { errors }
+    } = useForm<CustomerFormValues>({
+        defaultValues: initialData || {},
+        resolver: zodResolver(customerSchema),
+        values: initialData,
     })
 
     useEffect(() => {
@@ -48,7 +70,7 @@ export const CustomerForm = ({ mode, initialData, onSubmit, isOpen, isLoading, o
         >
             <form
                 id="customer-form"
-                onSubmit={handleSubmit(onSubmit)}
+                onSubmit={handleSubmit((data) => onSubmit(data, setError))}
                 className="w-full space-y-6"
             >
                 <FormInput
@@ -58,6 +80,7 @@ export const CustomerForm = ({ mode, initialData, onSubmit, isOpen, isLoading, o
                     defaultValue={initialData?.avatar_url}
                     register={register("avatar_url")}
                     onUploadSuccess={(url) => setValue("avatar_url", url)}
+                    setIsExternalLoading={setIsLoadingGlobal}
                 />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -74,6 +97,7 @@ export const CustomerForm = ({ mode, initialData, onSubmit, isOpen, isLoading, o
                         type="tel"
                         placeholder="0938XXXXXX"
                         register={register("phone")}
+                        error={errors.phone}
                         isView={isView}
                         defaultValue={initialData?.phone}
                     />
@@ -82,6 +106,7 @@ export const CustomerForm = ({ mode, initialData, onSubmit, isOpen, isLoading, o
                         type="email"
                         placeholder="abc@gmail.com"
                         register={register("email")}
+                        error={errors.email}
                         className="md:col-span-2"
                         isView={isView}
                         defaultValue={initialData?.email}

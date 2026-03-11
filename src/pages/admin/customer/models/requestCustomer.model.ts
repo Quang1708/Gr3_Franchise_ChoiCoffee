@@ -1,4 +1,4 @@
-export interface CustomerRequest {
+export interface RequestCustomer {
     email: string;
     password: string;
     phone: string;

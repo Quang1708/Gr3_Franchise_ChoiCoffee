@@ -42,7 +42,6 @@ export interface CRUDPageTemplateProps<T> {
     columns: Column<T>[];
     pageSize?: number;
     tableMaxHeightClass?: string;
-    isAdmin?: boolean;
     onAdd?: () => void;
     onView?: (item: T) => void;
     onEdit?: (item: T) => void;
@@ -152,7 +151,6 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
     columns,
     pageSize = 5,
     tableMaxHeightClass,
-    isAdmin,
     onAdd,
     onView,
     onEdit,
@@ -440,7 +438,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                                                             <ToggleSwitch
                                                                 checked={!!item[statusField]}
                                                                 onChange={() => toggleStatus(item)}
-                                                                disabled={!onStatusChange || !isAdmin}
+                                                                disabled={!onStatusChange}
                                                             />
                                                             <span
                                                                 className={`text-[9px] font-medium uppercase
@@ -461,7 +459,9 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                                                                 onChange={() => { }}
                                                             />
                                                             <span className={`text-[9px] font-medium uppercase text-gray-400`}                                                            >
-                                                                Đã xóa
+                                                                {item[statusField]
+                                                                    ? "Hoạt động"
+                                                                    : "Ngưng hoạt động"}
                                                             </span>
                                                         </div>
                                                     )}

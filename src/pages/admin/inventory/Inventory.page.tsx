@@ -13,6 +13,7 @@ import {
 } from "@/components/Admin/inventory/InventoryModals";
 
 import ClientLoading from "@/components/Client/Client.Loading";
+import { useAdminContextStore } from "@/stores/adminContext.store";
 
 type InventoryRow = {
   id: string;
@@ -34,6 +35,9 @@ const InventoryPage = () => {
     delete: deleteInventory,
     restore,
   } = useInventoryStore();
+  const selectedFranchiseId = useAdminContextStore(
+    (s) => s.selectedFranchiseId,
+  );
 
   const [createOpen, setCreateOpen] = useState(false);
   const [adjustItem, setAdjustItem] = useState<any | null>(null);
@@ -50,7 +54,7 @@ const InventoryPage = () => {
     };
 
     load();
-  }, [fetchAll]);
+  }, [fetchAll, selectedFranchiseId]);
 
   /**
    * VIEW MODEL

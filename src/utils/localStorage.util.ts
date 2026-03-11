@@ -22,4 +22,5 @@ export function clearAdminAuth(): void {
   removeItemInLocalStorage(LOCAL_STORAGE.ACCOUNT_CMS);
   removeItemInLocalStorage(LOCAL_STORAGE.CMS_TOKEN);
   removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID);
+  removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
 }

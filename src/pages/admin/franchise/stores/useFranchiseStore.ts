@@ -4,7 +4,6 @@ import { franchiseService } from "../services/franchise.service"
 import type { Franchise } from "../models/franchise.model"
 
 type FranchiseState = {
-
   items: Franchise[]
   loading: boolean
 
@@ -17,6 +16,8 @@ type FranchiseState = {
   restore: (id: string) => Promise<void>
 
   changeStatus: (id: string, active: boolean) => Promise<void>
+
+  search: (keyword: string) =>  Promise<Franchise[]>
 }
 
 export const useFranchiseStore = create<FranchiseState>((set) => ({
@@ -63,18 +64,31 @@ export const useFranchiseStore = create<FranchiseState>((set) => ({
     }))
   },
 
-  delete: async (id) => {
+delete: async (id) => {
 
-    await franchiseService.delete(id)
+  await franchiseService.delete(id)
 
-    set((state) => ({
-      items: state.items.filter((i) => i.id !== id)
-    }))
-  },
+  set((state) => ({
+    items: state.items.map((i) =>
+      i.id === id
+        ? { ...i, isDeleted: true, isActive: false }
+        : i
+    )
+  }))
+},
 
-  restore: async (id) => {
-    await franchiseService.restore(id)
-  },
+restore: async (id) => {
+
+  await franchiseService.restore(id)
+
+  set((state) => ({
+    items: state.items.map((i) =>
+      i.id === id
+        ? { ...i, isDeleted: false }
+        : i
+    )
+  }))
+},
 
   changeStatus: async (id, active) => {
 
@@ -86,5 +100,25 @@ export const useFranchiseStore = create<FranchiseState>((set) => ({
       )
     }))
   },
+
+  search: async (keyword: string) => {
+  set({ loading: true });
+
+try {
+
+    const data = await franchiseService.searchFranchiseApi(keyword)
+
+    set({
+      items: data
+    })
+
+    return data   // ⚠️ THÊM DÒNG NÀY
+
+  } finally {
+
+    set({ loading: false })
+
+  }
+},
 
 }))

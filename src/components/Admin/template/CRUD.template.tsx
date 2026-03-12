@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo } from "react";
 import {
   Search,
@@ -37,6 +38,7 @@ export interface FilterConfig<T> {
   options: FilterOption[];
 }
 
+// --- Props ---
 export interface CRUDTableProps<T> {
   title: string;
   data: T[];
@@ -49,23 +51,21 @@ export interface CRUDTableProps<T> {
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
   onRestore?: (item: T) => void;
-  showRestore?: (item: T) => boolean;
 
   statusField?: keyof T;
   onStatusChange?: (item: T, newStatus: boolean) => void;
 
   searchKeys?: (keyof T)[];
+
+  // ✅ hỗ trợ search API
+  onSearch?: (keyword: string) => void | Promise<void>;
+
   filters?: FilterConfig<T>[];
 
-  /**
-   * When true, search/filter inputs are "pending" until user clicks the apply button (or presses Enter).
-   * Default: false (auto-apply on change).
-   */
   deferToolsApply?: boolean;
   applyButtonLabel?: string;
 
   searchRight?: React.ReactNode;
-  onSearch?: (term: string) => void;
 }
 
 // --- Components ---
@@ -221,7 +221,6 @@ export function CRUDTable<T extends { id?: string | number }>({
   onEdit,
   onDelete,
   onRestore,
-  showRestore,
   statusField,
   onStatusChange,
   searchKeys = [],
@@ -364,14 +363,10 @@ export function CRUDTable<T extends { id?: string | number }>({
               onChange={(e) => {
                 const nextValue = e.target.value;
                 setSearchInput(nextValue);
-                if (!deferToolsApply) {
-                  setSearchTerm(nextValue);
-                }
               }}
               onKeyDown={(e) => {
-                if (!deferToolsApply) return;
                 if (e.key === "Enter") {
-                  handleApplyTools();
+                  onSearch?.(searchInput); // ⭐ search khi Enter
                 }
               }}
             />
@@ -508,7 +503,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                         <ToggleSwitch
                           checked={!!item[statusField]}
                           onChange={() => toggleStatus(item)}
-                          disabled={!onStatusChange}
+                          disabled={!onStatusChange || (item as any).is_deleted}
                         />
                         <span
                           className={`text-[10px] font-medium uppercase ${
@@ -542,25 +537,35 @@ export function CRUDTable<T extends { id?: string | number }>({
                             <Edit className="w-5 h-5" />
                           </button>
                         )}
-                        {onRestore &&
-                          (showRestore ? showRestore(item) : true) && (
-                            <button
-                              onClick={() => onRestore(item)}
-                              className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                              title="Khôi phục"
-                            >
-                              <RotateCcw className="w-5 h-5" />
-                            </button>
-                          )}
-                        {onDelete && (
-                          <button
-                            onClick={() => onDelete(item)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                            title="Xóa"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        )}
+                        {(() => {
+                          const deleted = (item as any).is_deleted;
+
+                          if (deleted) {
+                            return (
+                              onRestore && (
+                                <button
+                                  onClick={() => onRestore(item)}
+                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Khôi phục"
+                                >
+                                  <RotateCcw className="w-5 h-5" />
+                                </button>
+                              )
+                            );
+                          }
+
+                          return (
+                            onDelete && (
+                              <button
+                                onClick={() => onDelete(item)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                title="Xóa"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            )
+                          );
+                        })()}
                       </div>
                     </td>
                   )}
@@ -573,7 +578,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                     columns.length +
                     1 +
                     (statusField ? 1 : 0) +
-                    (onView || onEdit || onDelete || onRestore ? 1 : 0)
+                    (onView || onEdit || onDelete ? 1 : 0)
                   }
                   className="px-6 py-12 text-center text-gray-500"
                 >

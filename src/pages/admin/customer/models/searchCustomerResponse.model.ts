@@ -1,6 +1,6 @@
 import type { Customer } from "@/models/customer.model";
 
-export interface CustomerSearchResponse {
+export interface SearchCustomerResponse {
     success: boolean;
     data: Customer[];
     pageInfo: {

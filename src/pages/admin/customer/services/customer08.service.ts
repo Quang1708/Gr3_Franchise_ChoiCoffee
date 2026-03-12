@@ -8,7 +8,7 @@ export const updateCustomerStatusService = async (
     // Đảm bảo id không bị undefined/null
     if (!id) throw new Error("Missing Customer ID");
 
-    const res = await axiosAdminClient.patch(`api/customers/${String(id)}/status`, {
+    const res = await axiosAdminClient.patch(`/api/customers/${String(id)}/status`, {
         is_active,
     });
 

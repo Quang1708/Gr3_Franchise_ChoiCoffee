@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   CRUDTable,
   type Column,
 } from "../../../components/Admin/template/CRUD.template";
 
 import type { Franchise } from "./models/franchise.model";
-
 import { useFranchiseStore } from "./stores/useFranchiseStore";
 
 import ClientLoading from "@/components/Client/Client.Loading";
@@ -14,6 +13,7 @@ import {
   CreateFranchiseModal,
   EditFranchiseModal,
   DeleteFranchiseModal,
+  RestoreFranchiseModal,
 } from "@/components/Admin/franchise/FranchiseModals";
 
 const FranchisePage = () => {
@@ -25,18 +25,35 @@ const FranchisePage = () => {
     update,
     delete: deleteFranchise,
     changeStatus,
+    search,
+    restore,
   } = useFranchiseStore();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selected, setSelected] = useState<Franchise | null>(null);
 
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
 
+  const handleSearch = async (keyword: string) => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    searchTimeout.current = setTimeout(async () => {
+      if (!keyword.trim()) {
+        await fetchAll();
+        return;
+      }
+
+      await search(keyword);
+    }, 400);
+  };
   const columns: Column<Franchise>[] = useMemo(
     () => [
       {
@@ -47,9 +64,17 @@ const FranchisePage = () => {
       {
         header: "Chi nhánh",
         accessor: (item) => (
-          <div>
-            <div className="font-semibold">{item.name}</div>
-            <div className="text-xs text-gray-500">{item.address}</div>
+          <div className="flex items-start gap-3">
+            <img
+              src={item.logo_url || "/images/default-store.png"}
+              alt={item.name}
+              className="w-10 h-10 rounded-lg object-cover border"
+            />
+
+            <div>
+              <div className="font-semibold">{item.name}</div>
+              <div className="text-xs text-gray-500">{item.address}</div>
+            </div>
           </div>
         ),
       },
@@ -73,7 +98,10 @@ const FranchisePage = () => {
         columns={columns}
         pageSize={5}
         statusField="isActive"
-        onStatusChange={(item, status) => changeStatus(item.id, status)}
+        onStatusChange={(item, status) => {
+          if (item.isDeleted) return;
+          changeStatus(item.id, status);
+        }}
         onAdd={() => setCreateOpen(true)}
         onEdit={(item) => {
           setSelected(item);
@@ -83,7 +111,12 @@ const FranchisePage = () => {
           setSelected(item);
           setDeleteOpen(true);
         }}
-        searchKeys={["code", "name"]}
+        onRestore={(item) => {
+          setSelected(item);
+          setRestoreOpen(true);
+        }}
+        searchKeys={["name", "code"]}
+        onSearch={handleSearch}
       />
 
       <CreateFranchiseModal
@@ -101,6 +134,7 @@ const FranchisePage = () => {
         onClose={() => setEditOpen(false)}
         onSubmit={async (data) => {
           if (!selected) return;
+
           await update(selected.id, data);
           setEditOpen(false);
         }}
@@ -112,7 +146,20 @@ const FranchisePage = () => {
         onClose={() => setDeleteOpen(false)}
         onConfirm={async () => {
           if (!selected) return;
+
           await deleteFranchise(selected.id);
+          setDeleteOpen(false);
+        }}
+      />
+
+      <RestoreFranchiseModal
+        isOpen={restoreOpen}
+        franchise={selected}
+        onClose={() => setRestoreOpen(false)}
+        onConfirm={async () => {
+          if (!selected) return;
+          await restore(selected.id);
+          setRestoreOpen(false);
         }}
       />
     </div>

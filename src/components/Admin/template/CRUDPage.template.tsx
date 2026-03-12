@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
     Search,
     Filter,
@@ -40,9 +40,15 @@ export interface CRUDPageTemplateProps<T> {
     title: string;
     data: T[];
     columns: Column<T>[];
+
     pageSize?: number;
+
+    totalItems?: number;
+    currentPage?: number;
+    onPageChange?: (page: number) => void;
+    onPageSizeChange?: (size: number) => void;
+
     tableMaxHeightClass?: string;
-    isAdmin?: boolean;
     onAdd?: () => void;
     onView?: (item: T) => void;
     onEdit?: (item: T) => void;
@@ -55,6 +61,11 @@ export interface CRUDPageTemplateProps<T> {
     searchRight?: React.ReactNode;
     filters?: FilterConfig<T>[];
     onRefresh?: () => void;
+
+    onSearch?: (
+        term: string,
+        filters?: Partial<Record<keyof T, string>>
+    ) => void;
 }
 
 // --- Components ---
@@ -115,7 +126,7 @@ const CustomSelect = ({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const selectedOption = options.find((opt: any) => opt.value === value);
+    const selectedOption = options.find((opt) => opt.value === value);
 
     return (
         <div className={`relative ${className || "min-w-[200px]"}`} ref={containerRef}>
@@ -132,7 +143,7 @@ const CustomSelect = ({
             {isOpen && (
                 <div className={`absolute z-50 w-full bg-white border border-gray-100 rounded-lg shadow-lg max-h-60 overflow-auto mt-1 ${position === "top" ? "bottom-full mb-1" : "mt-1"}`}>
                     <div className="p-1">
-                        {options.map((opt: any) => (
+                        {options.map((opt) => (
                             <div key={opt.value} onClick={() => { onChange(opt.value); setIsOpen(false); }} className={`flex items-center justify-between px-3 py-2 text-sm rounded-md cursor-pointer ${opt.value === value ? "bg-primary/10 text-primary font-medium" : "text-gray-700 hover:bg-gray-50"}`}>
                                 <span className="truncate">{opt.label}</span>
                                 {opt.value === value && <Check className="w-3.5 h-3.5" />}
@@ -150,61 +161,54 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
     title,
     data,
     columns,
-    pageSize = 5,
+
+    pageSize,
+
+    totalItems,
+    currentPage,
+    onPageChange,
+    onPageSizeChange,
+
     tableMaxHeightClass,
-    isAdmin,
+
     onAdd,
     onView,
     onEdit,
     onDelete,
     onRestore,
+
     onStatusChange,
     statusField,
-    searchKeys = [],
+
     filters = [],
     searchRight,
+
     onRefresh,
+    onSearch
 }: CRUDPageTemplateProps<T>) {
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(pageSize);
-    const [searchTerm, setSearchTerm] = useState("");
+    const page = currentPage ?? 1;
+    const [pageSizeState, setPageSizeState] = useState(pageSize ?? 10);
+
     const [inputValue, setInputValue] = useState("");
-    const [filterInput, setFilterInput] = useState<Partial<Record<keyof T, string>>>({});
-    const [activeFilters, setActiveFilters] = useState<Partial<Record<keyof T, string>>>({});
+
+    const [filterInput, setFilterInput] = useState<Partial<Record<keyof T, string>>>(() => {
+        const initial: Partial<Record<keyof T, string>> = {};
+        filters.forEach((f) => {
+            initial[f.key] = "all";
+        });
+        return initial;
+    });
+
     const [sortConfig, setSortConfig] = useState<{ key: keyof T; direction: "asc" | "desc"; } | null>(null);
 
-    const toggleStatus = (item: T) => {
-        if (!statusField || !onStatusChange) return;
+    const filteredData = data;
 
-        const currentStatus = item[statusField] as boolean;
-        onStatusChange(item, !currentStatus);
-    };
-
-    // Filters
-    const filteredData = useMemo(() => {
-        return data.filter((item) => {
-            const matchesSearch =
-                searchTerm === "" || // Nếu không nhập gì thì luôn true
-                (searchKeys.length > 0
-                    ? searchKeys.some((key) => {
-                        const value = item[key];
-                        return value != null && String(value).toLowerCase().includes(searchTerm.toLowerCase());
-                    })
-                    : Object.values(item).some((val) => // Nếu không truyền searchKeys, tìm trên tất cả các field
-                        String(val).toLowerCase().includes(searchTerm.toLowerCase())
-                    ));
-
-            if (!matchesSearch) return false;
-
-            const matchesFilters = filters.every((filter) => {
-                const activeValue = activeFilters[filter.key];
-                if (!activeValue || activeValue === "all") return true;
-                return String(item[filter.key]) === activeValue;
-            });
-            return matchesFilters;
-        });
-    }, [data, searchTerm, activeFilters, searchKeys, filters]);
+    useEffect(() => {
+        if (pageSize) {
+            setPageSizeState(pageSize);
+        }
+    }, [pageSize]);
 
     const sortedData = useMemo(() => {
         if (!sortConfig) return filteredData;
@@ -227,25 +231,26 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
 
             // Sắp xếp mặc định cho các field khác
             if (aValue === bValue) return 0;
+            if (aValue == null || bValue == null) return 0;
             const result = aValue < bValue ? -1 : 1;
             return sortConfig.direction === "asc" ? result : -result;
         });
     }, [filteredData, sortConfig]);
 
-    const totalPages = Math.ceil(sortedData.length / itemsPerPage);
+    const totalPages = Math.ceil(
+        (totalItems ?? sortedData.length) / pageSizeState
+    );
 
-    const currentData = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        return sortedData.slice(startIndex, startIndex + itemsPerPage);
-    }, [sortedData, currentPage, itemsPerPage]);
+    const currentData = sortedData;
 
-    React.useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm, activeFilters]);
+    const handleToggleStatus = (item: T) => {
+        if (!statusField || !onStatusChange) return;
+        const currentStatus = item[statusField] as boolean;
+        onStatusChange(item, !currentStatus);
+    };
 
     const handleSort = (key: keyof T) => {
         let direction: "asc" | "desc" = "asc";
-
         if (
             sortConfig &&
             sortConfig.key === key &&
@@ -253,19 +258,61 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
         ) {
             direction = "desc";
         }
-
         setSortConfig({ key, direction });
+    };
+
+    const handleSearch = () => {
+        if (onSearch) {
+            onSearch(inputValue, filterInput);
+        }
+    };
+
+    const handleRefresh = () => {
+        setInputValue("");
+        const resetFilters: Partial<Record<keyof T, string>> = {};
+        filters.forEach((f) => {
+            resetFilters[f.key] = "all";
+        });
+        setFilterInput(resetFilters);
+        onRefresh?.();
+    };
+
+    const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newSize = Number(e.target.value);
+        setPageSizeState(newSize);
+        tableContainerRef.current?.scrollTo({
+            top: 0,
+            behavior: "smooth",
+        });
+        if (onPageSizeChange) {
+            onPageSizeChange(newSize);
+        }
+    };
+
+    const goPrevPage = () => {
+        if (page > 1) {
+            tableContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+            onPageChange?.(page - 1);
+        }
+    };
+
+    const goNextPage = () => {
+        if (page < totalPages) {
+            tableContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+            onPageChange?.(page + 1);
+        }
     };
 
     const renderSortIcon = (columnKey: string) => {
         if (!sortConfig || (sortConfig.key as unknown as string) !== columnKey) {
             return <ArrowUpDown className="w-4 h-4 text-gray-400 opacity-50" />;
         }
-
         return sortConfig.direction === "asc"
             ? <ArrowUp className="w-4 h-4 text-primary" />
             : <ArrowDown className="w-4 h-4 text-primary" />;
     };
+
+    const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
     return (
         <div className="w-full h-full flex flex-col bg-white overflow-hidden font-sans">
@@ -285,7 +332,12 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                 )}
             </div>
 
-            <div className="px-4 md:px-8 py-3 bg-gray-50/50 flex flex-col lg:flex-row gap-3 lg:items-center">
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSearch();
+                }}
+                className="px-4 md:px-8 py-3 bg-gray-50/50 flex flex-col lg:flex-row gap-3 lg:items-center">
                 <div className="relative w-full lg:flex-1 group">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Search className="h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
@@ -299,6 +351,12 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                             transition-all hover:border-gray-300"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();   // tránh reload
+                                handleSearch();
+                            }
+                        }}
                     />
                 </div>
 
@@ -306,7 +364,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                     {filters.map((filter) => (
                         <CustomSelect
                             key={String(filter.key)}
-                            value={filterInput[filter.key] || "all"}
+                            value={filterInput[filter.key] as string}
                             onChange={(newValue) =>
                                 setFilterInput((prev) => ({
                                     ...prev,
@@ -324,25 +382,15 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
 
                 <div className="flex gap-2 w-full lg:w-auto">
                     <button
-                        onClick={() => {
-                            setSearchTerm(inputValue);
-                            setActiveFilters(filterInput);
-                        }}
+                        type="submit"
                         title="Tìm kiếm khách hàng"
                         className="flex-1 lg:flex-none px-4 py-2 text-sm rounded-lg bg-primary text-white transition-all duration-200 active:scale-95 hover:brightness-110 cursor-pointer"
                     >
                         Tìm kiếm
                     </button>
                     <button
-                        onClick={() => {
-                            setInputValue("");
-                            setSearchTerm("");
-                            setFilterInput({});
-                            setActiveFilters({});
-                            if (onRefresh) {
-                                onRefresh();
-                            }
-                        }}
+                        type="button"
+                        onClick={handleRefresh}
                         title="Làm mới"
                         className="px-3 py-2 text-sm rounded-lg bg-gray-200 text-gray-600 transition-all duration-200 active:scale-95 hover:bg-gray-300 cursor-pointer"
                     >
@@ -356,10 +404,13 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                         {searchRight}
                     </div>
                 )}
-            </div>
+            </form>
 
             {/* Table */}
-            <div className={`px-3 md:px-6 lg:px-8 py-3 flex-1 overflow-auto ${tableMaxHeightClass || ""}`}>
+            <div
+                ref={tableContainerRef}
+                className={`px-3 md:px-6 lg:px-8 py-3 flex-1 overflow-auto ${tableMaxHeightClass || ""}`}
+            >
                 <div className="w-full rounded-lg border border-gray-200 overflow-auto">
                     <table className="w-full border-collapse text-sm">
                         <thead className="sticky top-0 z-10 bg-gray-50/80 backdrop-blur border-b border-gray-200">
@@ -417,7 +468,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                                                     : "bg-white hover:bg-primary/5"}`}
                                         >
                                             <td className="px-4 py-3 text-center text-gray-500">
-                                                {(currentPage - 1) * itemsPerPage + index + 1}
+                                                {(page - 1) * pageSizeState + index + 1}
                                             </td>
 
                                             {columns.map((col, idx) => (
@@ -439,8 +490,8 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                                                         <div className="flex flex-col items-center gap-1">
                                                             <ToggleSwitch
                                                                 checked={!!item[statusField]}
-                                                                onChange={() => toggleStatus(item)}
-                                                                disabled={!onStatusChange || !isAdmin}
+                                                                onChange={() => handleToggleStatus(item)}
+                                                                disabled={!onStatusChange}
                                                             />
                                                             <span
                                                                 className={`text-[9px] font-medium uppercase
@@ -459,9 +510,12 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                                                             <ToggleSwitch
                                                                 checked={false}
                                                                 onChange={() => { }}
+                                                                disabled
                                                             />
                                                             <span className={`text-[9px] font-medium uppercase text-gray-400`}                                                            >
-                                                                Đã xóa
+                                                                {item[statusField]
+                                                                    ? "Hoạt động"
+                                                                    : "Ngưng hoạt động"}
                                                             </span>
                                                         </div>
                                                     )}
@@ -531,42 +585,38 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                     <div className="flex items-center gap-2">
                         <span>Hiển thị</span>
                         <select
-                            value={itemsPerPage}
-                            onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                            value={pageSizeState}
+                            onChange={handlePageSizeChange}
                             className="border border-gray-200 rounded-lg px-2 py-1 bg-white cursor-pointer outline-none focus:ring-2 focus:ring-primary/20"
                         >
-                            {[5, 10, 20, 50, 100, pageSize]
-                                .filter((val) => val > 0) // Chỉ lấy số dương
-                                .filter((val, i, self) => self.indexOf(val) === i)
-                                .sort((a, b) => a - b)
-                                .map((size) => (
-                                    <option key={size} value={size}>{size} / trang</option>
-                                ))}
+                            {[10, 20, 50, 100].map((size) => (
+                                <option key={size} value={size}>{size} / trang</option>
+                            ))}
                         </select>
                     </div>
                     <div className="text-gray-400">|</div>
                     <div>
                         Tổng số{" "}
                         <span className="font-medium text-gray-900">
-                            {filteredData.length}
+                            {totalItems ?? data.length}
                         </span>{" "}
                         kết quả
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
+                        onClick={goPrevPage}
+                        disabled={page === 1}
                         className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
                         <ChevronLeft className="w-4 h-4" />
                     </button>
                     <span className="px-3 py-1 text-sm font-medium text-gray-700">
-                        {totalPages === 0 ? "0/0" : `${currentPage}/${totalPages}`}
+                        {totalPages === 0 ? "0/0" : `${page}/${totalPages}`}
                     </span>
                     <button
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages || totalPages === 0}
+                        onClick={goNextPage}
+                        disabled={page === totalPages || totalPages === 0}
                         className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
                         <ChevronRight className="w-4 h-4" />

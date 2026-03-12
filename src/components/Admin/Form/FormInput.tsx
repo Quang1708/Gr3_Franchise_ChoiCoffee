@@ -32,7 +32,7 @@ export const FormInput = ({
         return (
             <div className={`flex flex-col gap-1 ${className}`}>
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label}</span>
-                <div className="py-2 border border-gray-300 min-h-[38px]">
+                <div className="py-2 border-b border-gray-200 min-h-[38px]">
                     <span className="text-sm font-semibold text-gray-700">
                         {type === "password" ? "••••••••" : (defaultValue || "---")}
                     </span>

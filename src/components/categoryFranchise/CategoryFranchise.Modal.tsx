@@ -6,6 +6,7 @@ import { CRUDModalTemplate } from "../Admin/template/CRUDModal.template";
 import { FormInput } from "../Admin/Form/FormInput";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 import { postCategoryFranchise } from "./services/categoryFranchise01.service";
+import FormSelect from "../Admin/Form/FormSelect";
 
 type CategoryFranchiseFormData = {
     category_id: string;
@@ -124,6 +125,18 @@ const CategoryFranchiseCreateModal = ( { isOpen, onClose, onSuccess, franchiseId
       maxWidth="max-w-md"
       children={
         <div className="flex flex-col gap-6 h-80">
+          {/* <FormSelect
+            label="Chọn chi nhánh"
+            
+            options={categories.map((cat) => ({
+              value: cat.code,
+              label: cat.name,
+            }))}
+            error={errors.category_id}
+            register={
+              {}
+            }
+          /> */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
               Chọn danh mục <span className="text-red-500">*</span>

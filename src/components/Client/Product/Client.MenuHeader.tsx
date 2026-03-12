@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import ClientLoading from "../Client.Loading";
 import { getCategoryFranchise } from "./services/category.service";
 import type { CategoryFranchise } from "./models/category.model";
+import { isToppingCategory, setToppingCategoryId, removeToppingCategoryId } from "./utils/category.util";
 
 interface ProductMenuProps {
     activeCategory: string;
@@ -18,7 +19,8 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
         return localStorage.getItem("selectedFranchise") ?? "";
     });
     const [categoryFranchise, setCategoryFranchise] = useState<CategoryFranchise[]>([]);
-
+    
+    // Lọc categories theo franchise
     const mappedCategories = categoryFranchise.filter(
         category => category.franchise_id === franchiseId
     );
@@ -39,8 +41,18 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
                 
                 if(response) {
                     setCategoryFranchise(response);
+                    
+                    const toppingCat = response.find(isToppingCategory);
+                    
+                    if (toppingCat) {
+                        setToppingCategoryId(toppingCat.category_id);
+                        console.log('✅ Topping category found and saved:', toppingCat);
+                    } else {
+                        removeToppingCategoryId();
+                        console.log('⚠️ No topping category found');
+                    }
+                    
                     setIsLoading(false);
-                    // Chỉ set category đầu tiên nếu chưa có category nào được chọn
                     if (!activeCategory && response.length > 0) {
                         setActiveCategory(response[0].category_id, response[0].category_name);
                     }
@@ -113,4 +125,4 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
   )
 }
 
-export default ProductMenu
+export default ProductMenu;

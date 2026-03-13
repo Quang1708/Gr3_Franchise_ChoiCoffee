@@ -17,15 +17,18 @@ import { deleteCustomerUsecase } from "./usecases/deleteCustomer.usecase";
 import { restoreCustomerUsecase } from "./usecases/restoreCustomerUsecase";
 import { createCustomerUsecase } from "./usecases/createCustomer.usecase";
 
-const DEFAULT_AVATAR = "https://www.svgrepo.com/show/341256/user-avatar-filled.svg";
+const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
 const CustomerPage = () => {
   const selectedFranchiseId = useAdminContextStore((state) => state.selectedFranchiseId);
   const isAdmin = selectedFranchiseId === null;
 
-
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTableLoading, setIsTableLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Modal xác nhận (Xóa/Khôi phục)
@@ -40,15 +43,15 @@ const CustomerPage = () => {
   const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
-  const [filters, setFilters] = useState({
-    is_active: "",
-    is_deleted: ""
-  });
-
   // Hàm Fetch ban đầu
-  const fetchCustomers = async () => {
+  const fetchCustomers = async (
+    pageNum = 1,
+    type: "full" | "table" = "full",
+    size = pageSize
+  ) => {
     try {
-      setIsLoading(true);
+      if (type === "full") setIsLoading(true);
+      if (type === "table") setIsTableLoading(true);
 
       const res = await searchCustomersUsecase({
         searchCondition: {
@@ -57,25 +60,68 @@ const CustomerPage = () => {
           is_deleted: ""
         },
         pageInfo: {
-          pageNum: 1,
-          pageSize: 10
+          pageNum,
+          pageSize: size
         }
       });
 
-      if (res?.success) {
+      if (res.success) {
         setCustomers(res.data);
+        setTotalItems(res.pageInfo.totalItems);
+        setPage(res.pageInfo.pageNum);
+        setPageSize(res.pageInfo.pageSize);
       }
-    } catch (error) {
-      toast.error("Lỗi khi tải dữ liệu");
+
+    } catch {
+      toast.error("Lỗi khi tải customer");
     } finally {
       setIsLoading(false);
+      setIsTableLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCustomers();
+    fetchCustomers(1, "full");
   }, []);
 
+  const handleSearchCustomers = async (keyword: string, filters: any) => {
+    try {
+      setIsLoading(true);
+
+      const res = await searchCustomersUsecase({
+        searchCondition: {
+          keyword,
+          is_active:
+            filters?.is_active === "true"
+              ? true
+              : filters?.is_active === "false"
+                ? false
+                : "",
+          is_deleted:
+            filters?.is_deleted === "true"
+              ? true
+              : filters?.is_deleted === "false"
+                ? false
+                : "",
+        },
+        pageInfo: {
+          pageNum: 1,
+          pageSize: pageSize
+        }
+      });
+
+      if (res.success) {
+        setCustomers(res.data);
+        setTotalItems(res.pageInfo.totalItems);
+        setPage(1);
+      }
+
+    } catch {
+      toast.error("Lỗi khi tìm kiếm");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Xử lý mở Modal Form
   const handleOpenForm = (
@@ -83,7 +129,7 @@ const CustomerPage = () => {
     customer: Customer | null = null
   ) => {
     setFormMode(mode);
-    setSelectedCustomer(customer); // 'create' truyền null, còn lại truyền data
+    setSelectedCustomer(customer);
     setIsFormOpen(true);
   };
 
@@ -105,13 +151,12 @@ const CustomerPage = () => {
         toast.success("Thêm khách hàng thành công!");
       }
 
-      await fetchCustomers(); // Refresh lại danh sách
+      await fetchCustomers();
       setIsFormOpen(false);
     } catch (error: any) {
       const errData = error.response?.data || error;
       const serverErrors = errData?.errors;
 
-      // Map lỗi từ server về đúng field của react-hook-form
       if (Array.isArray(serverErrors)) {
         serverErrors.forEach((e: any) => {
           setError(e.field as keyof CustomerFormValues, { message: e.message });
@@ -209,26 +254,29 @@ const CustomerPage = () => {
     },
   ];
 
-  // Loading
-  if (isLoading) {
-    return <ClientLoading />;
-  }
-
   return (
     <>
-      {isProcessing && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-white/50 backdrop-blur-[2px]">
-          <ClientLoading />
-        </div>
-      )}
+      {isLoading && <ClientLoading />}
+      {isProcessing && <ClientLoading />}
+
       <CRUDPageTemplate<Customer>
         title="Quản lý khách hàng"
         data={customers}
         columns={columns}
-        pageSize={5}
+
+        pageSize={pageSize}
+
+        totalItems={totalItems}
+        currentPage={page}
+        onPageChange={(page) => fetchCustomers(page, "table")}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          fetchCustomers(1, "full", size);
+        }}
+
         statusField="is_active"
         onStatusChange={isAdmin ? handleStatusChange : undefined}
-        // searchKeys={["name", "email", "phone"]}
+
         filters={[
           {
             key: "is_active",
@@ -242,16 +290,20 @@ const CustomerPage = () => {
             key: "is_deleted",
             label: "trạng thái xóa",
             options: [
-              { value: "false", label: "Đang hoạt động" },
+              { value: "false", label: "Còn tồn tại" },
               { value: "true", label: "Đã xóa" },
             ]
           }
         ]}
+
         onAdd={() => handleOpenForm("create")}
         onView={(item) => handleOpenForm("view", item)}
         onDelete={isAdmin ? handleDeleteClick : undefined}
         onRestore={isAdmin ? handleRestoreClick : undefined}
-        onRefresh={fetchCustomers}
+        onRefresh={() => fetchCustomers(1, "full")}
+        onSearch={handleSearchCustomers}
+
+        isTableLoading={isTableLoading}
       />
       <CustomerForm
         isOpen={isFormOpen}

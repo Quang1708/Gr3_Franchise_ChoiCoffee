@@ -17,7 +17,7 @@ import { deleteCustomerUsecase } from "./usecases/deleteCustomer.usecase";
 import { restoreCustomerUsecase } from "./usecases/restoreCustomerUsecase";
 import { createCustomerUsecase } from "./usecases/createCustomer.usecase";
 
-const DEFAULT_AVATAR = "https://www.svgrepo.com/show/341256/user-avatar-filled.svg";
+const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
 const CustomerPage = () => {
   const selectedFranchiseId = useAdminContextStore((state) => state.selectedFranchiseId);
@@ -28,6 +28,7 @@ const CustomerPage = () => {
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTableLoading, setIsTableLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Modal xác nhận (Xóa/Khôi phục)
@@ -45,17 +46,18 @@ const CustomerPage = () => {
   // Hàm Fetch ban đầu
   const fetchCustomers = async (
     pageNum = 1,
-    showLoading = false,
+    type: "full" | "table" = "full",
     size = pageSize
   ) => {
     try {
-      if (showLoading) setIsLoading(true);
+      if (type === "full") setIsLoading(true);
+      if (type === "table") setIsTableLoading(true);
 
       const res = await searchCustomersUsecase({
         searchCondition: {
           keyword: "",
           is_active: "",
-          is_deleted: false
+          is_deleted: ""
         },
         pageInfo: {
           pageNum,
@@ -67,21 +69,25 @@ const CustomerPage = () => {
         setCustomers(res.data);
         setTotalItems(res.pageInfo.totalItems);
         setPage(res.pageInfo.pageNum);
-        setPageSize(res.pageInfo.pageSize); 
+        setPageSize(res.pageInfo.pageSize);
       }
+
     } catch {
       toast.error("Lỗi khi tải customer");
     } finally {
-      if (showLoading) setIsLoading(false);
+      setIsLoading(false);
+      setIsTableLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCustomers(1, true);
+    fetchCustomers(1, "full");
   }, []);
 
   const handleSearchCustomers = async (keyword: string, filters: any) => {
     try {
+      setIsLoading(true);
+
       const res = await searchCustomersUsecase({
         searchCondition: {
           keyword,
@@ -262,10 +268,10 @@ const CustomerPage = () => {
 
         totalItems={totalItems}
         currentPage={page}
-        onPageChange={(page) => fetchCustomers(page, false)}
+        onPageChange={(page) => fetchCustomers(page, "table")}
         onPageSizeChange={(size) => {
           setPageSize(size);
-          fetchCustomers(1, true, size);
+          fetchCustomers(1, "full", size);
         }}
 
         statusField="is_active"
@@ -294,8 +300,10 @@ const CustomerPage = () => {
         onView={(item) => handleOpenForm("view", item)}
         onDelete={isAdmin ? handleDeleteClick : undefined}
         onRestore={isAdmin ? handleRestoreClick : undefined}
-        onRefresh={() => fetchCustomers(1, true)}
+        onRefresh={() => fetchCustomers(1, "full")}
         onSearch={handleSearchCustomers}
+
+        isTableLoading={isTableLoading}
       />
       <CustomerForm
         isOpen={isFormOpen}

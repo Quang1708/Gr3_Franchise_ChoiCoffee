@@ -1,12 +1,12 @@
-import type { CustomerRequest } from "../models/customerRequest.model";
 import { createCustomerService } from "../services/customer02.service";
+import type { RequestCustomer } from "../models/requestCustomer.model";
 
-export const createCustomerUsecase = async (payload: CustomerRequest) => {
+export const createCustomerUsecase = async (payload: RequestCustomer) => {
     try {
         const res = await createCustomerService(payload);
-        return res; 
+        return res;
     } catch (error) {
         console.error("Create Customer Usecase Error:", error);
-        return { success: false, data: null };
+        throw error;
     }
 };

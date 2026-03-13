@@ -12,7 +12,6 @@ import {
   Boxes,
   Gift,
   User,
-  LogOut,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -43,12 +42,12 @@ const menuItems: MenuItem[] = [
   { icon: <Boxes size={20} />, label: "Inventory", path: "inventory" },
   { icon: <Gift size={20} />, label: "Loyalty", path: "loyalty" },
   { icon: <User size={20} />, label: "Users", path: "user" },
-  { icon: <LogOut size={20} />, label: "Logout", path: "logout" },
+
 ];
 
 type AdminSidebarProps = {
   collapsed?: boolean;
-  onToggle?: () => void; // ✅ NEW: để layout điều khiển state
+  onToggle?: () => void;
 };
 
 const AdminSidebar = ({ collapsed = false, onToggle }: AdminSidebarProps) => {

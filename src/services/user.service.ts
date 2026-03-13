@@ -99,7 +99,7 @@ function mapUserRecord(raw: unknown): UserListItem {
       undefined,
     roleCode: toSafeString(
       user.roleCode ?? user.role_code ?? roles[0]?.role_code,
-      "STAFF",
+      "",
     ),
     isActive: toSafeBoolean(user.isActive ?? user.is_active, true),
     createdAt: toSafeString(
@@ -152,9 +152,19 @@ export async function getUsers(): Promise<UserListItem[]> {
   try {
     const data = await userApi.search({
       keyword: "",
-      page: 1,
-      limit: 200,
+      pageNum: 1,
+      pageSize: 200,
     });
+    const usersRaw = extractUsersArray(data);
+    return usersRaw.map((raw) => mapUserRecord(raw));
+  } catch {
+    return [];
+  }
+}
+
+export async function searchUsers(keyword: string): Promise<UserListItem[]> {
+  try {
+    const data = await userApi.search({ keyword, pageNum: 1, pageSize: 200 });
     const usersRaw = extractUsersArray(data);
     return usersRaw.map((raw) => mapUserRecord(raw));
   } catch {

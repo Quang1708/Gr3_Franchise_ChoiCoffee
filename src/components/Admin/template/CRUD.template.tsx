@@ -21,10 +21,10 @@ import {
 
 export interface Column<T> {
   header: string;
-  accessor: keyof T | ((item: T) => React.ReactNode);
+  accessor?: keyof T | ((item: T) => React.ReactNode);
   className?: string;
   sortable?: boolean;
-  render?: (item: T) => React.ReactNode;
+  render?: (item: T, index: number) => React.ReactNode;
 }
 
 export interface FilterOption {
@@ -489,7 +489,7 @@ export function CRUDTable<T extends { id?: string | number }>({
                       className="px-4 py-3 text-sm text-gray-700 align-middle whitespace-nowrap"
                     >
                       {col.render
-                        ? col.render(item)
+                        ? col.render(item, index)
                         : typeof col.accessor === "function"
                           ? col.accessor(item)
                           : (item[col.accessor as keyof T] as React.ReactNode)}

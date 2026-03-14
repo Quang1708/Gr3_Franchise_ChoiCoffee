@@ -2,19 +2,22 @@ export interface SearchCondition {
   franchise_id?: string;
   category_id?: string;
   is_active?: boolean | string;
-  is_deleted?: boolean;
+  is_deleted?: boolean | string;
 }
 
-export interface PageInfo {
-  pageNum?: number;
-  pageSize?: number;
-  totalItems?: number;
-  totalPages?: number;
-}
+// export interface PageInfo {
+//   pageNum?: number;
+//   pageSize?: number;
+//   totalItems?: number;
+//   totalPages?: number;
+// }
 
 export interface MenuProductRequest {
   searchCondition: SearchCondition;
-  pageInfo: PageInfo;
+  pageInfo: {
+    pageNum: number;
+    pageSize: number;
+  };
 }
 
 export interface CategoryItem {
@@ -23,17 +26,20 @@ export interface CategoryItem {
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
-
   category_id: string;
   category_name: string;
-
   franchise_id: string;
   franchise_name: string;
-
   display_order: number;
 }
 
 export interface CategoryResponse {
+  succes : boolean;
   data: CategoryItem[];
-  pageInfo: PageInfo;
+  pageInfo: {
+    pageNum: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
 }

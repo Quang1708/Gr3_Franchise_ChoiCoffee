@@ -3,9 +3,16 @@ import { useForm } from "react-hook-form";
 import { useEffect } from "react";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { customerSchema } from "@/pages/admin/customer/schema/customer.schema";
+import { getCustomerSchema } from "@/pages/admin/customer/schema/customer.schema";
 
-export type CustomerFormValues = { email: string; password: string; name?: string; phone: string; address?: string; avatar_url?: string; full_name?: string };
+export type CustomerFormValues = {
+    email: string;
+    phone: string;
+    password?: string;
+    name?: string;
+    address?: string;
+    avatar_url?: string;
+};
 
 export const CustomerForm = ({
     mode,
@@ -15,7 +22,6 @@ export const CustomerForm = ({
     isLoading,
     onClose,
     setIsLoadingGlobal,
-    isDisabled
 }: {
     mode: "view" | "create" | "edit";
     initialData?: any;
@@ -24,7 +30,6 @@ export const CustomerForm = ({
     isLoading?: boolean;
     onClose: () => void;
     setIsLoadingGlobal?: (val: boolean) => void;
-    isDisabled?: boolean;
 }) => {
     const {
         register,
@@ -35,8 +40,9 @@ export const CustomerForm = ({
         formState: { errors }
     } = useForm<CustomerFormValues>({
         defaultValues: initialData || {},
-        resolver: zodResolver(customerSchema),
+        resolver: zodResolver(getCustomerSchema(mode)),
         values: initialData,
+        mode: "onChange",
     })
 
     useEffect(() => {
@@ -73,21 +79,23 @@ export const CustomerForm = ({
                 onSubmit={handleSubmit((data) => onSubmit(data, setError))}
                 className="w-full space-y-6"
             >
-                <FormInput
-                    label=""
-                    type="file"
-                    isView={isView}
-                    defaultValue={initialData?.avatar_url}
-                    register={register("avatar_url")}
-                    onUploadSuccess={(url) => setValue("avatar_url", url)}
-                    setIsExternalLoading={setIsLoadingGlobal}
-                />
+                <div className="flex items-center justify-center">
+                    <FormInput
+                        label=""
+                        type="file"
+                        isView={isView}
+                        defaultValue={initialData?.avatar_url}
+                        register={register("avatar_url")}
+                        onUploadSuccess={(url) => setValue("avatar_url", url)}
+                        setIsExternalLoading={setIsLoadingGlobal}
+                    />
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                     <FormInput
                         label="Họ và tên"
                         placeholder="Nguyen Van A"
-                        register={register("name", { required: "Không được để trống" })}
+                        register={register("name")}
                         error={errors.name}
                         isView={isView}
                         defaultValue={initialData?.name}
@@ -111,12 +119,15 @@ export const CustomerForm = ({
                         isView={isView}
                         defaultValue={initialData?.email}
                     />
-                    {!isView && (
+                    {mode === "create" && (
                         <FormInput
                             label="Mật khẩu"
                             type="password"
                             placeholder="*********"
-                            register={register("password", { required: mode === "create" ? "Bắt buộc khi tạo mới" : false })}
+                            register={register("password", {
+                                required: mode === "create" ? "Mật khẩu là bắt buộc khi tạo mới" : false,
+                                minLength: { value: 6, message: "Mật khẩu tối thiểu 6 ký tự" }
+                            })}
                             error={errors.password}
                             className="md:col-span-2"
                         />
@@ -131,11 +142,44 @@ export const CustomerForm = ({
                         error={errors.address}
                         className="md:col-span-2"
                     />
+                    {isView && (
+                        <>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-xs font-bold text-gray-500 uppercase">
+                                    Trạng thái
+                                </span>
+                                <div className="py-2 min-h-[38px] border-b border-gray-100 md:border-none">
+                                    <span
+                                        className={`px-2 py-1 text-xs rounded-full ${initialData?.is_active
+                                                ? "bg-primary/10 text-primary"
+                                                : "bg-gray-100 text-gray-500"
+                                            }`}
+                                    >
+                                        {initialData?.is_active ? "Hoạt động" : "Ngưng hoạt động"}
+                                    </span>
+                                </div>
+                            </div>
 
+                            <div className="flex flex-col gap-1">
+                                <span className="text-xs font-bold text-gray-500 uppercase">
+                                    Xác thực
+                                </span>
+                                <div className="py-2 min-h-[38px] border-b border-gray-100 md:border-none">
+                                    <span
+                                        className={`px-2 py-1 text-xs rounded-full ${initialData?.is_verified
+                                                ? "bg-green-100 text-green-700"
+                                                :  "bg-gray-100 text-gray-500"
+                                            }`}
+                                    >
+                                        {initialData?.is_verified ? "Đã xác thực" : "Chưa xác thực"}
+                                    </span>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
-
                 <button id="customer-form-submit" type="submit" className="hidden" />
             </form>
-        </CRUDModalTemplate>
+        </CRUDModalTemplate >
     );
 };

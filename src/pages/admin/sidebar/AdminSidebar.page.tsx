@@ -44,12 +44,14 @@ const menuItems: MenuItem[] = [
   { icon: <Boxes size={20} />, label: "Inventory", path: "inventory" },
   { icon: <Gift size={20} />, label: "Loyalty", path: "loyalty" },
   { icon: <User size={20} />, label: "Users", path: "user" },
+  { icon: <Package size={20} />, label: "Category (Franchise)", path: "category-franchise" },
   { icon: <LogOut size={20} />, label: "Logout", path: "logout" },
+  
 ];
 
 type AdminSidebarProps = {
   collapsed?: boolean;
-  onToggle?: () => void; // ✅ NEW: để layout điều khiển state
+  onToggle?: () => void;
 };
 
 const AdminSidebar = ({ collapsed = false, onToggle }: AdminSidebarProps) => {

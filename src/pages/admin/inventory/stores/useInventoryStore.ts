@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { toast } from 'react-toastify';
 import { create } from "zustand";
 import { inventoryService } from "../services/inventory.service";
 import type { Inventory } from "../models/inventory.model";
@@ -59,32 +60,34 @@ export const useInventoryStore = create<InventoryState>((set) => ({
 create: async (data) => {
   try {
     await inventoryService.create(data);
-    return;
-  } catch (err: any) {
 
+    toast.success("Inventory created successfully");
+
+  } catch (err: any) {
     const message = err?.response?.data?.message;
 
     if (message === "Inventory already exists for this product franchise") {
 
       console.log("Duplicate inventory -> restoring");
 
-      // gọi API search KHÔNG filter
       const res = await inventoryService.search({
-        searchCondition: {},
-        pageInfo: { pageNum: 1, pageSize: 100 }
+        searchCondition: {
+          product_franchise_id: data.product_franchise_id,
+          is_deleted: true,
+        },
+        pageInfo: { pageNum: 1, pageSize: 10 },
       });
 
-      const exist = res.data.data.find(
-        (i: any) => i.product_franchise_id === data.product_franchise_id
-      );
+      const exist = res?.data?.data?.[0];
 
       if (exist) {
         await inventoryService.restore(exist.id);
+        toast.success("Inventory restored successfully");
         return;
       }
     }
 
-    throw err;
+    toast.error(message || "Create inventory failed");
   }
 },
   delete: async (id) => {

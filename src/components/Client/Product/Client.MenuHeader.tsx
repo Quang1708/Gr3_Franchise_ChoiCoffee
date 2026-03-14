@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import ClientLoading from "../Client.Loading";
 import { getCategoryFranchise } from "./services/category.service";
 import type { CategoryFranchise } from "./models/category.model";
+import { isToppingCategory, setToppingCategoryId, removeToppingCategoryId } from "./utils/category.util";
 
 interface ProductMenuProps {
     activeCategory: string;
@@ -18,7 +19,8 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
         return localStorage.getItem("selectedFranchise") ?? "";
     });
     const [categoryFranchise, setCategoryFranchise] = useState<CategoryFranchise[]>([]);
-
+    
+    // Lọc categories theo franchise
     const mappedCategories = categoryFranchise.filter(
         category => category.franchise_id === franchiseId
     );
@@ -39,8 +41,21 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
                 
                 if(response) {
                     setCategoryFranchise(response);
+                    
+                    const toppingCat = response.find(isToppingCategory);
+                    
+                    if (toppingCat) {
+                        setToppingCategoryId(toppingCat.category_id);
+                        console.log('✅ Topping category found and saved:', toppingCat);
+                    } else {
+                        removeToppingCategoryId();
+                        console.log('⚠️ No topping category found');
+                    }
+                    
                     setIsLoading(false);
-                    setActiveCategory(response[0].category_id, response[0].category_name);
+                    if (!activeCategory && response.length > 0) {
+                        setActiveCategory(response[0].category_id, response[0].category_name);
+                    }
                 }
             }catch(error) {
                 console.error("Error fetching category franchise:", error);
@@ -50,6 +65,7 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
             }
         }
         fetchCategory();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [franchiseId]);
 
     useEffect(() => {
@@ -71,17 +87,20 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
     useEffect(() => {
          if(
             mappedCategories.length > 0 &&
-            !mappedCategories.some(cat => cat.category_id === activeCategory)
+            !mappedCategories.some(cat => cat.category_id === activeCategory) &&
+            !activeCategory
         ){
             setActiveCategory(mappedCategories[0].category_id);
         }
-    }, [franchiseId, activeCategory]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [franchiseId]);
 
     useEffect(() => {
-    if (mappedCategories.length > 0 && !activeCategory) {
-        setActiveCategory(mappedCategories[0].category_id);
-    }
-}, [mappedCategories, activeCategory, setActiveCategory]);
+        if (mappedCategories.length > 0 && !activeCategory) {
+            setActiveCategory(mappedCategories[0].category_id);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mappedCategories.length]);
 
     if (isLoading) {
         return <ClientLoading />;
@@ -106,4 +125,4 @@ const ProductMenu = ({activeCategory, setActiveCategory}: ProductMenuProps) => {
   )
 }
 
-export default ProductMenu
+export default ProductMenu;

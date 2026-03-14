@@ -3,7 +3,7 @@ export interface Inventory {
   productFranchiseId: string;
   franchiseId: string;
   quantity: number;
-  alertThreshold: number;
+  alert_threshold: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

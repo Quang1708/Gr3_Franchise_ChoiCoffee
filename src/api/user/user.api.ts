@@ -81,10 +81,16 @@ export const userApi = {
     return res.data;
   },
 
-  async search(payload: Record<string, unknown> = {}) {
+  async search(payload: {
+    keyword?: string;
+    is_active?: boolean | "";
+    is_deleted?: boolean;
+    pageNum?: number;
+    pageSize?: number;
+  } = {}) {
     const res = await axiosAdminClient.post(
       `${BASE}/search`,
-      buildSearchPayload(payload),
+      buildSearchPayload(payload as Record<string, unknown>),
     );
     return res.data;
   },

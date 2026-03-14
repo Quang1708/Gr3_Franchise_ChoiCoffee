@@ -14,6 +14,7 @@ import {
     Check,
     ChevronDown,
     RotateCw,
+    Loader2,
 } from "lucide-react";
 
 // --- Types ---
@@ -66,6 +67,8 @@ export interface CRUDPageTemplateProps<T> {
         term: string,
         filters?: Partial<Record<keyof T, string>>
     ) => void;
+
+    isTableLoading?: boolean;
 }
 
 // --- Components ---
@@ -184,11 +187,14 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
     searchRight,
 
     onRefresh,
-    onSearch
+    onSearch,
+
+    isTableLoading
 }: CRUDPageTemplateProps<T>) {
 
     const page = currentPage ?? 1;
     const [pageSizeState, setPageSizeState] = useState(pageSize ?? 10);
+    const [pageInput, setPageInput] = useState(page);
 
     const [inputValue, setInputValue] = useState("");
 
@@ -209,6 +215,10 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
             setPageSizeState(pageSize);
         }
     }, [pageSize]);
+
+    useEffect(() => {
+        setPageInput(page);
+    }, [page]);
 
     const sortedData = useMemo(() => {
         if (!sortConfig) return filteredData;
@@ -242,6 +252,11 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
     );
 
     const currentData = sortedData;
+
+    const goToPage = (value: number) => {
+        const newPage = Math.min(Math.max(value || 1, 1), totalPages);
+        onPageChange?.(newPage);
+    };
 
     const handleToggleStatus = (item: T) => {
         if (!statusField || !onStatusChange) return;
@@ -282,7 +297,6 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
         setPageSizeState(newSize);
         tableContainerRef.current?.scrollTo({
             top: 0,
-            behavior: "smooth",
         });
         if (onPageSizeChange) {
             onPageSizeChange(newSize);
@@ -411,7 +425,15 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                 ref={tableContainerRef}
                 className={`px-3 md:px-6 lg:px-8 py-3 flex-1 overflow-auto ${tableMaxHeightClass || ""}`}
             >
-                <div className="w-full rounded-lg border border-gray-200 overflow-auto">
+                <div className="relative w-full rounded-lg border border-gray-200 overflow-auto">
+
+                    {isTableLoading && (
+                        <div className="absolute inset-0 bg-white/60 flex flex-col items-center justify-center gap-3 z-20">
+                            <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                            <p className="text-sm text-gray-500 font-medium">Đang tải dữ liệu...</p>
+                        </div>
+                    )}
+
                     <table className="w-full border-collapse text-sm">
                         <thead className="sticky top-0 z-10 bg-gray-50/80 backdrop-blur border-b border-gray-200">
                             <tr>
@@ -611,9 +633,21 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                     >
                         <ChevronLeft className="w-4 h-4" />
                     </button>
-                    <span className="px-3 py-1 text-sm font-medium text-gray-700">
-                        {totalPages === 0 ? "0/0" : `${page}/${totalPages}`}
-                    </span>
+                    <div className="flex items-center gap-1 text-sm font-medium text-gray-700">
+                        <input
+                            type="number"
+                            min={1}
+                            max={totalPages || 1}
+                            value={pageInput}
+                            onChange={(e) => setPageInput(Number(e.target.value))}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") goToPage(pageInput);
+                            }}
+                            onBlur={() => goToPage(pageInput)}
+                            className="w-12 text-center border border-gray-200 rounded-md py-1 outline-none focus:ring-2 focus:ring-primary/20"
+                        />
+                        <span>/ {totalPages}</span>
+                    </div>
                     <button
                         onClick={goNextPage}
                         disabled={page === totalPages || totalPages === 0}

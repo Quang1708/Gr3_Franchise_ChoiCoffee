@@ -16,8 +16,10 @@ import { updateCustomerStatusUsecase } from "./usecases/updateCustomerStatus.use
 import { deleteCustomerUsecase } from "./usecases/deleteCustomer.usecase";
 import { restoreCustomerUsecase } from "./usecases/restoreCustomerUsecase";
 import { createCustomerUsecase } from "./usecases/createCustomer.usecase";
+import { updateCustomerUsecase } from "@/pages/admin/customer/usecases/updateCustomer05.usecase";
+import type { UpdateCustomerProfileRequest } from "@/models";
 
-const DEFAULT_AVATAR = "https://www.svgrepo.com/show/341256/user-avatar-filled.svg";
+const DEFAULT_AVATAR = "https://i.pinimg.com/736x/af/80/37/af80374611f4673d1928a881727e13b0.jpg";
 
 const CustomerPage = () => {
   const selectedFranchiseId = useAdminContextStore((state) => state.selectedFranchiseId);
@@ -28,6 +30,7 @@ const CustomerPage = () => {
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTableLoading, setIsTableLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Modal xác nhận (Xóa/Khôi phục)
@@ -45,17 +48,18 @@ const CustomerPage = () => {
   // Hàm Fetch ban đầu
   const fetchCustomers = async (
     pageNum = 1,
-    showLoading = false,
+    type: "full" | "table" = "full",
     size = pageSize
   ) => {
     try {
-      if (showLoading) setIsLoading(true);
+      if (type === "full") setIsLoading(true);
+      if (type === "table") setIsTableLoading(true);
 
       const res = await searchCustomersUsecase({
         searchCondition: {
           keyword: "",
           is_active: "",
-          is_deleted: false
+          is_deleted: ""
         },
         pageInfo: {
           pageNum,
@@ -67,21 +71,25 @@ const CustomerPage = () => {
         setCustomers(res.data);
         setTotalItems(res.pageInfo.totalItems);
         setPage(res.pageInfo.pageNum);
-        setPageSize(res.pageInfo.pageSize); 
+        setPageSize(res.pageInfo.pageSize);
       }
+
     } catch {
       toast.error("Lỗi khi tải customer");
     } finally {
-      if (showLoading) setIsLoading(false);
+      setIsLoading(false);
+      setIsTableLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCustomers(1, true);
+    fetchCustomers(1, "full");
   }, []);
 
   const handleSearchCustomers = async (keyword: string, filters: any) => {
     try {
+      setIsLoading(true);
+
       const res = await searchCustomersUsecase({
         searchCondition: {
           keyword,
@@ -131,21 +139,32 @@ const CustomerPage = () => {
   const handleSubmitCustomer = async (data: CustomerFormValues, setError: any) => {
     setIsProcessing(true);
     try {
-      const payload: RequestCustomer = {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        password: data.password || "",
-        avatar_url: data.avatar_url?.trim() ? data.avatar_url : DEFAULT_AVATAR,
-      };
-
       if (formMode === "create") {
-        await createCustomerUsecase(payload);
+        const createPayload: RequestCustomer = {
+          email: data.email,
+          password: data.password || "",
+          phone: data.phone,
+          name: data.name,
+          address: data.address,
+          avatar_url: data.avatar_url?.trim() ? data.avatar_url : DEFAULT_AVATAR,
+        };
+
+        await createCustomerUsecase(createPayload);
         toast.success("Thêm khách hàng thành công!");
+
+      } else if (formMode === "edit" && selectedCustomer) {
+        const updatePayload: UpdateCustomerProfileRequest = {
+          email: data.email,
+          phone: data.phone,
+          name: data.name,
+          address: data.address,
+          avatar_url: data.avatar_url?.trim() ? data.avatar_url : DEFAULT_AVATAR,
+        };
+        await updateCustomerUsecase(selectedCustomer.id, updatePayload);
+        toast.success("Cập nhật khách hàng thành công!");
       }
 
-      await fetchCustomers();
+      await fetchCustomers(page, 'table');
       setIsFormOpen(false);
     } catch (error: any) {
       const errData = error.response?.data || error;
@@ -157,7 +176,7 @@ const CustomerPage = () => {
           toast.error(e.message);
         });
       } else {
-        toast.error(errData?.message || "Có lỗi xảy ra!");
+        toast.error(errData?.message || "Thao tác thất bại!");
       }
     } finally {
       setIsProcessing(false);
@@ -251,7 +270,11 @@ const CustomerPage = () => {
   return (
     <>
       {isLoading && <ClientLoading />}
-      {isProcessing && <ClientLoading />}
+      {isProcessing && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20">
+          <ClientLoading />
+        </div>
+      )}
 
       <CRUDPageTemplate<Customer>
         title="Quản lý khách hàng"
@@ -262,10 +285,10 @@ const CustomerPage = () => {
 
         totalItems={totalItems}
         currentPage={page}
-        onPageChange={(page) => fetchCustomers(page, false)}
+        onPageChange={(page) => fetchCustomers(page, "table")}
         onPageSizeChange={(size) => {
           setPageSize(size);
-          fetchCustomers(1, true, size);
+          fetchCustomers(1, "full", size);
         }}
 
         statusField="is_active"
@@ -292,10 +315,13 @@ const CustomerPage = () => {
 
         onAdd={() => handleOpenForm("create")}
         onView={(item) => handleOpenForm("view", item)}
+        onEdit={(item) => handleOpenForm("edit", item)}
         onDelete={isAdmin ? handleDeleteClick : undefined}
         onRestore={isAdmin ? handleRestoreClick : undefined}
-        onRefresh={() => fetchCustomers(1, true)}
+        onRefresh={() => fetchCustomers(1, "full")}
         onSearch={handleSearchCustomers}
+
+        isTableLoading={isTableLoading}
       />
       <CustomerForm
         isOpen={isFormOpen}

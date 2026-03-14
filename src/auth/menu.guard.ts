@@ -39,6 +39,7 @@ export function isMenuVisible(
   if (path === "menu") return can(user, PERM.MENU_READ, fid);
   if (path === "product") return can(user, PERM.PRODUCT_READ, fid);
   if (path === "category") return can(user, PERM.CATEGORY_READ, fid);
+  if (path === "product-category") return can(user, PERM.CATEGORY_READ, fid);
   if (path === "customer") return can(user, PERM.CUSTOMER_READ, fid);
   if (path === "order") return can(user, PERM.ORDER_READ, fid);
   if (path === "inventory") return can(user, PERM.INVENTORY_READ, fid);

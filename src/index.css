@@ -181,6 +181,20 @@ body {
   display: none;             /* Chrome, Safari, Edge */
 }
 
+/* Custom animations */
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 2s ease-in-out infinite;
+}
+
 .product-content h3 {
   font-size: 20px;
   font-weight: 700;

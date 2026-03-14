@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getMenuProducts } from "./services/client03.service";
 import type { MenuData } from "./models/client03.model";
+import { useNavigate } from "react-router-dom";
 
 
 const MenuBanner = () => {
@@ -8,6 +9,7 @@ const MenuBanner = () => {
   const franchiseSelected = localStorage.getItem("selectedFranchise");
   const [menuData, setMenuData] = useState<MenuData>([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const navigate = useNavigate();
 
     useEffect(() => {
         const fetchMenuData = async () => {
@@ -41,7 +43,10 @@ const MenuBanner = () => {
                 <button
                   key={item.category_id}
                   onMouseEnter={() => setActiveIndex(index)}
-                  onClick={() => setActiveIndex(index)}
+                  onClick={() => {
+                    console.log('Navigating to category:', item.category_id);
+                    navigate(`/menu?category=${item.category_id}`);
+                  }}
                   className={`flex items-center justify-between w-full text-left px-6 py-4 rounded-2xl transition-all duration-500 ease-out group
                     ${isActive 
                       ? 'bg-[#0B1B32] text-white shadow-md' 

@@ -20,10 +20,10 @@ export interface CustomerProfile {
  */
 export interface UpdateCustomerProfileRequest {
   email: string;
-  name: string;
+  name?: string;
   phone: string;
-  address: string;
-  avatar_url: string;
+  address?: string;
+  avatar_url?: string;
 }
 
 /**

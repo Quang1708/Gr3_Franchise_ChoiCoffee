@@ -7,10 +7,10 @@ const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
 interface FormInputProps {
     label: string;
-    type?: "text" | "email" | "password" | "file" | "tel";
+    type?: "text" | "email" | "password" | "file" | "tel" | "number";
     register: any;
     error?: any;
-    defaultValue?: string;
+    defaultValue?: string | number;
     placeholder?: string;
     isView?: boolean;
     className?: string;

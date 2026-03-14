@@ -25,6 +25,9 @@ const LoyaltyPage = React.lazy(() => import("../../pages/admin/loyalty"));
 const OrderPage = React.lazy(() => import("../../pages/admin/order"));
 const PaymentPage = React.lazy(() => import("../../pages/admin/payment"));
 const ProductPage = React.lazy(() => import("../../pages/admin/product"));
+const ProductCategoryFranchisePage = React.lazy(
+  () => import("../../pages/admin/product_category_franchise"),
+);
 const UserPage = React.lazy(() => import("../../pages/admin/user"));
 const SettingsPage = React.lazy(() => import("../../pages/admin/settings"));
 const LogoutPage = React.lazy(() => import("../../pages/admin/logout"));
@@ -62,6 +65,10 @@ const AdminRoutes = (
 
         <Route element={<RequirePermission perm={PERM.CATEGORY_READ} />}>
           <Route path="category" element={<CategoryPage />} />
+        </Route>
+        
+        <Route element={<RequirePermission perm={PERM.PRODUCT_CATEGORY_READ} />}>
+          <Route path="product-category" element={<ProductCategoryFranchisePage />} />
         </Route>
 
         <Route element={<RequirePermission perm={PERM.CATEGORY_FRANCHISE_READ} />}>

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ROUTER_URL from "../../../routes/router.const";
 import ClientLoading from "@/components/Client/Client.Loading";
-import { logout as logoutApi } from "@/services/adminAuth.service";
+import { logout as logoutApi } from "@/pages/admin/auth/login/services/auth07.service";
 import { useAuthStore } from "@/stores/auth.store";
 import { removeItemInSessionStorage } from "../../../utils/sessionStorage.util";
 import { SESSION_STORAGE } from "../../../consts/sessionstorage.const";

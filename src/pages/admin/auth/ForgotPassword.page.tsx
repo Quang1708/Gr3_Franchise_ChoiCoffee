@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import ROUTER_URL from "@/routes/router.const";
 import ClientLoading from "@/components/Client/Client.Loading";
 import { AdminForgotPasswordSchema } from "./login/schema/AdminForgotReset.schema";
-import { forgotPassword } from "./login/services/adminAuth.service";
+import { forgotPassword } from "@/pages/admin/auth/login/services/auth05.service";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 type FormValues = {

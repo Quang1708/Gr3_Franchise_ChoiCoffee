@@ -26,7 +26,6 @@ const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const user = useAuthStore((s) => s.user);
-  const token = useAuthStore((s) => s.token);
   const setSelectedFranchiseId = useAdminContextStore(
     (s) => s.setSelectedFranchiseId,
   );
@@ -40,7 +39,7 @@ const AdminLoginPage: React.FC = () => {
   } = useForm<AdminAuthSchemaType>({
     resolver: zodResolver(AdminAuthSchema),
     mode: "onChange",
-    defaultValues: { email: "group3@gmail.com", password: "123456789" },
+    defaultValues: { email: "dangkhoaa0213@gmail.com", password: "123456789" },
   });
 
   const setAuthError = (message: string) => {
@@ -74,7 +73,7 @@ const AdminLoginPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!user || !token) return;
+    if (!user) return;
     const contextRequired = Boolean(
       getItemInLocalStorage<boolean>(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED),
     );
@@ -84,13 +83,13 @@ const AdminLoginPage: React.FC = () => {
         : ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD,
       { replace: true },
     );
-  }, [user, token, navigate]);
+  }, [user, navigate]);
 
   const onSubmit = async (values: AdminAuthSchemaType) => {
     try {
       const result = await runAdminLogin(values);
 
-      if (result.ok && result.user && result.token) {
+      if (result.success && result.user) {
         const user = result.user;
         const hasMultipleRoles =
           Array.isArray(user.roles) && user.roles.length > 1;
@@ -98,7 +97,7 @@ const AdminLoginPage: React.FC = () => {
         if (hasMultipleRoles) {
           setSelectedFranchiseId(null);
           setItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED, true);
-          useAuthStore.getState().login(user, result.token);
+          useAuthStore.getState().login(user, result.token ?? "SESSION");
           navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_SELECT_CONTEXT, {
             replace: true,
           });
@@ -106,7 +105,7 @@ const AdminLoginPage: React.FC = () => {
         }
 
         removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
-        handleLoginSuccess(user, result.token);
+        handleLoginSuccess(user, result.token ?? "SESSION");
         return;
       }
 

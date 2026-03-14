@@ -65,8 +65,8 @@ const AdminRoutes = (
         <Route element={<RequirePermission perm={PERM.CATEGORY_READ} />}>
           <Route path="category" element={<CategoryPage />} />
         </Route>
-
-        <Route element={<RequirePermission perm={PERM.CATEGORY_READ} />}>
+        
+        <Route element={<RequirePermission perm={PERM.PRODUCT_CATEGORY_READ} />}>
           <Route path="product-category" element={<ProductCategoryFranchisePage />} />
         </Route>
 

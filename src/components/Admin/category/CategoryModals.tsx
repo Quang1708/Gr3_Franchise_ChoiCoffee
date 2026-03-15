@@ -23,7 +23,7 @@ interface CategoryFormProps {
   onCancel: () => void;
   isLoading?: boolean;
   submitLabel: string;
-  hideStatus?: boolean; // New prop to optionally hide the status field
+  hideStatus?: boolean; 
 }
 
 const CategoryForm: React.FC<CategoryFormProps> = ({

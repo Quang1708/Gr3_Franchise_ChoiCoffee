@@ -37,13 +37,16 @@ const menuItems: MenuItem[] = [
   { icon: <Menu size={20} />, label: "Menu", path: "menu" },
   { icon: <ShoppingBag size={20} />, label: "Products", path: "product" },
   { icon: <Package size={20} />, label: "Categories", path: "category" },
+  { icon: <Package size={20} />, label: "Product Category Franchise", path: "product-category" },
   { icon: <Users size={20} />, label: "Customers", path: "customer" },
   { icon: <ShoppingCart size={20} />, label: "Orders", path: "order" },
   { icon: <CreditCard size={20} />, label: "Payments", path: "payment" },
   { icon: <Boxes size={20} />, label: "Inventory", path: "inventory" },
   { icon: <Gift size={20} />, label: "Loyalty", path: "loyalty" },
   { icon: <User size={20} />, label: "Users", path: "user" },
+  { icon: <Package size={20} />, label: "Category (Franchise)", path: "category-franchise" },
   { icon: <LogOut size={20} />, label: "Logout", path: "logout" },
+  
 ];
 
 type AdminSidebarProps = {
@@ -54,7 +57,8 @@ type AdminSidebarProps = {
 const AdminSidebar = ({ collapsed = false, onToggle }: AdminSidebarProps) => {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
-  const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
+  const franchiseIdStr = useAdminContextStore((s) => s.selectedFranchiseId);
+  const franchiseId = franchiseIdStr ? Number(franchiseIdStr) : null;
 
   const visibleItems = menuItems.filter((it) =>
     isMenuVisible(user, franchiseId, it.path),

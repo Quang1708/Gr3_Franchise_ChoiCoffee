@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import ProductMenu from "../../../components/Client/Product/Client.MenuHeader";
 // import ProductList from "../../../components/Client/Product/ProductList";
 import ProductList from "@/components/Client/Product/ProductList";
@@ -6,19 +7,23 @@ import ProductList from "@/components/Client/Product/ProductList";
 
 
 const ClientProductPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [activeCategory, setActiveCategory] = useState<string>("");
+  const activeCategory = searchParams.get('category') || "";
   const [categoryInfo, setCategoryInfo] = useState<{
     name?: string
     description?: string
   }>({});
+
+  console.log('Active category from URL:', activeCategory);
 
   const handleCategoryChange = (
     categoryId: string,
     name?: string,
     description?: string
   ) => {
-    setActiveCategory(categoryId);
+    setSearchParams({ category: categoryId });
     setCurrentPage(1);
     setCategoryInfo({ name, description });
   };

@@ -5,7 +5,7 @@ import * as z from "zod";
 import { Modal } from "../../UI/Modal";
 import type { Product } from "../../../models/product.model";
 import { Trash2 } from "lucide-react";
-import { ImageUpload } from "@/components/ImageUpload/ImageUpload";
+import { FormInput } from "@/components/Admin/Form/FormInput";
 
 // --- Schema ---
 const productSchema = z
@@ -149,25 +149,15 @@ const ProductForm: React.FC<ProductFormProps> = ({
         </div>
 
         {/* Image Upload */}
-        <div className="md:col-span-2">
-          <div className="block text-sm font-medium text-gray-700 mb-2">
-            Hình ảnh
-          </div>
-
-          <ImageUpload
-            folder="products"
-            multiple={false}
-            maxFiles={1}
-            onUploadSuccess={(imageUrl) =>
-              setValue("image", imageUrl, {
-                shouldDirty: true,
-                shouldTouch: true,
-                shouldValidate: true,
-              })
-            }
+        <div className="md:col-span-2 flex items-center justify-center">
+          <FormInput
+            label=""
+            type="file"
+            defaultValue={defaultValues?.image}
+            register={register("image")}
+            onUploadSuccess={(url) => setValue("image", url)}
+            uploadFolder="products"
           />
-
-          <input type="hidden" {...register("image")} />
         </div>
       </div>
 

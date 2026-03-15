@@ -259,9 +259,28 @@ export async function getProducts(): Promise<ProductListItem[]> {
   }
 }
 
-export async function searchProducts(keyword: string): Promise<ProductListItem[]> {
+export async function searchProducts(
+  keyword?: string,
+  filters?: {
+    is_active?: boolean | string;
+    is_deleted?: boolean;
+  }
+): Promise<ProductListItem[]> {
   try {
-    const data = await productApi.search({ keyword, pageNum: 1, pageSize: 200 });
+    let isActive: boolean | "" = "";
+    if (filters?.is_active === true) {
+      isActive = true;
+    } else if (filters?.is_active === false) {
+      isActive = false;
+    }
+
+    const data = await productApi.search({ 
+      keyword: keyword || "", 
+      is_active: isActive,
+      is_deleted: filters?.is_deleted ?? false,
+      pageNum: 1, 
+      pageSize: 200 
+    });
     return extractArray(data).map(mapProductRecord);
   } catch {
     return [];

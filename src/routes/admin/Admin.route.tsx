@@ -24,6 +24,7 @@ const InventoryPage = React.lazy(
 const LoyaltyPage = React.lazy(() => import("../../pages/admin/loyalty"));
 const OrderPage = React.lazy(() => import("../../pages/admin/order"));
 const PaymentPage = React.lazy(() => import("../../pages/admin/payment"));
+const VoucherPage = React.lazy(() => import("../../pages/admin/voucher/Voucher.page"));
 const ProductPage = React.lazy(() => import("../../pages/admin/product"));
 const ProductCategoryFranchisePage = React.lazy(
   () => import("../../pages/admin/product_category_franchise"),
@@ -99,6 +100,10 @@ const AdminRoutes = (
 
         <Route element={<RequirePermission perm={PERM.PAYMENT_READ} />}>
           <Route path="payment" element={<PaymentPage />} />
+        </Route>
+
+        <Route element={<RequirePermission perm={PERM.VOUCHER_READ} />}>
+          <Route path="voucher" element={<VoucherPage />} />
         </Route>
 
         <Route element={<RequirePermission perm={PERM.USER_MANAGE} />}>

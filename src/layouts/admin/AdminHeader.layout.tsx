@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { LogOut, Store, ChevronDown } from "lucide-react";
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { LogOut, Store } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useAdminContextStore } from "@/stores/adminContext.store";
-import { getAccessibleFranchises } from "@/auth/rbac";
+
+import ROUTER_URL from "@/routes/router.const";
+import { LOCAL_STORAGE } from "@/consts/localstorage.const";
+import { getItemInLocalStorage } from "@/utils/localStorage.util";
 
 const initials = (name?: string) => {
   const s = (name ?? "").trim();
@@ -14,28 +18,62 @@ const initials = (name?: string) => {
 };
 
 const AdminHeader = () => {
+  const navigate = useNavigate();
+
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
 
   const selectedFranchiseId = useAdminContextStore(
     (s) => s.selectedFranchiseId,
   );
-  const setSelectedFranchiseId = useAdminContextStore(
-    (s) => s.setSelectedFranchiseId,
+
+  const contextRequired = Boolean(
+    getItemInLocalStorage<boolean>(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED),
   );
 
-  const franchises = useMemo(() => getAccessibleFranchises(user), [user]);
+  /**
+   * Determine current role + franchise label
+   */
+  const currentRole = useMemo(() => {
+    if (!user?.roles?.length) return null;
 
-  // Auto pick default franchise (nếu chưa có hoặc không thuộc quyền)
-  useEffect(() => {
-    if (!franchises.length) return;
-    const ok =
-      selectedFranchiseId != null &&
-      franchises.some((f) => f.id === selectedFranchiseId);
-    if (!ok) setSelectedFranchiseId(franchises[0].id);
-  }, [franchises, selectedFranchiseId, setSelectedFranchiseId]);
+    return user.roles.find((role) => {
+      if (selectedFranchiseId == null) {
+        return role.scope === "GLOBAL";
+      }
 
-  const [open, setOpen] = useState(false);
+      return String(role.franchise_id) === String(selectedFranchiseId);
+    });
+  }, [user, selectedFranchiseId]);
+
+  /**
+   * Context label for left side
+   */
+  const contextLabel = useMemo(() => {
+    if (!currentRole) return "Chưa chọn";
+
+    const franchise =
+      currentRole.scope === "GLOBAL"
+        ? "GLOBAL"
+        : (currentRole.franchise_name ??
+          `FRANCHISE ${currentRole.franchise_id}`);
+
+    return `${currentRole.role} - ${franchise}`;
+  }, [currentRole]);
+
+  /**
+   * Display name changes when switching context
+   */
+  const displayName = useMemo(() => {
+    if (!currentRole) return user?.name ?? "—";
+
+    const franchise =
+      currentRole.scope === "GLOBAL"
+        ? "GLOBAL"
+        : (currentRole.franchise_name ??
+          `FRANCHISE ${currentRole.franchise_id}`);
+
+    return `${currentRole.role} (${franchise})`;
+  }, [currentRole, user]);
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-40">
@@ -47,68 +85,27 @@ const AdminHeader = () => {
           </div>
 
           <div className="min-w-0">
-            <div className="text-xs text-gray-500 font-medium">Franchise</div>
-
-            {franchises.length <= 1 ? (
+            <div className="flex items-center gap-2">
               <div className="text-sm font-semibold text-gray-900 truncate">
-                {franchises[0]?.name ?? "—"}
+                {contextLabel}
               </div>
-            ) : (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setOpen((v) => !v)}
-                  className="h-9 px-3 pr-9 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-900
-                             hover:bg-gray-50 transition w-[320px] max-w-[55vw] truncate text-left"
-                >
-                  {(() => {
-                    const cur = franchises.find(
-                      (f) => f.id === selectedFranchiseId,
-                    );
-                    return cur ? `${cur.code} — ${cur.name}` : "Chọn chi nhánh";
-                  })()}
-                  <ChevronDown
-                    size={16}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-                  />
-                </button>
 
-                {open && (
-                  <div
-                    className="absolute mt-2 w-[360px] max-w-[70vw] bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden"
-                    onMouseLeave={() => setOpen(false)}
-                  >
-                    <div className="max-h-72 overflow-auto">
-                      {franchises.map((f) => {
-                        const active = f.id === selectedFranchiseId;
-                        return (
-                          <button
-                            key={f.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedFranchiseId(f.id);
-                              setOpen(false);
-                            }}
-                            className={`w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition flex items-center justify-between gap-3 ${
-                              active ? "bg-primary/5" : ""
-                            }`}
-                          >
-                            <span className="truncate font-medium text-gray-900">
-                              {f.code} — {f.name}
-                            </span>
-                            {active ? (
-                              <span className="text-xs font-semibold text-primary">
-                                Đang chọn
-                              </span>
-                            ) : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+              {contextRequired && (
+                <span className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                  Vui lòng chọn!
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_SELECT_CONTEXT)
+                }
+                className="h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-800 hover:bg-gray-50"
+              >
+                Đổi Roles
+              </button>
+            </div>
           </div>
         </div>
 
@@ -116,21 +113,26 @@ const AdminHeader = () => {
         <div className="flex items-center gap-3">
           <div className="hidden sm:block text-right">
             <div className="text-sm font-semibold text-gray-900 leading-4">
-              {user?.name ?? "—"}
+              {displayName}
             </div>
             <div className="text-xs text-gray-500">{user?.email ?? ""}</div>
           </div>
 
-          <div className="w-9 h-9 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">
-            {initials(user?.name)}
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_PROFILE)}
+            className="w-9 h-9 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold hover:bg-gray-800 transition cursor-pointer"
+            title="View Profile"
+          >
+            {initials(displayName)}
+          </button>
 
           <button
             type="button"
-            onClick={() => logout()}
+            onClick={() => navigate("/admin/logout")}
             className="inline-flex items-center gap-2 h-9 px-3 rounded-xl
-                       border border-gray-200 bg-white text-sm font-medium text-gray-800
-                       hover:bg-gray-50 transition"
+                     border border-gray-200 bg-white text-sm font-medium text-gray-800
+                     hover:bg-gray-50 transition"
           >
             <LogOut size={16} />
             <span className="hidden md:inline">Đăng xuất</span>

@@ -5,26 +5,67 @@ import {
   setItemInLocalStorage,
 } from "@/utils/localStorage.util";
 
-type AdminContextState = {
-  selectedFranchiseId: number | null;
-  hydrate: () => void;
-  setSelectedFranchiseId: (id: number | null) => void;
+export type FranchiseOption = {
+  id: string;
+  code: string;
+  name: string;
 };
 
-/**
- * Admin CMS context (tạm, vì chưa có API)
- * - selectedFranchiseId: franchise đang chọn, áp dụng cho toàn bộ trang admin
- */
+type AdminContextState = {
+  selectedFranchiseId: string | "ALL" | null;
+  franchises: FranchiseOption[];
+
+  hydrate: () => void;
+  setSelectedFranchiseId: (id: string | "ALL" | null) => void;
+  setFranchises: (list: FranchiseOption[]) => void;
+};
+
 export const useAdminContextStore = create<AdminContextState>((set) => ({
   selectedFranchiseId: null,
+  franchises: [],
 
+  /**
+   * Load context từ localStorage khi app start
+   */
   hydrate: () => {
-    const saved = getItemInLocalStorage<number>(LOCAL_STORAGE.ADMIN_FRANCHISE_ID);
-    set({ selectedFranchiseId: typeof saved === "number" ? saved : null });
+    const saved = getItemInLocalStorage<string | number>(
+      LOCAL_STORAGE.ADMIN_FRANCHISE_ID,
+    );
+
+    if (!saved) {
+      set({ selectedFranchiseId: null });
+      return;
+    }
+
+    set({
+      selectedFranchiseId: String(saved),
+    });
   },
 
+  /**
+   * Update franchise context
+   */
   setSelectedFranchiseId: (id) => {
+    if (id === null) {
+      setItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID, null);
+      set({ selectedFranchiseId: null });
+      return;
+    }
+
+    if (id === "ALL") {
+      setItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID, "ALL");
+      set({ selectedFranchiseId: "ALL" });
+      return;
+    }
+
     setItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID, id);
-    set({ selectedFranchiseId: id });
+    set({ selectedFranchiseId: String(id) });
+  },
+
+  /**
+   * Update franchise list
+   */
+  setFranchises: (list) => {
+    set({ franchises: list });
   },
 }));

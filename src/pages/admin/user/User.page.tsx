@@ -1,12 +1,26 @@
-﻿import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
+﻿import {
+  useEffect,
+  useState,
+  type SyntheticEvent,
+} from "react";
 import { toastSuccess, toastError } from "../../../utils/toast.util";
 import {
+  changeUserStatus,
+  createUser,
+  deleteUser,
   getUsers,
+  searchUsers,
+  updateUser,
   updateUserRole,
   type UserListItem,
 } from "../../../services/user.service";
-import { ROLE_SEED_DATA } from "../../../mocks/role.seed";
-import { useAuthStore } from "@/stores/auth.store";
+import ClientLoading from "@/components/Client/Client.Loading";
+import { Modal } from "@/components/UI/Modal";
+import { ImageUpload } from "@/components/ImageUpload/ImageUpload";
+import {
+  CRUDTable,
+  type Column,
+} from "../../../components/Admin/template/CRUD.template";
 
 interface UserFormData {
   email: string;
@@ -17,31 +31,40 @@ interface UserFormData {
   avatarUrl?: string;
 }
 
-const UserPage = () => {
-  const authUser = useAuthStore((state) => state.user);
-  const canChangeRole = useMemo(
-    () =>
-      Array.isArray(authUser?.roles) &&
-      authUser.roles.some((role: { role_code?: string }) => role.role_code === "ADMIN"),
-    [authUser],
-  );
+const ROLE_OPTIONS = ["ADMIN", "MANAGER", "STAFF", "CUSTOMER"];
 
+const formatDateTime = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("vi-VN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
+const UserPage = () => {
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [detailUser, setDetailUser] = useState<UserListItem | null>(null);
+
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deletingUser, setDeletingUser] = useState<UserListItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState<UserFormData>({
     email: "",
     password: "",
     name: "",
     phone: "", // initialize phone
-    roleCode: "STAFF",
+    roleCode: "",
     avatarUrl: "",
   });
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterRole, setFilterRole] = useState<string>("all");
 
   useEffect(() => {
     let isMounted = true;
@@ -67,6 +90,18 @@ const UserPage = () => {
     };
   }, []);
 
+  const handleSearch = async (keyword: string) => {
+    setIsLoading(true);
+    try {
+      const data = await searchUsers(keyword);
+      setUsers(data);
+    } catch {
+      toastError("Không thể tìm kiếm user");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleOpenModal = (user?: UserListItem) => {
     if (user) {
       setEditingUser(user);
@@ -85,7 +120,7 @@ const UserPage = () => {
         password: "",
         name: "",
         phone: "", // include default phone
-        roleCode: "STAFF",
+        roleCode: "",
         avatarUrl: "",
       });
     }
@@ -100,429 +135,581 @@ const UserPage = () => {
       password: "",
       name: "",
       phone: "",
-      roleCode: "STAFF",
+      roleCode: "",
       avatarUrl: "",
     });
   };
 
-  const handleSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
+  const handleOpenDetails = (user: UserListItem) => {
+    setDetailUser(user);
+    setIsDetailOpen(true);
+  };
+
+  const handleCloseDetails = () => {
+    setIsDetailOpen(false);
+    setDetailUser(null);
+  };
+
+  const handleEditFromDetails = () => {
+    if (!detailUser) return;
+    const user = detailUser;
+    handleCloseDetails();
+    handleOpenModal(user);
+  };
+
+  const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (editingUser) {
-      setUsers(
-        users.map((user) =>
-          user.id === editingUser.id
-            ? {
-                ...user,
-                email: formData.email,
-                name: formData.name,
-                roleCode: formData.roleCode,
-                avatarUrl: formData.avatarUrl,
-                updatedAt: new Date().toISOString(),
-              }
-            : user,
-        ),
+      const prevRoleCode = editingUser.roleCode;
+      const result = await updateUser(editingUser.id, {
+        email: formData.email,
+        name: formData.name,
+        phone: formData.phone,
+        avatar_url: formData.avatarUrl,
+        ...(formData.password ? { password: formData.password } : {}),
+      });
+
+      if (!result.ok) {
+        toastError(result.message);
+        return;
+      }
+
+      let updatedUser = result.user;
+
+      if (formData.roleCode !== prevRoleCode) {
+        const roleResult = await updateUserRole(
+          String(editingUser.id),
+          formData.roleCode,
+        );
+
+        if (roleResult.ok) {
+          updatedUser = { ...updatedUser, roleCode: formData.roleCode };
+        } else {
+          toastError(roleResult.message);
+        }
+      }
+
+      setUsers((prev) =>
+        prev.map((user) => (user.id === editingUser.id ? updatedUser : user)),
       );
       toastSuccess("Cập nhật user thành công");
     } else {
-      const newUser: UserListItem = {
-        id: Date.now(),
+      const result = await createUser({
         email: formData.email,
+        password: formData.password,
         name: formData.name,
-        phone: formData.phone, // use formData.phone
+        phone: formData.phone,
         roleCode: formData.roleCode,
         avatarUrl: formData.avatarUrl,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setUsers([...users, newUser]);
+      });
+
+      if (!result.ok) {
+        toastError(result.message);
+        return;
+      }
+
+      setUsers((prev) => [...prev, result.user]);
       toastSuccess("Tạo user mới thành công");
     }
 
     handleCloseModal();
   };
 
-  const handleDelete = (userId: number) => {
-    if (globalThis.confirm("Bạn có chắc chắn muốn xóa người dùng này?")) {
-      setUsers(users.filter((user) => user.id !== userId));
+  const handleDelete = (user: UserListItem) => {
+    setDeletingUser(user);
+    setIsDeleteOpen(true);
+  };
+
+  const handleCloseDelete = () => {
+    if (isDeleting) return;
+    setIsDeleteOpen(false);
+    setDeletingUser(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingUser) return;
+    setIsDeleting(true);
+    try {
+      const result = await deleteUser(deletingUser.id);
+      if (!result.ok) {
+        toastError(result.message);
+        return;
+      }
+
+      setUsers((prev) => prev.filter((user) => user.id !== deletingUser.id));
+      if (detailUser?.id === deletingUser.id) {
+        setIsDetailOpen(false);
+        setDetailUser(null);
+      }
       toastSuccess("Xóa user thành công");
+      setIsDeleteOpen(false);
+      setDeletingUser(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const handleRoleChange = async (user: UserListItem, newRoleCode: string) => {
-    if (user.roleCode === newRoleCode) return;
-    const result = await updateUserRole(user.id.toString(), newRoleCode);
-    if (result.ok) {
+  const handleStatusChange = async (user: UserListItem, newStatus: boolean) => {
+    const prevStatus = user.isActive;
+    const prevUpdatedAt = user.updatedAt;
+    const nextUpdatedAt = new Date().toISOString();
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === user.id
+          ? { ...u, isActive: newStatus, updatedAt: nextUpdatedAt }
+          : u,
+      ),
+    );
+    setDetailUser((prev) =>
+      prev?.id === user.id
+        ? { ...prev, isActive: newStatus, updatedAt: nextUpdatedAt }
+        : prev,
+    );
+
+    const result = await changeUserStatus(
+      user.id,
+      newStatus ? "active" : "inactive",
+    );
+
+    if (!result.ok) {
       setUsers((prev) =>
         prev.map((u) =>
           u.id === user.id
-            ? { ...u, roleCode: newRoleCode, updatedAt: new Date().toISOString() }
+            ? { ...u, isActive: prevStatus, updatedAt: prevUpdatedAt }
             : u,
         ),
       );
-      toastSuccess("Cập nhật vai trò thành công");
-    } else {
+      setDetailUser((prev) =>
+        prev?.id === user.id
+          ? { ...prev, isActive: prevStatus, updatedAt: prevUpdatedAt }
+          : prev,
+      );
       toastError(result.message);
+      return;
     }
+
+    toastSuccess(
+      `Đã cập nhật trạng thái: ${newStatus ? "Hoạt động" : "Ngưng hoạt động"}`,
+    );
   };
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = filterRole === "all" || user.roleCode === filterRole;
-    return matchesSearch && matchesRole;
-  });
+  const columns: Column<UserListItem>[] = [
+    {
+      header: "User",
+      accessor: "name",
+      className: "min-w-[250px]",
+      sortable: true,
+      render: (user) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden shrink-0 bg-gray-50 flex items-center justify-center text-xs text-gray-400">
+            {user.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt={user.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-gray-600 font-medium">
+                {user.name.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="font-medium text-gray-900 truncate">
+              {user.name}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: "Email",
+      accessor: "email",
+      sortable: true,
+      className: "min-w-[220px]",
+    },
+    {
+      header: "Phone",
+      accessor: "phone",
+      className: "min-w-[140px]",
+      render: (user) => user.phone || "—",
+    },
+    {
+      header: "Vai trò",
+      accessor: "roleCode",
+      sortable: true,
+      className: "w-28",
+    },
+    {
+      header: "Cập nhật",
+      accessor: (user) => formatDateTime(user.updatedAt),
+      sortable: true,
+      className: "text-gray-500 text-sm w-40",
+    },
+  ];
 
-  const getRoleBadgeColor = (roleCode: string) => {
-    switch (roleCode) {
-      case "ADMIN":
-        return "bg-red-100 text-red-800";
-      case "MANAGER":
-        return "bg-blue-100 text-blue-800";
-      case "STAFF":
-        return "bg-green-100 text-green-800";
-      case "CUSTOMER":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Quản lý Users</h1>
-        <button
-          onClick={() => handleOpenModal()}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-        >
-          <span>+</span>
-          <span>Thêm User</span>
-        </button>
+    <div className="p-6 h-[calc(100vh-4rem)] min-h-0 flex flex-col overflow-hidden transition-all animate-fade-in">
+      {isLoading && <ClientLoading />}
+
+      <div className="mb-4">
+        <CRUDTable<UserListItem>
+          title="Quản lý Users"
+          data={users}
+          columns={columns}
+          pageSize={5}
+          tableMaxHeightClass="max-h-[60vh]"
+          deferToolsApply
+          // Actions
+          onAdd={() => handleOpenModal()}
+          onView={handleOpenDetails}
+          onEdit={handleOpenModal}
+          onDelete={(user) => handleDelete(user)}
+          // Status (giống Product)
+          statusField="isActive"
+          onStatusChange={handleStatusChange}
+          // Search & Filter
+          searchKeys={["name", "email", "phone"]}
+          onSearch={handleSearch}
+          filters={[
+            {
+              key: "roleCode",
+              label: "vai trò",
+              options: ROLE_OPTIONS.map((roleCode) => ({
+                value: roleCode,
+                label: roleCode,
+              })),
+            },
+            {
+              key: "isActive",
+              label: "trạng thái",
+              options: [
+                { value: "true", label: "Hoạt động" },
+                { value: "false", label: "Ngưng hoạt động" },
+              ],
+            },
+          ]}
+        />
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Modal for Create/Edit User (use shared Modal) */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={editingUser ? "Chỉnh sửa User" : "Thêm User mới"}
+        maxWidth="max-w-md"
+      >
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 max-h-[70vh] overflow-y-auto pr-1"
+        >
           <div>
             <label
-              htmlFor="user-search"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              htmlFor="user-name"
+              className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Tìm kiếm
+              Tên <span className="text-red-500">*</span>
             </label>
             <input
-              id="user-search"
+              id="user-name"
               type="text"
-              placeholder="Tìm theo tên hoặc email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+              placeholder="Nhập tên người dùng"
             />
           </div>
+
           <div>
             <label
-              htmlFor="user-status"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              htmlFor="user-email"
+              className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Lọc theo trạng thái
+              Email <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="user-email"
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+              placeholder="Nhập email"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="user-password"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Mật khẩu {editingUser && "(Để trống nếu không đổi)"}
+              {!editingUser && <span className="text-red-500"> *</span>}
+            </label>
+            <input
+              id="user-password"
+              type="password"
+              required={!editingUser}
+              value={formData.password}
+              onChange={(e) =>
+                setFormData({ ...formData, password: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+              placeholder={
+                editingUser
+                  ? "Nhập mật khẩu mới (tùy chọn)"
+                  : "Nhập mật khẩu"
+              }
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="user-phone"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Phone <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="user-phone"
+              type="tel"
+              required
+              value={formData.phone}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+              placeholder="Nhập số điện thoại"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="user-role-form"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Vai trò <span className="text-red-500">*</span>
             </label>
             <select
-              id="user-role"
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              id="user-role-form"
+              required
+              value={formData.roleCode}
+              onChange={(e) =>
+                setFormData({ ...formData, roleCode: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all cursor-pointer"
             >
-              <option value="all">Tất cả vai trò</option>
-              {ROLE_SEED_DATA.map((role) => (
-                <option key={role.id} value={role.code}>
-                  {role.code}
+              <option value="" disabled>
+                -- Chọn vai trò --
+              </option>
+              {ROLE_OPTIONS.map((roleCode) => (
+                <option key={roleCode} value={roleCode}>
+                  {roleCode}
                 </option>
               ))}
             </select>
           </div>
-        </div>
-      </div>
 
-      {/* Users Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Phone
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ngày tạo
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Thao tác
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    Đang tải dữ liệu user...
-                  </td>
-                </tr>
-              ) : null}
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0">
-                          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                            {user.avatarUrl ? (
-                              <img
-                                className="h-10 w-10 rounded-full"
-                                src={user.avatarUrl}
-                                alt={user.name}
-                              />
-                            ) : (
-                              <span className="text-gray-600 font-medium">
-                                {user.name.charAt(0).toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {user.name}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{user.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        value={user.roleCode}
-                        disabled={!canChangeRole}
-                        onChange={(e) => handleRoleChange(user, e.target.value)}
-                        className={`min-w-[100px] px-2 py-1 text-xs font-semibold rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          canChangeRole
-                            ? "bg-white border-gray-300 cursor-pointer"
-                            : "bg-gray-100 border-gray-200 cursor-not-allowed opacity-75"
-                        } ${getRoleBadgeColor(user.roleCode)}`}
-                        title={
-                          canChangeRole
-                            ? "Phân quyền (Change Role)"
-                            : "Chỉ admin mới có quyền đổi vai trò"
-                        }
-                      >
-                        {ROLE_SEED_DATA.map((role) => (
-                          <option key={role.id} value={role.code}>
-                            {role.code}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(user.createdAt).toLocaleDateString("vi-VN")}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleOpenModal(user)}
-                        className="mr-4 text-blue-600 hover:text-blue-900"
-                        title="Sửa thông tin user"
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user.id)}
-                        className="text-red-600 hover:text-red-900"
-                        title="Xóa user"
-                      >
-                        Xóa
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                !isLoading && (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-6 py-8 text-center text-gray-500"
-                    >
-                      Không tìm thấy người dùng nào
-                    </td>
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal for Create/Edit User */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800">
-                {editingUser ? "Chỉnh sửa User" : "Thêm User mới"}
-              </h2>
+          <div>
+            <div className="block text-sm font-medium text-gray-700 mb-2">
+              Avatar
             </div>
-            <form onSubmit={handleSubmit}>
-              <div className="px-6 py-4 space-y-4">
-                <div>
-                  <label
-                    htmlFor="user-name"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Tên <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="user-name"
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập tên người dùng"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="user-email"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Email <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="user-email"
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập email"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="user-password"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Mật khẩu {editingUser && "(Để trống nếu không đổi)"}
-                    {!editingUser && <span className="text-red-500"> *</span>}
-                  </label>
-                  <input
-                    id="user-password"
-                    type="password"
-                    required={!editingUser}
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder={
-                      editingUser
-                        ? "Nhập mật khẩu mới (tùy chọn)"
-                        : "Nhập mật khẩu"
-                    }
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="user-phone"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Phone <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="user-phone"
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Nhập số điện thoại"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="user-status-form"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Trạng thái <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="user-status-form"
-                    required
-                    value={formData.roleCode}
-                    onChange={(e) =>
-                      setFormData({ ...formData, roleCode: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {ROLE_SEED_DATA.map((role) => (
-                      <option key={role.id} value={role.code}>
-                        {role.code}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label
-                    htmlFor="user-avatar"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Avatar URL
-                  </label>
-                  <input
-                    id="user-avatar"
-                    type="url"
-                    value={formData.avatarUrl}
-                    onChange={(e) =>
-                      setFormData({ ...formData, avatarUrl: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com/avatar.jpg"
-                  />
-                </div>
-              </div>
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-                >
-                  {editingUser ? "Cập nhật" : "Tạo mới"}
-                </button>
-              </div>
-            </form>
+
+            <ImageUpload
+              folder="users"
+              multiple={false}
+              maxFiles={1}
+              onUploadSuccess={(imageUrl) =>
+                setFormData((prev) => ({ ...prev, avatarUrl: imageUrl }))
+              }
+            />
           </div>
-        </div>
-      )}
+
+          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
+            >
+              {editingUser ? "Cập nhật" : "Thêm mới"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal for User Details (use shared Modal) */}
+      <Modal
+        isOpen={isDetailOpen && !!detailUser}
+        onClose={handleCloseDetails}
+        title="Chi tiết người dùng"
+        maxWidth="max-w-lg"
+      >
+        {detailUser ? (
+          <div className="space-y-5">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 flex-shrink-0">
+                <div className="h-14 w-14 rounded-lg border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center">
+                  {detailUser.avatarUrl ? (
+                    <img
+                      className="h-14 w-14 object-cover"
+                      src={detailUser.avatarUrl}
+                      alt={detailUser.name}
+                    />
+                  ) : (
+                    <span className="text-gray-700 font-semibold text-lg">
+                      {detailUser.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="min-w-0">
+                <div className="text-lg font-semibold text-gray-900 truncate">
+                  {detailUser.name}
+                </div>
+                <div className="text-sm text-gray-600 truncate">
+                  {detailUser.email}
+                </div>
+              </div>
+              <div className="ml-auto">
+                <span
+                  className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                    detailUser.isActive
+                      ? "bg-primary/10 text-primary"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {detailUser.isActive ? "Hoạt động" : "Ngưng"}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ID
+                </div>
+                <div className="text-sm text-gray-900">{detailUser.id}</div>
+              </div>
+
+              <div>
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Số điện thoại
+                </div>
+                <div className="text-sm text-gray-900">
+                  {detailUser.phone || "—"}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Vai trò
+                </div>
+                <div className="text-sm text-gray-900">
+                  {detailUser.roleCode}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Avatar URL
+                </div>
+                <div className="text-sm text-gray-900 break-all">
+                  {detailUser.avatarUrl || "—"}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ngày tạo
+                </div>
+                <div className="text-sm text-gray-900">
+                  {formatDateTime(detailUser.createdAt)}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Cập nhật lần cuối
+                </div>
+                <div className="text-sm text-gray-900">
+                  {formatDateTime(detailUser.updatedAt)}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={handleEditFromDetails}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
+              >
+                Sửa
+              </button>
+              <button
+                type="button"
+                onClick={handleCloseDetails}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      {/* Modal for Delete confirmation */}
+      <Modal
+        isOpen={isDeleteOpen && !!deletingUser}
+        onClose={handleCloseDelete}
+        title="Xóa người dùng"
+        maxWidth="max-w-md"
+      >
+        {deletingUser ? (
+          <div className="space-y-5">
+            <div className="text-sm text-gray-700">
+              Bạn có chắc chắn muốn xóa người dùng
+              {" "}
+              <span className="font-semibold text-gray-900">{deletingUser.name}</span>
+              {deletingUser.email ? (
+                <span className="text-gray-500"> ({deletingUser.email})</span>
+              ) : null}
+              ?
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={handleCloseDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? "Đang xóa..." : "Xóa"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </div>
   );
 };

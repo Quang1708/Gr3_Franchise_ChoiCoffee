@@ -1,64 +1,88 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ROLE_PERMISSIONS } from "./rbac.map";
 import type { PermissionCode } from "./rbac.permissions";
-import { FRANCHISE_SEED_DATA } from "@/mocks/franchise.seed";
+
 
 export type CmsUser = {
-  id: number;
+  id: string | number;
   email: string;
   name: string;
   phone: string;
-  avatar_url: string | null;
-  roles: {
-    role_code: string;
-    scope: "GLOBAL" | "FRANCHISE";
-    franchise_id: number | null;
+  avatar_url?: string | null;
+  roles?: {
+  role?: string;
+  scope?: "GLOBAL" | "FRANCHISE";
+  franchise_id?: string | number | null;
+  franchise_name?: string | null;
   }[];
 };
 
-const uniq = <T,>(arr: T[]) => Array.from(new Set(arr));
+export type FranchiseOption = {
+  id: string;
+  code: string;
+  name: string;
+};
 
-export function getAccessibleFranchises(user: CmsUser | null) {
-  const list = FRANCHISE_SEED_DATA.filter((f) => !f.isDeleted);
-  if (!user) return [];
+export const getAccessibleFranchises = (
+  user: any,
+  allFranchises: FranchiseOption[],
+): FranchiseOption[] => {
+  if (!user?.roles?.length) return [];
 
-  const hasGlobal = user.roles.some(
-    (r) => r.scope === "GLOBAL" || r.franchise_id == null,
-  );
-  if (hasGlobal) return list;
+  const isAdmin = user.roles.some((r: any) => r.role === "ADMIN");
 
-  const allowedIds = new Set(
-    user.roles
-      .map((r) => r.franchise_id)
-      .filter((x): x is number => typeof x === "number"),
-  );
+  // 🟢 ADMIN → return full list
+  if (isAdmin) {
+    return allFranchises;
+  }
 
-  return list.filter((f) => allowedIds.has(f.id));
-}
+  // 🟡 MANAGER → only roles franchise
+  return user.roles
+    .filter((r: any) => r.scope === "FRANCHISE")
+    .map((r: any) => ({
+      id: r.franchise_id,
+      code: r.franchise_name?.split(" ").pop() ?? "",
+      name: r.franchise_name ?? "Unnamed Franchise",
+    }));
+};
 
 export function getEffectivePermissions(
   user: CmsUser | null,
-  franchiseId?: number,
+  franchiseId?: string | number,
 ): PermissionCode[] {
-  if (!user) return [];
+  if (!user?.roles?.length) return [];
 
   const roleCodes = user.roles
     .filter((r) => {
-      // GLOBAL role: franchise_id null or scope GLOBAL
-      if (r.scope === "GLOBAL" || r.franchise_id == null) return true;
+      if (!r.role) return false;
 
-      // FRANCHISE role: match context franchise
-      if (typeof franchiseId === "number") return r.franchise_id === franchiseId;
+      /**
+       * GLOBAL role chỉ dùng khi KHÔNG có franchise context
+       */
+      if (!franchiseId && r.scope === "GLOBAL") {
+        return true;
+      }
 
-      // No context: deny franchise-scoped permissions by default
+      /**
+       * FRANCHISE role
+       */
+      if (franchiseId && r.franchise_id != null) {
+        return String(r.franchise_id) === String(franchiseId);
+      }
+
       return false;
     })
-    .map((r) => r.role_code);
+    .map((r) => r.role as string);
 
   const perms = roleCodes.flatMap((code) => ROLE_PERMISSIONS[code] ?? []);
-  return uniq(perms);
-}
 
-export function can(user: CmsUser | null, perm: PermissionCode, franchiseId?: number) {
+  return Array.from(new Set(perms));
+}
+export function can(
+  user: CmsUser | null,
+  perm: PermissionCode,
+  franchiseId?: string | number,
+) {
   return getEffectivePermissions(user, franchiseId).includes(perm);
 }
 
@@ -66,13 +90,17 @@ export function can(user: CmsUser | null, perm: PermissionCode, franchiseId?: nu
  * Dùng cho route-level guard khi chưa có franchise context.
  * Nếu user có perm ở BẤT KỲ franchise nào (hoặc global) => true
  */
-export function canAny(user: CmsUser | null, perm: PermissionCode) {
-  if (!user) return false;
 
-  // Global roles
+export function canAny(
+  user: CmsUser | null,
+  perm: PermissionCode,
+  allFranchises: FranchiseOption[] = [],
+) {
+  if (!user?.roles?.length) return false;
+
   if (can(user, perm, undefined)) return true;
 
-  // Any accessible franchise
-  const fr = getAccessibleFranchises(user);
+  const fr = getAccessibleFranchises(user, allFranchises);
+
   return fr.some((f) => can(user, perm, f.id));
 }

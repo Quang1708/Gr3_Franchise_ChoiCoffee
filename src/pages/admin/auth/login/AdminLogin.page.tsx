@@ -1,22 +1,35 @@
-import React, { useState } from "react";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router-dom";
 import ROUTER_URL from "@/routes/router.const";
 import logo from "@/assets/Logo/Logo.png";
 import {
   AdminAuthSchema,
   type AdminAuthSchemaType,
-} from "./schema/AdminAuth.schema";
+} from "./schema/adminLogin.schema";
 import { useAuthStore } from "@/stores/auth.store";
-import { toastSuccess } from "@/utils/toast.util";
-import { getAdminProfile, loginAdmin } from "./service/api.login";
-
+import { LOCAL_STORAGE } from "@/consts/localstorage.const";
+import { toastError, toastSuccess } from "@/utils/toast.util";
+import { useAdminContextStore } from "@/stores/adminContext.store";
+import type { AdminLoginUserProfile } from "./models/api.model";
+import {
+  getItemInLocalStorage,
+  removeItemInLocalStorage,
+  setItemInLocalStorage,
+} from "@/utils/localStorage.util";
+import { runAdminLogin } from "./usecases/login.usecase";
+import ClientLoading from "@/components/Client/Client.Loading";
 
 const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
+  const setSelectedFranchiseId = useAdminContextStore(
+    (s) => s.setSelectedFranchiseId,
+  );
 
   const {
     register,
@@ -24,66 +37,91 @@ const AdminLoginPage: React.FC = () => {
     setError,
     clearErrors,
     formState: { errors, isSubmitting },
-  } = useForm<AdminAuthSchemaType>({ resolver: zodResolver(AdminAuthSchema) });
+  } = useForm<AdminAuthSchemaType>({
+    resolver: zodResolver(AdminAuthSchema),
+    mode: "onChange",
+    defaultValues: { email: "group3@gmail.com", password: "123456789" },
+  });
 
   const setAuthError = (message: string) => {
+    const lowerMsg = message.toLowerCase();
+
+    if (lowerMsg.includes("email")) {
+      setError("email", { type: "manual", message });
+      return;
+    }
+
+    if (lowerMsg.includes("mật khẩu") || lowerMsg.includes("password")) {
+      setError("password", { type: "manual", message });
+      return;
+    }
+
+    // lỗi chung → highlight cả 2
     setError("email", { type: "manual", message });
     setError("password", { type: "manual", message });
   };
-
-  const normalizeRoles = (roles: unknown) =>
-    Array.isArray(roles)
-      ? roles.map((r) =>
-          typeof r === "object" && r !== null && "role" in r
-            ? { ...(r as object), role_code: (r as { role?: string }).role }
-            : r,
-        )
-      : roles;
-
-  const buildUser = (data: unknown) => {
-    const user = (data as { user?: unknown } | null)?.user ?? data;
-    const roles = normalizeRoles((data as { roles?: unknown } | null)?.roles);
-
-    return user && Array.isArray(roles) ? { ...(user as object), roles } : user;
-  };
-
-  const handleLoginSuccess = (user: unknown, token: string) => {
+  const handleLoginSuccess = (user: AdminLoginUserProfile, token: string) => {
+    const primaryRole = user.roles?.[0];
+    if (primaryRole?.franchise_id != null) {
+      setSelectedFranchiseId(String(primaryRole.franchise_id));
+    } else {
+      setSelectedFranchiseId(null);
+    }
     useAuthStore.getState().login(user, token);
     toastSuccess?.("Đăng nhập thành công!");
     clearErrors();
     navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
   };
 
+  useEffect(() => {
+    if (!user || !token) return;
+    const contextRequired = Boolean(
+      getItemInLocalStorage<boolean>(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED),
+    );
+    navigate(
+      contextRequired
+        ? ROUTER_URL.ADMIN_ROUTER.ADMIN_SELECT_CONTEXT
+        : ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD,
+      { replace: true },
+    );
+  }, [user, token, navigate]);
+
   const onSubmit = async (values: AdminAuthSchemaType) => {
     try {
-      const result = await loginAdmin(values);
+      const result = await runAdminLogin(values);
 
-      if (!result.success) {
-        setAuthError(result.message ?? "Đăng nhập thất bại.");
+      if (result.ok && result.user && result.token) {
+        const user = result.user;
+        const hasMultipleRoles =
+          Array.isArray(user.roles) && user.roles.length > 1;
+
+        if (hasMultipleRoles) {
+          setSelectedFranchiseId(null);
+          setItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED, true);
+          useAuthStore.getState().login(user, result.token);
+          navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_SELECT_CONTEXT, {
+            replace: true,
+          });
+          return;
+        }
+
+        removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
+        handleLoginSuccess(user, result.token);
         return;
       }
 
-      if (result.data) {
-        const user = buildUser(result.data);
-        handleLoginSuccess(user ?? result.data.user, result.data.token);
-        return;
-      }
-
-      const profile = await getAdminProfile();
-      const user = profile.success ? buildUser(profile.data) : null;
-
-      if (user) {
-        handleLoginSuccess(user, "SESSION");
-        return;
-      }
-
-      setAuthError(result.message ?? profile.message ?? "Đăng nhập thất bại.");
+      const errorMessage =
+        result.message ??
+        "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.";
+      setAuthError(errorMessage);
+      toastError?.(errorMessage);
     } catch (error) {
       console.error(error);
-      setAuthError("Có lỗi xảy ra, vui lòng thử lại sau.");
+      const errorMessage = "Có lỗi xảy ra, vui lòng thử lại sau.";
+      setAuthError(errorMessage);
+      toastError?.(errorMessage);
     }
   };
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background-light px-4">
@@ -114,15 +152,24 @@ const AdminLoginPage: React.FC = () => {
               <input
                 type="text"
                 placeholder="Email"
-                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 {...register("email")}
+                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all
+    ${
+      errors.email
+        ? "border-orange-400 bg-orange-50 focus:ring-orange-400"
+        : "border-gray-300 bg-white focus:ring-primary"
+    }`}
               />
             </div>
-            {errors.email?.message && (
-              <span className="text-xs text-red-500 font-medium">
-                {errors.email.message}
+            <div className="min-h-[20px] mt-1">
+              <span
+                className={`text-xs font-medium transition-opacity duration-200 ${
+                  errors.email ? "text-orange-500 opacity-100" : "opacity-0"
+                }`}
+              >
+                {errors.email?.message ?? "placeholder"}
               </span>
-            )}
+            </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -136,8 +183,13 @@ const AdminLoginPage: React.FC = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="********"
-                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 {...register("password")}
+                className={`w-full pl-10 pr-10 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all
+    ${
+      errors.password
+        ? "border-orange-400 bg-orange-50 focus:ring-orange-400"
+        : "border-gray-300 bg-white focus:ring-primary"
+    }`}
               />
               <button
                 type="button"
@@ -147,11 +199,15 @@ const AdminLoginPage: React.FC = () => {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            {errors.password?.message && (
-              <span className="text-xs text-red-500 font-medium">
-                {errors.password.message}
+            <div className="min-h-[20px] mt-1">
+              <span
+                className={`text-xs font-medium transition-opacity duration-200 ${
+                  errors.password ? "text-orange-500 opacity-100" : "opacity-0"
+                }`}
+              >
+                {errors.password?.message ?? "placeholder"}
               </span>
-            )}
+            </div>
           </div>
 
           <div className="flex justify-between items-center text-sm">
@@ -181,7 +237,8 @@ const AdminLoginPage: React.FC = () => {
                   : "bg-primary hover:bg-[#d48315] hover:shadow-lg active:scale-[0.98]"
               }`}
           >
-            {isSubmitting ? "Đang xử lý..." : "Đăng nhập"}
+            {isSubmitting && <ClientLoading />}
+            <span>{isSubmitting ? "Đang xử lý..." : "Đăng nhập"}</span>
           </button>
         </form>
 

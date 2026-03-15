@@ -8,3 +8,6 @@ export * from "./register/schema/clientRegister.schema";
 
 export * from "./verify/ClientVerifyToken.page";
 export * from "./verify/schema/clientVerifyToken.schema";
+
+export * from "./services";
+export * from "./models";

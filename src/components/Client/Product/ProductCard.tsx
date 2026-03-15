@@ -1,7 +1,8 @@
-import type { Product } from "@/models/product.model";
-import { useState } from "react";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
 import ToppingModal from "./Topping.Modal";
+import type { Product } from "./models/product.model";
+import { useNavigate } from "react-router-dom";
 
 type ProductCardProps = {
   item: Product;
@@ -9,15 +10,32 @@ type ProductCardProps = {
 
 const ProductCard = ({ item }: ProductCardProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const needsModal = item.is_have_topping || item.sizes.length >= 2;
+
   const handleAddToCart = (product: Product) => {    
     toast.success(`${product.name} đã được thêm vào giỏ hàng!`);
     setIsModalOpen(false); 
   };
 
+  const handleCartButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (needsModal) {
+      setIsModalOpen(true);
+    } else {
+      handleAddToCart(item);
+    }
+  };
+
   return (
     <>
     
-    <div className="swiper-slide h-full">
+    <div className="swiper-slide h-full"
+      onClick={() => {
+        navigate(`/client/product/${item.product_id}`);
+      }}
+    >
       <div className="group h-full bg-white border border-charcoal rounded-xl overflow-hidden flex flex-col relative">
 
         <div className="absolute top-4 left-4 z-10 space-y-2 pointer-events-none">
@@ -31,7 +49,7 @@ const ProductCard = ({ item }: ProductCardProps) => {
         <div className="relative overflow-hidden">
           <div className="aspect-4/5">
             <img
-              src={item.img}
+              src={item.image_url}
               alt={item.name}
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
             />
@@ -47,12 +65,12 @@ const ProductCard = ({ item }: ProductCardProps) => {
               Giá từ:
             </span>
             <div className="text-lg font-bold text-primary">
-              {item.minPrice.toLocaleString()} VND
+              {item.sizes[0]?.price.toLocaleString()} VND
             </div>
           </div>
           <button
-            onClick={() => setIsModalOpen(true)}
-            disabled={!item.isActive}
+            onClick={handleCartButtonClick}
+            disabled={!item.SKU}
             className={`
               cursor-pointer
               absolute inset-x-0 bottom-0 h-12
@@ -60,7 +78,7 @@ const ProductCard = ({ item }: ProductCardProps) => {
               text-sm font-bold
               transition-all duration-300
               ${
-                item.isActive
+                item.SKU
                   ? "bg-primary text-white translate-y-full group-hover:translate-y-0"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }

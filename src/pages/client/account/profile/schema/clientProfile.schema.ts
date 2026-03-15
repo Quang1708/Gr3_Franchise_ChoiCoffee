@@ -16,28 +16,25 @@ export const clientProfileSchema = z.object({
 
   email: z.string().email("Địa chỉ email không hợp lệ").readonly(),
 
+  address: z
+    .string()
+    .max(500, "Địa chỉ không được quá 500 ký tự")
+    .optional()
+    .or(z.literal("")),
+
   avatar_url: z.string().url("URL ảnh đại diện không hợp lệ").optional(),
 });
 
-export const deactivationRequestSchema = z.object({
-  reason: z
-    .string()
-    .min(10, "Vui lòng cung cấp lý do (ít nhất 10 ký tự)")
-    .max(500, "Lý do không được vượt quá 500 ký tự"),
+export type ClientProfileFormData = z.infer<typeof clientProfileSchema>;
 
-  confirmation: z.string().refine((val) => val === "DEACTIVATE", {
-    message: "Vui lòng nhập DEACTIVATE để xác nhận",
-  }),
-
-  acknowledge: z.boolean().refine((val) => val === true, {
-    message: "Bạn phải xác nhận hiểu hậu quả",
-  }),
+// Schema for editing profile (only editable fields)
+export const editProfileSchema = clientProfileSchema.pick({
+  name: true,
+  phone: true,
+  address: true,
 });
 
-export type ClientProfileFormData = z.infer<typeof clientProfileSchema>;
-export type DeactivationRequestFormData = z.infer<
-  typeof deactivationRequestSchema
->;
+export type EditProfileFormData = z.infer<typeof editProfileSchema>;
 
 // Re-export from changePassword schema
 export {

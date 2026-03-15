@@ -58,7 +58,7 @@ export interface CRUDTableProps<T> {
   searchKeys?: (keyof T)[];
 
   // ✅ hỗ trợ search API
-  onSearch?: (keyword: string) => void | Promise<void>;
+  onSearch?: (keyword: string, filters?: Partial<Record<keyof T, string>>) => void | Promise<void>;
 
   filters?: FilterConfig<T>[];
 
@@ -249,7 +249,7 @@ export function CRUDTable<T extends { id?: string | number }>({
     if (!deferToolsApply) return;
     setSearchTerm(searchInput);
     setActiveFilters(pendingFilters);
-    onSearch?.(searchInput);
+    onSearch?.(searchInput, pendingFilters);
   };
 
   const filteredData = useMemo(() => {

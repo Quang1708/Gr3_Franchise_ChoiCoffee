@@ -12,16 +12,18 @@ import {
   DeleteProductModal,
 } from "../../../components/Admin/product/ProductModals";
 import {
-  createProduct,
-  deleteProduct,
-  getProducts,
-  searchProducts,
-  updateProduct,
-} from "@/services/product.service";
+  createProductUsecase,
+  deleteProductUsecase,
+  getProductsUsecase,
+  restoreProductUsecase,
+  searchProductsUsecase,
+  updateProductUsecase,
+} from "./usecases";
+import { toProductRow, type ProductRow } from "./models";
 
 const ProductPage = () => {
   // --- State ---
-  const [data, setData] = useState<Product[]>([]);
+  const [data, setData] = useState<ProductRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal State
@@ -33,11 +35,38 @@ const ProductPage = () => {
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  const handleSearch = async (keyword: string) => {
+  const [filterIsActive, setFilterIsActive] = useState<boolean | string>("");
+  const [filterIsDeleted, setFilterIsDeleted] = useState<boolean | string>("false");
+
+  const handleSearch = async (keyword: string, filters?: Record<string, string>) => {
     setIsLoading(true);
     try {
-      const items = await searchProducts(keyword);
-      setData(items);
+      const isActiveVal = filters?.isActive || filterIsActive;
+      const isDeletedVal = filters?.is_deleted || filterIsDeleted;
+
+      let isActive: boolean | string = "";
+      if (isActiveVal === "true") {
+        isActive = true;
+      } else if (isActiveVal === "false") {
+        isActive = false;
+      }
+
+      const isDeleted = isDeletedVal === "true";
+
+      const payload = {
+        searchCondition: {
+          keyword,
+          is_active: isActive,
+          is_deleted: isDeleted,
+        },
+        pageInfo: {
+          pageNum: 1,
+          pageSize: 200,
+        },
+      };
+
+      const items = await searchProductsUsecase(payload);
+      setData(items.map(toProductRow));
     } catch {
       toastError("Không thể tìm kiếm sản phẩm");
     } finally {
@@ -50,9 +79,9 @@ const ProductPage = () => {
 
     const loadProducts = async () => {
       try {
-        const items = await getProducts();
+        const items = await getProductsUsecase();
         if (!isMounted) return;
-        setData(items);
+        setData(items.map(toProductRow));
       } catch {
         toastError("Không thể tải danh sách sản phẩm");
       } finally {
@@ -80,7 +109,7 @@ const ProductPage = () => {
       throw new Error("Missing required fields");
     }
 
-    const result = await createProduct({
+    const result = await createProductUsecase({
       SKU: newData.SKU,
       name: newData.name,
       img: newData.img,
@@ -96,7 +125,7 @@ const ProductPage = () => {
       throw new Error(result.message);
     }
 
-    setData((prev) => [result.product, ...prev]);
+    setData((prev) => [toProductRow(result.product), ...prev]);
     toastSuccess("Thêm sản phẩm thành công");
   };
 
@@ -113,7 +142,7 @@ const ProductPage = () => {
       return;
     }
 
-    const result = await updateProduct(editingProduct.id, {
+    const result = await updateProductUsecase(editingProduct.id, {
       SKU: updatedData.SKU,
       name: updatedData.name,
       img: updatedData.img,
@@ -130,7 +159,9 @@ const ProductPage = () => {
     }
 
     setData((prev) =>
-      prev.map((p) => (p.id === editingProduct.id ? result.product : p)),
+      prev.map((p) =>
+        p.id === editingProduct.id ? toProductRow(result.product) : p,
+      ),
     );
     toastSuccess("Cập nhật sản phẩm thành công");
   };
@@ -148,14 +179,40 @@ const ProductPage = () => {
       return;
     }
 
-    const result = await deleteProduct(deletingProduct.id);
+    const result = await deleteProductUsecase(deletingProduct.id);
     if (!result.ok) {
       toastError(result.message);
       return;
     }
 
-    setData((prev) => prev.filter((p) => p.id !== deletingProduct.id));
+    setData((prev) =>
+      prev.map((p) =>
+        p.id === deletingProduct.id
+          ? { ...p, is_deleted: true, isDeleted: true }
+          : p,
+      ),
+    );
     toastSuccess("Đã xóa sản phẩm");
+  };
+
+  const handleRestore = async (item: Product) => {
+    if (item.id === 0 || item.id === "") {
+      toastError("ID sản phẩm không hợp lệ");
+      return;
+    }
+
+    const result = await restoreProductUsecase(item.id);
+    if (!result.ok) {
+      toastError(result.message);
+      return;
+    }
+
+    setData((prev) =>
+      prev.map((p) =>
+        p.id === item.id ? { ...p, is_deleted: false, isDeleted: false } : p,
+      ),
+    );
+    toastSuccess("Đã khôi phục sản phẩm");
   };
 
   const handleStatusChange = async (item: Product, newStatus: boolean) => {
@@ -175,7 +232,7 @@ const ProductPage = () => {
       ),
     );
 
-    const result = await updateProduct(item.id, { isActive: newStatus });
+    const result = await updateProductUsecase(item.id, { isActive: newStatus });
     if (!result.ok) {
       setData((prev) =>
         prev.map((p) =>
@@ -194,7 +251,7 @@ const ProductPage = () => {
   };
 
   // --- Configuration ---
-  const columns: Column<Product>[] = [
+  const columns: Column<ProductRow>[] = [
     {
       header: "SKU",
       accessor: "SKU",
@@ -272,7 +329,7 @@ const ProductPage = () => {
   return (
     <div className="p-6 h-[calc(100vh-4rem)] min-h-0 flex flex-col overflow-hidden transition-all animate-fade-in">
       {isLoading ? <ClientLoading /> : null}
-      <CRUDTable<Product>
+      <CRUDTable<ProductRow>
         title="Quản lý Sản phẩm"
         data={data}
         columns={columns}
@@ -282,13 +339,20 @@ const ProductPage = () => {
         onAdd={handleAdd}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onRestore={handleRestore}
         // Status
         statusField="isActive"
         onStatusChange={handleStatusChange}
         deferToolsApply
         // Search & Filter
         searchKeys={["name", "SKU"]}
-        onSearch={handleSearch}
+        onSearch={(keyword: string, filters?: Record<string, string>) => {
+          const isActiveFilter = filters?.isActive || "";
+          const isDeletedFilter = filters?.is_deleted || "false";
+          setFilterIsActive(isActiveFilter);
+          setFilterIsDeleted(isDeletedFilter);
+          handleSearch(keyword, { isActive: isActiveFilter, is_deleted: isDeletedFilter });
+        }}
         filters={[
           {
             key: "isActive",
@@ -296,6 +360,14 @@ const ProductPage = () => {
             options: [
               { value: "true", label: "Hoạt động" },
               { value: "false", label: "Ngưng hoạt động" },
+            ],
+          },
+          {
+            key: "is_deleted",
+            label: "Trạng thái xóa",
+            options: [
+              { value: "false", label: "Còn tồn tại" },
+              { value: "true", label: "Đã xóa" },
             ],
           },
         ]}

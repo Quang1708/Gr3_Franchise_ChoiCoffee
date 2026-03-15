@@ -40,6 +40,10 @@ export const PERM = {
   // Users/IAM (admin only)
   USER_READ: "user.read",
   USER_MANAGE: "user.manage",
+
+  // Voucher (admin / manager)
+  VOUCHER_READ: "voucher.read",
+  VOUCHER_WRITE: "voucher.write",
 } as const;
 
 export type PermissionCode = (typeof PERM)[keyof typeof PERM];

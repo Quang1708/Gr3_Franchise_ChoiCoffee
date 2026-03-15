@@ -18,10 +18,11 @@ interface FormInputProps {
     onUploadSuccess?: (url: string) => void;
     isDisabled?: boolean;
     setIsExternalLoading?: (loading: boolean) => void;
+    uploadFolder?: string;
 }
 
 export const FormInput = ({
-    label, type = "text", variant, register, error, defaultValue, placeholder, isView, className, onUploadSuccess, isDisabled, setIsExternalLoading
+    label, type = "text", variant, register, error, defaultValue, placeholder, isView, className, onUploadSuccess, isDisabled, setIsExternalLoading, uploadFolder = "customers"
 }: FormInputProps) => {
     const [showPassword, setShowPassword] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(defaultValue);
@@ -39,7 +40,7 @@ export const FormInput = ({
         setPreviewUrl(URL.createObjectURL(file));
         setIsExternalLoading?.(true);
         try {
-            const res = await uploadImage(file, { folder: "customers" });
+            const res = await uploadImage(file, { folder: uploadFolder });
             if (res?.secure_url) onUploadSuccess?.(res.secure_url);
         } finally {
             setIsExternalLoading?.(false);

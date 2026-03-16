@@ -45,14 +45,12 @@ axiosClient.interceptors.response.use(
     };
 
     const errorData = error.response?.data as ApiErrorResponse | undefined;
-    const errorMessage = errorData?.message ?? (error as { message?: string }).message;
+    const errorMessage =
+      errorData?.message ?? (error as { message?: string }).message;
     const isAccessTokenExpired =
       errorMessage === MSG_CONSTANT.CUSTOMER_ACCESS_TOKEN_EXPIRED;
 
-    // Chỉ refresh khi gọi customer-auth API (không phải admin API)
-    const isCustomerAuthAPI = originalRequest.url?.includes("/customer-auth");
-
-    if (isAccessTokenExpired && !originalRequest._retry && isCustomerAuthAPI) {
+    if (isAccessTokenExpired && !originalRequest._retry) {
       if (originalRequest.url?.includes("/refresh-token")) {
         useCustomerAuthStore.getState().clearCustomer();
         return Promise.reject(error);
@@ -132,14 +130,16 @@ axiosAdminClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Check if error response contains ACCESS_TOKEN_EXPIRED message
+    // Check if error response contains ACCESS_TOKEN_EXPIRED message or HTTP 401
     const errorData = error.response?.data as ApiErrorResponse | undefined;
-    const errorMessage = errorData?.message ?? (error as { message?: string }).message;
+    const errorMessage =
+      errorData?.message ?? (error as { message?: string }).message;
     const isAccessTokenExpired =
       errorMessage === MSG_CONSTANT.ADMIN_ACCESS_TOKEN_EXPIRED;
+    const is401 = error.response?.status === 401;
 
-    // If access token expired and we haven't retried yet
-    if (isAccessTokenExpired && !originalRequest._retry) {
+    // If access token expired (by message or 401 status) and we haven't retried yet
+    if ((isAccessTokenExpired || is401) && !originalRequest._retry) {
       // Don't retry refresh token endpoint itself
       if (originalRequest.url?.includes("/refresh-token")) {
         // Refresh token expired, clear admin info and redirect to login

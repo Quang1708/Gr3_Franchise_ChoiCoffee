@@ -21,10 +21,10 @@ import type {
   ShiftAssignmentSearchPayload,
   ShiftAssignmentStatus,
 } from "./models/shiftAssignment.model";
-import { userApi } from "@/api/user";
 import { STATUS_OPTIONS, statusBadge, today } from "./shiftAssignment.utils";
 import { ShiftAssignmentSearch } from "./components/ShiftAssignmentSearch";
 import { ShiftAssignmentModals } from "./components/ShiftAssignmentModals";
+import { userApi } from "@/api/user/user.api";
 
 // ── Response helpers ──────────────────────────────────────────────────────────
 
@@ -48,21 +48,28 @@ const extractItem = (payload: unknown): ShiftAssignmentItem | null => {
   if (!payload || typeof payload !== "object") return null;
   const data = payload as { data?: unknown };
   const raw = (data.data ?? payload) as Record<string, unknown>;
+  const nestedUser =
+    raw.user && typeof raw.user === "object"
+      ? (raw.user as Record<string, unknown>)
+      : undefined;
   const id =
     (raw.id as string | undefined) ?? (raw._id as string | undefined) ?? "";
   if (!id) return null;
   return {
     id,
     user_id: String(raw.user_id ?? ""),
-    user_name: raw.user_name ? String(raw.user_name) : undefined,
+    user_name: raw.user_name
+      ? String(raw.user_name)
+      : raw.userName
+        ? String(raw.userName)
+        : nestedUser?.name
+          ? String(nestedUser.name)
+          : undefined,
     shift_id: String(raw.shift_id ?? ""),
     start_time: raw.start_time ? String(raw.start_time) : undefined,
     end_time: raw.end_time ? String(raw.end_time) : undefined,
     work_date: String(raw.work_date ?? ""),
     assigned_by: raw.assigned_by ? String(raw.assigned_by) : undefined,
-    assigned_by_name: raw.assigned_by_name
-      ? String(raw.assigned_by_name)
-      : undefined,
     note: raw.note ? String(raw.note) : undefined,
     status: String(raw.status ?? "ASSIGNED") as ShiftAssignmentStatus,
     is_deleted: Boolean(raw.is_deleted),
@@ -88,7 +95,27 @@ const toRow = (raw: ShiftAssignmentItem): ShiftAssignmentItem => ({
   updated_at: raw.updated_at,
 });
 
-const getUserDisplayName = (
+const mergeShiftAssignmentItem = (
+  fallback: ShiftAssignmentItem,
+  detail: ShiftAssignmentItem | null,
+): ShiftAssignmentItem => {
+  if (!detail) return { ...fallback };
+
+  return {
+    ...fallback,
+    ...detail,
+    user_name: detail.user_name ?? fallback.user_name,
+    start_time: detail.start_time ?? fallback.start_time,
+    end_time: detail.end_time ?? fallback.end_time,
+    assigned_by: detail.assigned_by ?? fallback.assigned_by,
+    assigned_by_name: detail.assigned_by_name ?? fallback.assigned_by_name,
+    note: detail.note ?? fallback.note,
+    created_at: detail.created_at ?? fallback.created_at,
+    updated_at: detail.updated_at ?? fallback.updated_at,
+  };
+};
+
+const getAssignedByDisplayName = (
   payload: Record<string, unknown>,
   fallbackId: string,
 ) => {
@@ -117,6 +144,8 @@ const defaultSearch = {
 const ShiftAssignmentPage = () => {
   const [data, setData] = useState<ShiftAssignmentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
   const [searchCondition, setSearchCondition] = useState(defaultSearch);
 
   // Modal open states
@@ -160,31 +189,37 @@ const ShiftAssignmentPage = () => {
       const res = await shiftAssignment03Service(payload);
       const items = extractArray(res).map(toRow);
       setData(items);
-      // Enrich assigned_by IDs that the API doesn't resolve to names
+
       const missingIds = [
         ...new Set(
           items
-            .filter((i) => i.assigned_by && !i.assigned_by_name)
-            .map((i) => i.assigned_by!),
+            .filter((entry) => entry.assigned_by && !entry.assigned_by_name)
+            .map((entry) => entry.assigned_by!),
         ),
       ];
+
       if (missingIds.length > 0) {
         const nameMap: Record<string, string> = {};
+
         await Promise.allSettled(
           missingIds.map(async (id) => {
             try {
-              const r = (await userApi.getById(id)) as Record<string, unknown>;
-              nameMap[id] = getUserDisplayName(r, id);
+              const response = (await userApi.getById(id)) as Record<
+                string,
+                unknown
+              >;
+              nameMap[id] = getAssignedByDisplayName(response, id);
             } catch {
               /* ignore */
             }
           }),
         );
+
         setData((prev) =>
-          prev.map((item) => ({
-            ...item,
-            assigned_by_name: item.assigned_by
-              ? (nameMap[item.assigned_by] ?? item.assigned_by)
+          prev.map((entry) => ({
+            ...entry,
+            assigned_by_name: entry.assigned_by
+              ? (nameMap[entry.assigned_by] ?? entry.assigned_by)
               : undefined,
           })),
         );
@@ -243,73 +278,51 @@ const ShiftAssignmentPage = () => {
   };
 
   const handleView = async (item: ShiftAssignmentItem) => {
+    setDetailItem(item);
     setDetailOpen(true);
+    setDetailLoading(true);
     try {
       const res = await shiftAssignment04Service(item.id);
-      const base = extractItem(res) ?? item;
+      const base = mergeShiftAssignmentItem(item, extractItem(res));
 
-      // Enrich missing names in parallel
-      const enriched = { ...base };
+      if ((!base.start_time || !base.end_time) && base.shift_id) {
+        try {
+          const r = (await shiftGetByIdService(base.shift_id)) as Record<
+            string,
+            unknown
+          >;
+          const d = (r?.data ?? r) as Record<string, unknown>;
+          if (!base.start_time) {
+            base.start_time = String(d?.startTime ?? d?.start_time ?? "");
+          }
+          if (!base.end_time) {
+            base.end_time = String(d?.endTime ?? d?.end_time ?? "");
+          }
+        } catch {
+          /* ignore */
+        }
+      }
 
-      await Promise.allSettled([
-        // Resolve user name if missing
-        (async () => {
-          if (!enriched.user_name && enriched.user_id) {
-            try {
-              const r = (await userApi.getById(enriched.user_id)) as Record<
-                string,
-                unknown
-              >;
-              enriched.user_name = getUserDisplayName(r, enriched.user_id);
-            } catch {
-              /* ignore */
-            }
-          }
-        })(),
-        // Resolve shift times if missing
-        (async () => {
-          if (
-            (!enriched.start_time || !enriched.end_time) &&
-            enriched.shift_id
-          ) {
-            try {
-              const r = (await shiftGetByIdService(
-                enriched.shift_id,
-              )) as Record<string, unknown>;
-              const d = (r?.data ?? r) as Record<string, unknown>;
-              if (!enriched.start_time)
-                enriched.start_time = String(
-                  d?.startTime ?? d?.start_time ?? "",
-                );
-              if (!enriched.end_time)
-                enriched.end_time = String(d?.endTime ?? d?.end_time ?? "");
-            } catch {
-              /* ignore */
-            }
-          }
-        })(),
-        // Resolve assigned_by name if missing
-        (async () => {
-          if (enriched.assigned_by) {
-            try {
-              const r = (await userApi.getById(enriched.assigned_by)) as Record<
-                string,
-                unknown
-              >;
-              enriched.assigned_by_name = getUserDisplayName(
-                r,
-                enriched.assigned_by,
-              );
-            } catch {
-              /* ignore */
-            }
-          }
-        })(),
-      ]);
+      if (base.assigned_by && !base.assigned_by_name) {
+        try {
+          const response = (await userApi.getById(base.assigned_by)) as Record<
+            string,
+            unknown
+          >;
+          base.assigned_by_name = getAssignedByDisplayName(
+            response,
+            base.assigned_by,
+          );
+        } catch {
+          /* ignore */
+        }
+      }
 
-      setDetailItem(enriched);
+      setDetailItem(base);
     } catch {
       setDetailItem(item);
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -321,6 +334,7 @@ const ShiftAssignmentPage = () => {
 
   const handleChangeStatus = async () => {
     if (!statusItem) return;
+    setStatusLoading(true);
     try {
       await shiftAssignment05Service(statusItem.id, { status: nextStatus });
       toastSuccess("Cập nhật trạng thái phân ca thành công");
@@ -329,6 +343,8 @@ const ShiftAssignmentPage = () => {
       await loadData();
     } catch {
       toastError("Cập nhật trạng thái thất bại");
+    } finally {
+      setStatusLoading(false);
     }
   };
 
@@ -456,6 +472,8 @@ const ShiftAssignmentPage = () => {
         detailOpen={detailOpen}
         setDetailOpen={setDetailOpen}
         detailItem={detailItem}
+        detailLoading={detailLoading}
+        statusLoading={statusLoading}
       />
     </div>
   );

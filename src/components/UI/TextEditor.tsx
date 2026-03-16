@@ -36,6 +36,7 @@ export const TextEditor = ({
   minHeight = 220,
 }: TextEditorProps) => {
   const editorConfig: EditorConfig = {
+    licenseKey: "GPL",
     plugins: [
       Essentials,
       Paragraph,
@@ -47,21 +48,24 @@ export const TextEditor = ({
       List,
       BlockQuote,
     ],
-    toolbar: [
-      "undo",
-      "redo",
-      "|",
-      "heading",
-      "|",
-      "bold",
-      "italic",
-      "underline",
-      "|",
-      "link",
-      "bulletedList",
-      "numberedList",
-      "blockQuote",
-    ],
+    toolbar: {
+      items: [
+        "undo",
+        "redo",
+        "|",
+        "heading",
+        "|",
+        "bold",
+        "italic",
+        "underline",
+        "|",
+        "link",
+        "bulletedList",
+        "numberedList",
+        "blockQuote",
+      ],
+      shouldNotGroupWhenFull: true,
+    },
     placeholder,
   };
 

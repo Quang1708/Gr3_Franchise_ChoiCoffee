@@ -63,7 +63,7 @@ export default function ClientProfilePage() {
       setIsLoading(true);
 
       const updateData: UpdateCustomerProfileRequest = {
-        email: profile.email || "",
+        email: data.email || "",
         name: data.name,
         phone: data.phone,
         address: data.address || "",

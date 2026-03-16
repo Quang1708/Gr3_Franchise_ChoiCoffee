@@ -5,7 +5,7 @@ export const shiftAssignment05Service = async (
   id: string,
   payload: ShiftAssignmentStatusPayload,
 ) => {
-  const res = await axiosAdminClient.put(
+  const res = await axiosAdminClient.patch(
     `/api/shift-assignments/${id}/status`,
     payload,
   );

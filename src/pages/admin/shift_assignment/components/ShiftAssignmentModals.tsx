@@ -1,11 +1,11 @@
 import {
-  BadgeCheck,
   BriefcaseBusiness,
   CalendarDays,
   FileText,
   UserRound,
 } from "lucide-react";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
+import { TextEditor } from "@/components";
 import type {
   ShiftAssignmentBulkRow,
   ShiftAssignmentCreatePayload,
@@ -15,9 +15,9 @@ import type {
 import {
   STATUS_OPTIONS,
   formatDateTime,
-  statusBadge,
   today,
 } from "../shiftAssignment.utils";
+import ClientLoading from "@/components/Client/Client.Loading";
 
 type Props = {
   // Create
@@ -40,10 +40,12 @@ type Props = {
   nextStatus: ShiftAssignmentStatus;
   setNextStatus: React.Dispatch<React.SetStateAction<ShiftAssignmentStatus>>;
   onStatusSubmit: () => void;
+  statusLoading: boolean;
   // Detail
   detailOpen: boolean;
   setDetailOpen: (v: boolean) => void;
   detailItem: ShiftAssignmentItem | null;
+  detailLoading: boolean;
 };
 
 export const ShiftAssignmentModals = ({
@@ -62,9 +64,11 @@ export const ShiftAssignmentModals = ({
   nextStatus,
   setNextStatus,
   onStatusSubmit,
+  statusLoading,
   detailOpen,
   setDetailOpen,
   detailItem,
+  detailLoading,
 }: Props) => {
   const handleBulkAddRow = () => {
     setBulkItems((prev) => [
@@ -72,7 +76,7 @@ export const ShiftAssignmentModals = ({
       { user_id: "", shift_id: "", work_date: today, note: "" },
     ]);
   };
-
+  console.log("ádasd", detailItem);
   const handleBulkRemoveRow = (idx: number) => {
     setBulkItems((prev) => prev.filter((_, i) => i !== idx));
   };
@@ -113,14 +117,13 @@ export const ShiftAssignmentModals = ({
               setCreateForm((prev) => ({ ...prev, work_date: e.target.value }))
             }
           />
-          <textarea
-            className="w-full rounded-lg border border-gray-200 px-3 py-2"
-            rows={3}
-            placeholder="Ghi chú"
+          <TextEditor
             value={createForm.note ?? ""}
-            onChange={(e) =>
-              setCreateForm((prev) => ({ ...prev, note: e.target.value }))
+            onChange={(val) =>
+              setCreateForm((prev) => ({ ...prev, note: val }))
             }
+            placeholder="Ghi chú"
+            minHeight={150}
           />
         </div>
       </CRUDModalTemplate>
@@ -197,12 +200,14 @@ export const ShiftAssignmentModals = ({
         onSave={onStatusSubmit}
         title="trạng thái phân ca"
         mode="edit"
+        isLoading={statusLoading}
         maxWidth="max-w-md"
       >
         <div className="space-y-3">
           <select
             className="w-full rounded-lg border border-gray-200 px-3 py-2"
             value={nextStatus}
+            disabled={statusLoading}
             onChange={(e) =>
               setNextStatus(e.target.value as ShiftAssignmentStatus)
             }
@@ -222,96 +227,91 @@ export const ShiftAssignmentModals = ({
         onClose={() => setDetailOpen(false)}
         title="phân ca"
         mode="view"
+        isLoading={detailLoading}
         maxWidth="max-w-xl"
       >
-        <div className="space-y-4 max-h-[70vh] overflow-auto pr-1">
-          {/* Header — status badge */}
-          <div className="rounded-xl border border-primary/20 bg-linear-to-r from-primary/10 via-primary/5 to-white p-4">
-            <div className="flex items-start justify-end gap-3">
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${statusBadge(
-                  detailItem?.status ?? "ASSIGNED",
-                )}`}
-              >
-                <BadgeCheck size={14} />
-                {detailItem?.status ?? "ASSIGNED"}
-              </span>
-            </div>
+        {detailLoading ? (
+          <div className="relative min-h-80">
+            <ClientLoading />
           </div>
-
-          {/* Info grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-              <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                <UserRound size={13} />
-                Nhân viên
-              </p>
-              <p className="text-sm font-semibold text-gray-900 break-all">
-                {detailItem?.user_name ?? detailItem?.user_id ?? "--"}
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-              <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                <BriefcaseBusiness size={13} />
-                Ca làm
-              </p>
-              {detailItem?.start_time && detailItem?.end_time ? (
-                <p className="text-sm font-semibold text-gray-900">
-                  {detailItem.start_time} &ndash; {detailItem.end_time}
+        ) : (
+          <div className="space-y-4 max-h-[70vh] overflow-auto pr-1">
+            {/* Info grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                  <UserRound size={13} />
+                  Nhân viên
                 </p>
-              ) : (
                 <p className="text-sm font-semibold text-gray-900 break-all">
-                  {detailItem?.shift_id ?? "--"}
+                  {detailItem?.user_name ?? "--"}
                 </p>
-              )}
+              </div>
+
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                  <BriefcaseBusiness size={13} />
+                  Ca làm
+                </p>
+                {detailItem?.start_time && detailItem?.end_time ? (
+                  <p className="text-sm font-semibold text-gray-900">
+                    {detailItem.start_time} &ndash; {detailItem.end_time}
+                  </p>
+                ) : (
+                  <p className="text-sm font-semibold text-gray-900 break-all">
+                    {detailItem?.shift_id ?? "--"}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                  <CalendarDays size={13} />
+                  Ngày làm
+                </p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {detailItem?.work_date ?? "--"}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500 mb-1">Người phân ca</p>
+                <p className="text-sm font-semibold text-gray-900 break-all">
+                  {detailItem?.assigned_by_name ??
+                    detailItem?.assigned_by ??
+                    "--"}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500 mb-1">Tạo lúc</p>
+                <p className="text-sm font-medium text-gray-800">
+                  {formatDateTime(detailItem?.created_at)}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500 mb-1">Cập nhật lúc</p>
+                <p className="text-sm font-medium text-gray-800">
+                  {formatDateTime(detailItem?.updated_at)}
+                </p>
+              </div>
             </div>
 
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-              <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                <CalendarDays size={13} />
-                Ngày làm
+            {/* Note */}
+            <div className="rounded-lg border border-gray-100 bg-white p-3">
+              <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                <FileText size={13} />
+                Ghi chú
               </p>
-              <p className="text-sm font-semibold text-gray-900">
-                {detailItem?.work_date ?? "--"}
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-              <p className="text-xs text-gray-500 mb-1">Người phân ca</p>
-              <p className="text-sm font-semibold text-gray-900 break-all">
-                {detailItem?.assigned_by_name ??
-                  detailItem?.assigned_by ??
-                  "--"}
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-              <p className="text-xs text-gray-500 mb-1">Tạo lúc</p>
-              <p className="text-sm font-medium text-gray-800">
-                {formatDateTime(detailItem?.created_at)}
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-              <p className="text-xs text-gray-500 mb-1">Cập nhật lúc</p>
-              <p className="text-sm font-medium text-gray-800">
-                {formatDateTime(detailItem?.updated_at)}
+              <p className="text-sm text-gray-800 leading-6 whitespace-pre-wrap wrap-break-word">
+                {detailItem?.note?.trim()
+                  ? detailItem.note
+                  : "Không có ghi chú"}
               </p>
             </div>
           </div>
-
-          {/* Note */}
-          <div className="rounded-lg border border-gray-100 bg-white p-3">
-            <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
-              <FileText size={13} />
-              Ghi chú
-            </p>
-            <p className="text-sm text-gray-800 leading-6 whitespace-pre-wrap wrap-break-word">
-              {detailItem?.note?.trim() ? detailItem.note : "Không có ghi chú"}
-            </p>
-          </div>
-        </div>
+        )}
       </CRUDModalTemplate>
     </>
   );

@@ -125,6 +125,7 @@ const FranchisePage = () => {
           setPageSize(size);
           setPage(1);
         }}
+        tableMaxHeightClass="max-h-[60vh]"
         isTableLoading={loading}
         statusField="isActive"
         onStatusChange={(item, status) => {
@@ -180,6 +181,7 @@ const FranchisePage = () => {
           if (!selected) return;
 
           await deleteFranchise(selected.id);
+          await fetchFranchises();
           setDeleteOpen(false);
         }}
       />

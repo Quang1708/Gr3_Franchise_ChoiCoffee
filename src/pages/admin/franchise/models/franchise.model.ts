@@ -20,7 +20,7 @@ export type Franchise = {
   logo_url?: string
 
   isActive: boolean
-  isDeleted: boolean
+  is_deleted: boolean
 
   opened_at: string
   closed_at: string
@@ -36,5 +36,5 @@ export const mapFranchise = (raw: FranchiseResponse): Franchise => ({
   opened_at: raw.opened_at ?? "",
   closed_at: raw.closed_at ?? "",
   isActive: raw.is_active ?? true,
-  isDeleted: raw.is_deleted ?? false,
+  is_deleted: raw.is_deleted ?? false,
 })

@@ -436,7 +436,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="flex justify-center">
               <div className="w-48 h-48 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center">
                 <img
-                  src={product.image_url || "https://placehold.co/400?text=No+Image"}
+                  src={
+                    product.image_url ||
+                    "https://placehold.co/400?text=No+Image"
+                  }
                   alt={product.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {

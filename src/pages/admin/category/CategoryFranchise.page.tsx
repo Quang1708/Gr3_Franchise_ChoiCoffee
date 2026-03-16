@@ -267,7 +267,6 @@ const CategoryPage = () => {
   return (
     < >       
       <CRUDPageTemplate<CategoryItem>
-        
         title="Quản lý Danh mục"
         data={categoryFranchiseList}
         columns={columns}

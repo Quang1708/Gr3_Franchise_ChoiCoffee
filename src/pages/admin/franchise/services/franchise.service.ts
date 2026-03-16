@@ -83,8 +83,9 @@ async searchFranchiseApi(keyword: string): Promise<Franchise[]> {
       }
     }>("/api/franchises/search", {
       searchCondition: {
-        keyword,
-        is_deleted: false,
+  keyword,
+  is_active: "",
+  is_deleted: "",
       },
       pageInfo: {
         pageNum: 1,

@@ -24,6 +24,8 @@ import {
 } from "./components/ProductCategoryFranchiseForm";
 
 import type { ProductCategoryFranchiseSearchInput } from "./schema/productCategoryFranchise.schema";
+import FormSelect from "@/components/Admin/Form/FormSelect";
+import { useForm, type FieldError } from "react-hook-form";
 
 type ProductCategoryFranchiseRow = ProductCategoryFranchise & {
   franchiseName: string;
@@ -49,7 +51,9 @@ const ProductCategoryFranchisePage = () => {
   const isAdmin = role === "ADMIN";
 
   const [rows, setRows] = useState<ProductCategoryFranchiseRow[]>([]);
-  const [filteredRows, setFilteredRows] = useState<ProductCategoryFranchiseRow[]>([]);
+  const [filteredRows, setFilteredRows] = useState<
+    ProductCategoryFranchiseRow[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -70,6 +74,11 @@ const ProductCategoryFranchisePage = () => {
     type: "delete",
     item: null,
   });
+
+  const {
+    register,
+    formState: { errors },
+  } = useForm();
 
   useEffect(() => {
     fetchData();
@@ -99,55 +108,72 @@ const ProductCategoryFranchisePage = () => {
     setFilteredRows(nextRows);
   }, [rows, searchTerm, statusFilter]);
 
-const fetchData = async () => {
-  try {
-    setIsLoading(true);
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
 
-  const payload: ProductCategoryFranchiseSearchInput = {
-  franchise_id: "",
-  category_id: "",
-  product_id: "",
-  is_active: "",
-  is_deleted: false,
-  pageNum: 1,
-  pageSize: 10000,
-};
+      const payload: ProductCategoryFranchiseSearchInput = {
+        franchise_id: "",
+        category_id: "",
+        product_id: "",
+        is_active: "",
+        is_deleted: false,
+        pageNum: 1,
+        pageSize: 10000,
+      };
 
-    const response = await searchProductCategoryFranchisesService(payload);
+      const response = await searchProductCategoryFranchisesService(payload);
 
-    console.log("API response:", response);
+      console.log("API response:", response);
 
-    if (response?.success && response?.data) {
-      const rawData = Array.isArray(response.data)
-        ? response.data
-        : [response.data];
+      if (response?.success && response?.data) {
+        const rawData = Array.isArray(response.data)
+          ? response.data
+          : [response.data];
 
-      const mappedData: ProductCategoryFranchiseRow[] = (rawData as (ProductCategoryFranchise & Record<string, unknown>)[]).map((item) => ({
-        ...item,
+        const mappedData: ProductCategoryFranchiseRow[] = (
+          rawData as (ProductCategoryFranchise & Record<string, unknown>)[]
+        ).map((item) => ({
+          ...item,
 
-        // map name fallback nếu API không trả
-        franchiseName: (item.franchiseName ?? item.franchise_name ?? item.franchise_id ?? "N/A") as string,
-        categoryName: (item.categoryName ?? item.category_name ?? item.category_id ?? "N/A") as string,
-        productName: (item.productName ?? item.product_name ?? item.product_id ?? "N/A") as string,
-        category_franchise_id: (item.category_franchise_id ?? item.categoryFranchiseId ?? "") as string,
-        product_franchise_id: (item.product_franchise_id ?? item.productFranchiseId ?? "") as string,
+          // map name fallback nếu API không trả
+          franchiseName: (item.franchiseName ??
+            item.franchise_name ??
+            item.franchise_id ??
+            "N/A") as string,
+          categoryName: (item.categoryName ??
+            item.category_name ??
+            item.category_id ??
+            "N/A") as string,
+          productName: (item.productName ??
+            item.product_name ??
+            item.product_id ??
+            "N/A") as string,
+          category_franchise_id: (item.category_franchise_id ??
+            item.categoryFranchiseId ??
+            "") as string,
+          product_franchise_id: (item.product_franchise_id ??
+            item.productFranchiseId ??
+            "") as string,
 
-        displayOrder: (item.display_order ?? item.displayOrder ?? 0) as number,
-        isActive: (item.is_active ?? item.isActive ?? false) as boolean,
-        is_deleted: (item.is_deleted ?? item.isDeleted ?? false) as boolean,
-      }));
+          displayOrder: (item.display_order ??
+            item.displayOrder ??
+            0) as number,
+          isActive: (item.is_active ?? item.isActive ?? false) as boolean,
+          is_deleted: (item.is_deleted ?? item.isDeleted ?? false) as boolean,
+        }));
 
-      setRows(mappedData);
-      setFilteredRows(mappedData);
+        setRows(mappedData);
+        setFilteredRows(mappedData);
+      }
+    } catch (error) {
+      console.error("Lỗi khi lấy dữ liệu:", error);
+      setRows([]);
+      setFilteredRows([]);
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error("Lỗi khi lấy dữ liệu:", error);
-    setRows([]);
-    setFilteredRows([]);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const handleSearch = (
     term: string,
@@ -156,6 +182,20 @@ const fetchData = async () => {
     setSearchTerm(term);
     setStatusFilter(String(filters?.isActive ?? "all"));
   };
+
+  const franchiseOptions = Array.from(
+    new Set(rows.map((r) => r.franchiseName)),
+  ).map((name) => ({
+    label: name,
+    value: name,
+  }));
+
+  const categoryOptions = Array.from(
+    new Set(rows.map((r) => r.categoryName)),
+  ).map((name) => ({
+    label: name,
+    value: name,
+  }));
 
   const handleOpenForm = (
     mode: "create" | "edit" | "view",
@@ -200,7 +240,11 @@ const fetchData = async () => {
       return "Sản phẩm này đã tồn tại trong danh mục chi nhánh đã chọn";
     }
 
-    return apiError.message || apiError.errors?.[0]?.message || "Thêm mới sản phẩm vào danh mục thất bại";
+    return (
+      apiError.message ||
+      apiError.errors?.[0]?.message ||
+      "Thêm mới sản phẩm vào danh mục thất bại"
+    );
   };
 
   const handleSubmitForm = async (data: ProductCategoryFranchiseFormValues) => {
@@ -238,7 +282,7 @@ const fetchData = async () => {
 
   const handleStatusChange = async (
     item: ProductCategoryFranchiseRow,
-    newStatus: boolean
+    newStatus: boolean,
   ) => {
     try {
       setIsProcessing(true);
@@ -336,7 +380,8 @@ const fetchData = async () => {
 
     if (currentIndex < 0) return;
 
-    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const targetIndex =
+      direction === "up" ? currentIndex - 1 : currentIndex + 1;
     const targetItem = groupRows[targetIndex];
     if (!targetItem) return;
 
@@ -413,7 +458,6 @@ const fetchData = async () => {
         </div>
       ),
     },
-    
   ];
 
   if (isLoading) {
@@ -429,6 +473,25 @@ const fetchData = async () => {
         pageSize={10}
         statusField="isActive"
         searchKeys={["franchiseName", "categoryName", "productName"]}
+        searchContent={
+          <div className="flex gap-3 w-full">
+            <FormSelect
+              label=""
+              options={franchiseOptions}
+              register={register("franchise_id")}
+              error={errors.franchise_id as FieldError}
+              placeholder="Chọn chi nhánh"
+            />
+
+            <FormSelect
+              label=""
+              options={categoryOptions}
+              register={register("category_id")}
+              error={errors.category_id as FieldError}
+              placeholder="Chọn danh mục"
+            />
+          </div>
+        }
         filters={[
           {
             key: "isActive",
@@ -436,6 +499,14 @@ const fetchData = async () => {
             options: [
               { value: "true", label: "Đang hiển thị" },
               { value: "false", label: "Ẩn trên menu" },
+            ],
+          },
+          {
+            key: "is_deleted",
+            label: "trạng thái xóa",
+            options: [
+              { value: "false", label: "Còn tồn tại" },
+              { value: "true", label: "Đã xóa" },
             ],
           },
         ]}
@@ -452,9 +523,7 @@ const fetchData = async () => {
         isOpen={modalConfig.isOpen}
         type={modalConfig.type}
         isLoading={isProcessing}
-        onClose={() =>
-          setModalConfig((prev) => ({ ...prev, isOpen: false }))
-        }
+        onClose={() => setModalConfig((prev) => ({ ...prev, isOpen: false }))}
         onConfirm={handleConfirmAction}
         message={
           modalConfig.type === "delete"

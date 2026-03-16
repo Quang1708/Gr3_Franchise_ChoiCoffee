@@ -56,10 +56,8 @@ export interface CRUDTableProps<T> {
   onStatusChange?: (item: T, newStatus: boolean) => void;
 
   searchKeys?: (keyof T)[];
-
-  // ✅ hỗ trợ search API
-  onSearch?: (keyword: string, filters?: Partial<Record<keyof T, string>>) => void | Promise<void>;
-
+  onSearch?: (keyword: string) => void | Promise<void>;
+  onRowClick?: (item: T) => void;
   filters?: FilterConfig<T>[];
 
   deferToolsApply?: boolean;
@@ -221,6 +219,7 @@ export function CRUDTable<T extends { id?: string | number }>({
   onEdit,
   onDelete,
   onRestore,
+  onRowClick,
   statusField,
   onStatusChange,
   searchKeys = [],
@@ -249,10 +248,13 @@ export function CRUDTable<T extends { id?: string | number }>({
     if (!deferToolsApply) return;
     setSearchTerm(searchInput);
     setActiveFilters(pendingFilters);
-    onSearch?.(searchInput, pendingFilters);
+    onSearch?.(searchInput);
   };
 
   const filteredData = useMemo(() => {
+    if (onSearch) {
+      return data;
+    }
     return data.filter((item) => {
       const matchesSearch =
         searchKeys.length === 0 ||
@@ -366,7 +368,8 @@ export function CRUDTable<T extends { id?: string | number }>({
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  onSearch?.(searchInput); // ⭐ search khi Enter
+                  setSearchTerm(searchInput);
+                  onSearch?.(searchInput);
                 }
               }}
             />
@@ -474,103 +477,115 @@ export function CRUDTable<T extends { id?: string | number }>({
 
           <tbody className="divide-y divide-gray-100">
             {currentData.length > 0 ? (
-              currentData.map((item, index) => (
-                <tr
-                  key={item.id || index}
-                  className="bg-white hover:bg-primary/5 transition-colors group"
-                >
-                  <td className="px-4 py-3 text-sm text-gray-500 font-medium align-middle whitespace-nowrap">
-                    {(currentPage - 1) * itemsPerPage + index + 1}
-                  </td>
+              currentData.map((item, index) => {
+                const realIndex = (currentPage - 1) * itemsPerPage + index;
 
-                  {columns.map((col, idx) => (
-                    <td
-                      key={idx}
-                      className="px-4 py-3 text-sm text-gray-700 align-middle whitespace-nowrap"
-                    >
-                      {col.render
-                        ? col.render(item, index)
-                        : typeof col.accessor === "function"
-                          ? col.accessor(item)
-                          : (item[col.accessor as keyof T] as React.ReactNode)}
+                return (
+                  <tr
+                    key={item.id || realIndex}
+                    onClick={() => onRowClick?.(item)}
+                    className="bg-white hover:bg-primary/5 transition-colors group"
+                  >
+                    <td className="px-4 py-3 text-sm text-gray-500 font-medium align-middle whitespace-nowrap">
+                      {realIndex + 1}
                     </td>
-                  ))}
 
-                  {statusField && (
-                    <td className="px-4 py-3 text-center align-middle whitespace-nowrap">
-                      <div className="flex flex-col items-center justify-center gap-1">
-                        {/* ✅ DISABLE khi không có onStatusChange */}
-                        <ToggleSwitch
-                          checked={!!item[statusField]}
-                          onChange={() => toggleStatus(item)}
-                          disabled={!onStatusChange || (item as any).is_deleted}
-                        />
-                        <span
-                          className={`text-[10px] font-medium uppercase ${
-                            item[statusField] ? "text-primary" : "text-gray-400"
-                          }`}
-                        >
-                          {item[statusField] ? "Hoạt động" : "Ngưng"}
-                        </span>
-                      </div>
-                    </td>
-                  )}
+                    {columns.map((col, idx) => (
+                      <td
+                        key={idx}
+                        className="px-4 py-3 text-sm text-gray-700 align-middle whitespace-nowrap"
+                      >
+                        {col.render
+                          ? col.render(item, realIndex)
+                          : typeof col.accessor === "function"
+                            ? col.accessor(item)
+                            : (item[
+                                col.accessor as keyof T
+                              ] as React.ReactNode)}
+                      </td>
+                    ))}
 
-                  {(onView || onEdit || onDelete || onRestore) && (
-                    <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2">
-                        {onView && (
-                          <button
-                            onClick={() => onView(item)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                            title="Xem chi tiết"
+                    {statusField && (
+                      <td className="px-4 py-3 text-center align-middle whitespace-nowrap">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <ToggleSwitch
+                            checked={!!item[statusField]}
+                            onChange={() => toggleStatus(item)}
+                            disabled={
+                              !onStatusChange || (item as any).is_deleted
+                            }
+                          />
+                          <span
+                            className={`text-[10px] font-medium uppercase ${
+                              item[statusField]
+                                ? "text-primary"
+                                : "text-gray-400"
+                            }`}
                           >
-                            <Eye className="w-5 h-5" />
-                          </button>
-                        )}
-                        {onEdit && (
-                          <button
-                            onClick={() => onEdit(item)}
-                            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
-                            title="Chỉnh sửa"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </button>
-                        )}
-                        {(() => {
-                          const deleted = (item as any).is_deleted;
+                            {item[statusField] ? "Hoạt động" : "Ngưng"}
+                          </span>
+                        </div>
+                      </td>
+                    )}
 
-                          if (deleted) {
+                    {(onView || onEdit || onDelete || onRestore) && (
+                      <td className="px-4 py-3 text-right align-middle whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          {onView && (
+                            <button
+                              onClick={() => onView(item)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              title="Xem chi tiết"
+                            >
+                              <Eye className="w-5 h-5" />
+                            </button>
+                          )}
+
+                          {onEdit && (
+                            <button
+                              onClick={() => onEdit(item)}
+                              className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
+                              title="Chỉnh sửa"
+                            >
+                              <Edit className="w-5 h-5" />
+                            </button>
+                          )}
+
+                          {(() => {
+                            const deleted = (item as any).is_deleted;
+
+                            if (deleted) {
+                              return (
+                                onRestore && (
+                                  <button
+                                    onClick={() => onRestore(item)}
+                                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Khôi phục"
+                                  >
+                                    <RotateCcw className="w-5 h-5" />
+                                  </button>
+                                )
+                              );
+                            }
+
                             return (
-                              onRestore && (
+                              onDelete && (
                                 <button
-                                  onClick={() => onRestore(item)}
-                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Khôi phục"
+                                  onClick={() => onDelete(item)}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Xóa"
                                 >
-                                  <RotateCcw className="w-5 h-5" />
+                                  <Trash2 className="w-5 h-5" />
                                 </button>
                               )
                             );
-                          }
-
-                          return (
-                            onDelete && (
-                              <button
-                                onClick={() => onDelete(item)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                title="Xóa"
-                              >
-                                <Trash2 className="w-5 h-5" />
-                              </button>
-                            )
-                          );
-                        })()}
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))
+                          })()}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td

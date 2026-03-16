@@ -84,7 +84,7 @@ restore: async (id) => {
   set((state) => ({
     items: state.items.map((i) =>
       i.id === id
-        ? { ...i, isDeleted: false }
+        ? { ...i, is_deleted: false }
         : i
     )
   }))

@@ -43,7 +43,7 @@ const AdminHeader = () => {
     if (!user?.roles?.length) return null;
 
     return user.roles.find((role) => {
-      if (selectedFranchiseId == null) {
+      if (selectedFranchiseId == null || selectedFranchiseId === "ALL") {
         return role.scope === "GLOBAL";
       }
 

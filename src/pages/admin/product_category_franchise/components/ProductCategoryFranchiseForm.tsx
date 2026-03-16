@@ -1,11 +1,13 @@
-import { FormInput } from "@/components/Admin/form/FormInput";
+import { FormInput } from "@/components/Admin/Form/FormInput";
 import { useForm } from "react-hook-form";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
 import { searchProductFranchisesService } from "../services/searchProductFranchises.service";
 import { searchCategoryFranchisesService } from "../services/searchCategoryFranchises.service";
 import type { ProductFranchise } from "@/models/product_franchise.model";
 import type { CategoryFranchiseOption } from "../services/searchCategoryFranchises.service";
+import { useAuthStore } from "@/stores/auth.store";
+import { useAdminContextStore } from "@/stores/adminContext.store";
 
 export type ProductCategoryFranchiseFormValues = {
   category_franchise_id: string;
@@ -58,6 +60,46 @@ export const ProductCategoryFranchiseForm = ({
   const [productOptions, setProductOptions] = useState<ProductFranchise[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
 
+  // Check if user is ADMIN (GLOBAL)
+  const { user } = useAuthStore();
+  const { selectedFranchiseId, franchises } = useAdminContextStore();
+
+  const isGlobalAdmin = useMemo(() => {
+    return (
+      user?.roles?.some(
+        (r) =>
+          (r.role_code === "ADMIN" || r.role === "ADMIN") &&
+          r.scope === "GLOBAL",
+      ) ?? false
+    );
+  }, [user]);
+
+  // Get franchise name for display
+  const currentFranchiseName = useMemo(() => {
+    if (!selectedFranchiseId || selectedFranchiseId === "ALL") return null;
+    const franchise = franchises.find(
+      (f) => String(f.id) === String(selectedFranchiseId),
+    );
+    return franchise?.name || selectedFranchiseId;
+  }, [selectedFranchiseId, franchises]);
+
+  // Filter category options based on role
+  const filteredCategoryOptions = useMemo(() => {
+    if (isGlobalAdmin) {
+      // ADMIN có thể thấy tất cả danh mục chi nhánh
+      return categoryOptions;
+    }
+
+    // MANAGER/STAFF chỉ thấy danh mục của franchise họ đang quản lý
+    if (!selectedFranchiseId || selectedFranchiseId === "ALL") {
+      return categoryOptions;
+    }
+
+    return categoryOptions.filter(
+      (cat) => String(cat.franchise_id) === String(selectedFranchiseId),
+    );
+  }, [categoryOptions, isGlobalAdmin, selectedFranchiseId]);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -74,6 +116,11 @@ export const ProductCategoryFranchiseForm = ({
         product_franchise_id: String(initialData?.productFranchiseId ?? ""),
         display_order: String(initialData?.displayOrder ?? 1),
       });
+    }
+
+    // Load options for both create and edit modes
+    if (mode !== "view") {
+      loadOptions();
     }
   }, [isOpen, initialData, mode, reset]);
 
@@ -161,6 +208,14 @@ export const ProductCategoryFranchiseForm = ({
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Danh mục chi nhánh
                 </label>
+                {!isGlobalAdmin && currentFranchiseName && (
+                  <p className="text-xs text-blue-600 mb-1">
+                    Chỉ hiển thị danh mục của chi nhánh:{" "}
+                    <span className="font-semibold">
+                      {currentFranchiseName}
+                    </span>
+                  </p>
+                )}
                 <select
                   {...register("category_franchise_id", {
                     required: "Không được để trống",
@@ -171,7 +226,7 @@ export const ProductCategoryFranchiseForm = ({
                   <option value="">
                     {loadingOptions ? "Đang tải..." : "-- Chọn danh mục --"}
                   </option>
-                  {categoryOptions.map((c) => (
+                  {filteredCategoryOptions.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.category_name ?? c.category_id}{" "}
                       {c.franchise_name ? `(${c.franchise_name})` : ""}

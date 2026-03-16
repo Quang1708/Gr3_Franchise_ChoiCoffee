@@ -105,12 +105,18 @@ const AdminSelectContextPage: React.FC = () => {
     const selected = roles[selectedRoleIndex];
     if (!selected) return;
 
+    const roleFranchiseId =
+      selected.franchise_id ??
+      (selected as { franchiseId?: string | number } | undefined)?.franchiseId ??
+      null;
+
     setContextLoading(true);
     setContextError(null);
 
+    // Note: switch-context expects franchise_id as string or null per spec.
     try {
       const response = await switchAdminContext({
-        franchise_id: selected.franchise_id ?? "",
+        franchise_id: roleFranchiseId != null ? String(roleFranchiseId) : null,
       });
 
       if (!response?.success) {
@@ -157,15 +163,8 @@ const AdminSelectContextPage: React.FC = () => {
         }
       }
 
-      const roleFranchiseId =
-        selected.franchise_id ??
-        (selected as { franchiseId?: string | number } | undefined)
-          ?.franchiseId;
-
       if (roleFranchiseId != null) {
         setSelectedFranchiseId(String(roleFranchiseId));
-      } else if (selected.scope === "GLOBAL") {
-        setSelectedFranchiseId("ALL");
       } else {
         setSelectedFranchiseId(null);
       }
@@ -175,7 +174,10 @@ const AdminSelectContextPage: React.FC = () => {
       navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
     } catch (error) {
       console.error(error);
-      setContextError("Không thể chuyển Roles. Vui lòng thử lại.");
+      const err = error as { message?: string };
+      setContextError(
+        err.message || "Không thể chuyển Roles. Vui lòng thử lại.",
+      );
     } finally {
       setContextLoading(false);
     }

@@ -14,5 +14,5 @@ export interface ProductModalConfig {
 
 export const toProductRow = (item: Product): ProductRow => ({
   ...item,
-  is_deleted: item.isDeleted,
+  is_deleted: item.is_deleted,
 });

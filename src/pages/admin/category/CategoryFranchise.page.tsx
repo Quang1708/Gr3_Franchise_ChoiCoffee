@@ -1,7 +1,4 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
-import {
-  type Column,
-} from "../../../components/Admin/template/CRUD.template";
 import { toast } from "sonner";
 
 // ✅ RBAC
@@ -11,7 +8,7 @@ import { can } from "@/auth/rbac";
 import { PERM } from "@/auth/rbac.permissions";
 import type { CategoryItem } from "./models/categoryFranchise02.model";
 import { getCategoryFranchise } from "./services/categoryFranchise02.service";
-import { CRUDPageTemplate } from "@/components/Admin/template/CRUDPage.template";
+import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
 import ClientLoading from "@/components/Client/Client.Loading";
 import CategoryFranchiseCreateModal from "@/components/categoryFranchise/CategoryFranchise.Modal";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";

@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Modal } from "../../UI/Modal";
-import type { Product } from "../../../models/product.model";
+import type { RequestProduct } from "../../../pages/admin/product/models";
+import type { Product } from "@/models/product.model";
 import { Trash2 } from "lucide-react";
 import { FormInput } from "@/components/Admin/Form/FormInput";
 
@@ -29,7 +30,7 @@ const productSchema = z
 
 type ProductFormData = z.input<typeof productSchema>;
 
-const toProductPartial = (data: ProductFormData): Partial<Product> => ({
+const toProductPartial = (data: ProductFormData): RequestProduct => ({
   name: data.name,
   SKU: data.SKU,
   img: data.image,
@@ -279,7 +280,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
 interface CreateProductModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Partial<Product>) => Promise<void> | void;
+  onSubmit: (data: RequestProduct) => Promise<void> | void;
 }
 
 export const CreateProductModal: React.FC<CreateProductModalProps> = ({
@@ -313,7 +314,7 @@ interface EditProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: Product | null;
-  onSubmit: (data: Partial<Product>) => Promise<void> | void;
+  onSubmit: (data: RequestProduct) => Promise<void> | void;
 }
 
 export const EditProductModal: React.FC<EditProductModalProps> = ({
@@ -332,9 +333,9 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   const defaultValues: Partial<ProductFormData> = {
     name: product.name,
     SKU: product.SKU,
-    image: product.img || "",
-    minPrice: product.minPrice,
-    maxPrice: product.maxPrice,
+    image: product.image_url || "",
+    minPrice: product.min_price,
+    maxPrice: product.max_price,
     description: product.description || "",
     content: product.content || "",
   };
@@ -409,6 +410,162 @@ export const DeleteProductModal: React.FC<DeleteProductModalProps> = ({
             Xóa sản phẩm
           </button>
         </div>
+      </div>
+    </Modal>
+  );
+};
+
+// --- Product Detail Modal ---
+interface ProductDetailModalProps {
+  isOpen: boolean;
+  product: Product | null;
+  onClose: () => void;
+}
+
+export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
+  isOpen,
+  product,
+  onClose,
+}) => {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Chi tiết sản phẩm">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+        {product && (
+          <>
+            {/* Image */}
+            <div className="flex justify-center">
+              <div className="w-48 h-48 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center">
+                <img
+                  src={product.image_url || "https://placehold.co/400?text=No+Image"}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      "https://placehold.co/400?text=No+Image";
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  SKU
+                </label>
+                <div className="text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">
+                  {product.SKU}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên sản phẩm
+                </label>
+                <div className="text-sm text-gray-900 font-medium">
+                  {product.name}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Giá tối thiểu
+                </label>
+                <div className="text-sm text-gray-900 font-medium">
+                  {new Intl.NumberFormat("vi-VN", {
+                    style: "currency",
+                    currency: "VND",
+                  }).format(product.min_price || 0)}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Giá tối đa
+                </label>
+                <div className="text-sm text-gray-900 font-medium">
+                  {new Intl.NumberFormat("vi-VN", {
+                    style: "currency",
+                    currency: "VND",
+                  }).format(product.max_price || 0)}
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            {product.description && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mô tả
+                </label>
+                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded line-clamp-3">
+                  {product.description}
+                </div>
+              </div>
+            )}
+
+            {/* Content */}
+            {product.content && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nội dung
+                </label>
+                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded max-h-32 overflow-y-auto line-clamp-4">
+                  {product.content}
+                </div>
+              </div>
+            )}
+
+            {/* Status */}
+            <div className="grid grid-cols-2 gap-4 border-t pt-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Trạng thái
+                </label>
+                <div className="text-sm">
+                  <span
+                    className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                      product.is_active
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {product.is_active ? "Hoạt động" : "Ngưng hoạt động"}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Xóa mềm
+                </label>
+                <div className="text-sm">
+                  <span
+                    className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                      product.is_deleted
+                        ? "bg-red-100 text-red-800"
+                        : "bg-green-100 text-green-800"
+                    }`}
+                  >
+                    {product.is_deleted ? "Đã xóa" : "Còn tồn tại"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex justify-end gap-3 mt-6 border-t pt-4">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer"
+        >
+          Đóng
+        </button>
       </div>
     </Modal>
   );

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Camera, Check, Eye, EyeOff } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Camera, Eye, EyeOff } from "lucide-react";
 import { useImageUpload } from "@/hooks/useImageUpload";
 
 // Ảnh mặc định khi không có avatar
@@ -7,7 +7,7 @@ const DEFAULT_AVATAR = "https://i.pinimg.com/736x/af/80/37/af80374611f4673d1928a
 
 interface FormInputProps {
     label: string;
-    type?: "text" | "email" | "password" | "file" | "tel" | "number";
+    type?: "text" | "email" | "password" | "file" | "tel" | "number" | "date" | "time";
     variant?: "avatar" | "file";
     register: any;
     error?: any;
@@ -22,7 +22,7 @@ interface FormInputProps {
 }
 
 export const FormInput = ({
-    label, type = "text", variant, register, error, defaultValue, placeholder, isView, className, onUploadSuccess, isDisabled, setIsExternalLoading, uploadFolder = "customers"
+    label, type = "text", register, error, defaultValue, placeholder, isView, className, onUploadSuccess, isDisabled, setIsExternalLoading, uploadFolder = "customers"
 }: FormInputProps) => {
     const [showPassword, setShowPassword] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(defaultValue);
@@ -47,6 +47,28 @@ export const FormInput = ({
         }
     };
 
+    if (type === "time") {
+      return (
+        <div className={`flex flex-col gap-1 ${className}`}>
+          <label className="text-xs font-bold text-gray-500 uppercase">
+            {label}
+          </label>
+          <input
+            type={type}
+            defaultValue={defaultValue}
+            placeholder={placeholder}
+            {...register}
+            disabled={isDisabled}
+            className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm transition-all outline-none focus:ring-2 focus:ring-primary/20 
+                    ${error ? "border-primary" : "border-gray-200 focus:border-primary"} 
+                    ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
+          />
+          {error && (
+            <p className="text-primary text-xs mt-1">{error.message}</p>
+          )}
+        </div>
+      );
+    }
     // Render cho loại File (Avatar)
     if (type === "file") {
     const inputId = `file-upload-${label?.replace(/\s+/g, '-').toLowerCase() || 'default'}`;    
@@ -114,39 +136,45 @@ export const FormInput = ({
 
     // Render cho các loại Text/Password/Email
     return (
-        <div className={`flex flex-col gap-1 ${className}`}>
-            <label className="text-xs font-bold text-gray-500 uppercase">{label}</label>
-            <div className="relative">
-                {isView ? (
-                    <div className="py-2 border-b border-gray-300 min-h-[38px]">
-                        <span className="text-sm font-semibold text-gray-700">
-                            {type === "password" ? "••••••••" : (defaultValue || "Không có")}
-                        </span>
-                    </div>
-                ) : (
-                    <>
-                        <input
-                            type={type === "password" && showPassword ? "text" : type}
-                            defaultValue={defaultValue}
-                            placeholder={placeholder}
-                            {...register}
-                            disabled={isDisabled}
-                            className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm transition-all outline-none focus:ring-2 focus:ring-primary/20 
+      <div className={`flex flex-col gap-1 ${className}`}>
+        <label className="text-xs font-bold text-gray-500 uppercase">
+          {label}
+        </label>
+        <div className="relative">
+          {isView ? (
+            <div className="py-2 border-b border-gray-300 min-h-[38px]">
+              <span className="text-sm font-semibold text-gray-700">
+                {type === "password" ? "••••••••" : defaultValue || "Không có"}
+              </span>
+            </div>
+          ) : (
+            <>
+              <input
+                type={type === "password" && showPassword ? "text" : type}
+                defaultValue={defaultValue}
+                placeholder={placeholder}
+                {...register}
+                disabled={isDisabled}
+                className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm transition-all outline-none focus:ring-2 focus:ring-primary/20 
                                 ${error ? "border-primary" : "border-gray-200 focus:border-primary"} 
                                 ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
-                        />
-                        {type === "password" && (
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                            </button>
-                        )}
-                    </>
-                )}
-            </div>
-            {error && <p className="text-primary text-xs mt-1">{error.message}</p>}
+              />
+              {type === "password" && (
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              )}
+            </>
+          )}
         </div>
+        {error && <p className="text-primary text-xs mt-1">{error.message}</p>}
+      </div>
     );
+
+    
+            
 };

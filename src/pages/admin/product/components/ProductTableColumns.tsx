@@ -17,7 +17,7 @@ export const productTableColumns: Column<ProductRow>[] = [
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden shrink-0 bg-gray-50 flex items-center justify-center text-xs text-gray-400">
           <img
-            src={item.img || "https://placehold.co/100?text=No+Image"}
+            src={item.image_url || "https://placehold.co/100?text=No+Image"}
             alt={item.name}
             className="w-full h-full object-cover"
             onError={(e) => {
@@ -34,7 +34,7 @@ export const productTableColumns: Column<ProductRow>[] = [
   },
   {
     header: "Giá tối thiểu",
-    accessor: "minPrice",
+    accessor: "min_price",
     className: "w-32",
     sortable: true,
     render: (item) => (
@@ -42,13 +42,13 @@ export const productTableColumns: Column<ProductRow>[] = [
         {new Intl.NumberFormat("vi-VN", {
           style: "currency",
           currency: "VND",
-        }).format(item.minPrice)}
+        }).format(item.min_price)}
       </span>
     ),
   },
   {
     header: "Giá tối đa",
-    accessor: "maxPrice",
+    accessor: "max_price",
     className: "w-32",
     sortable: true,
     render: (item) => (
@@ -56,19 +56,19 @@ export const productTableColumns: Column<ProductRow>[] = [
         {new Intl.NumberFormat("vi-VN", {
           style: "currency",
           currency: "VND",
-        }).format(item.maxPrice)}
+        }).format(item.max_price)}
       </span>
     ),
   },
   {
     header: "Ngày tạo",
-    accessor: (item) => new Date(item.createdAt).toLocaleDateString("vi-VN"),
+    accessor: (item) => new Date(item.created_at).toLocaleDateString("vi-VN"),
     sortable: true,
     className: "text-gray-500 text-sm",
   },
   {
     header: "Ngày cập nhật",
-    accessor: (item) => new Date(item.updatedAt).toLocaleDateString("vi-VN"),
+    accessor: (item) => new Date(item.updated_at).toLocaleDateString("vi-VN"),
     sortable: true,
     className: "text-gray-500 text-sm",
   },

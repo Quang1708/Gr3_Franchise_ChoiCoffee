@@ -1,7 +1,7 @@
 import { axiosAdminClient } from "@/api/axios.config";
 
 type SwitchContextPayload = {
-  franchise_id: string | number | null;
+  franchise_id: string | null;
 };
 
 export type SwitchContextResponse = {

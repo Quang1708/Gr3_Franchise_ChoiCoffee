@@ -16,6 +16,8 @@ export type MenuPath =
   | "loyalty"
   | "user"
   | "logout"
+  | "shift"
+  | "category-franchise"
   | string;
 
 export function isMenuVisible(
@@ -42,6 +44,8 @@ export function isMenuVisible(
   if (path === "menu") return can(user, PERM.MENU_READ, fid);
   if (path === "product") return can(user, PERM.PRODUCT_READ, fid);
   if (path === "category") return can(user, PERM.CATEGORY_READ, fid);
+  if (path === "product-category") return can(user, PERM.CATEGORY_READ, fid);
+  if (path === "category-franchise") return can(user, PERM.CATEGORY_FRANCHISE_READ, fid);
   if (path === "product-category") return can(user, PERM.PRODUCT_CATEGORY_READ, fid);
   if (path === "category-franchise")
     return can(user, PERM.CATEGORY_FRANCHISE_READ, fid);
@@ -51,6 +55,6 @@ export function isMenuVisible(
   if (path === "shift-assignment")
     return can(user, PERM.SHIFT_ASSIGNMENT_READ, fid);
   if (path === "loyalty") return can(user, PERM.LOYALTY_READ, fid);
-
+  if (path === "shift") return can(user, PERM.SHIFT_READ, fid);
   return true;
 }

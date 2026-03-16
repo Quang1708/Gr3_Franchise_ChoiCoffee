@@ -71,7 +71,7 @@ const AdminLoginPage: React.FC = () => {
     } else if (primaryRole?.scope === "GLOBAL") {
       setSelectedFranchiseId("ALL");
     } else {
-      setSelectedFranchiseId(null);
+      setSelectedFranchiseId(undefined);
     }
     useAuthStore.getState().login(user, token);
     toastSuccess?.("Đăng nhập thành công!");
@@ -102,7 +102,7 @@ const AdminLoginPage: React.FC = () => {
           Array.isArray(user.roles) && user.roles.length > 1;
 
         if (hasMultipleRoles) {
-          setSelectedFranchiseId(null);
+          setSelectedFranchiseId(undefined);
           setItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED, true);
           useAuthStore.getState().login(user, result.token ?? "SESSION");
           navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_SELECT_CONTEXT, {
@@ -128,6 +128,7 @@ const AdminLoginPage: React.FC = () => {
       toastError?.(errorMessage);
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background-light px-4">

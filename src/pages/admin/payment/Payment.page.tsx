@@ -112,7 +112,7 @@ const PaymentPage = () => {
   const prepared = useMemo<PaymentRow[]>(() => {
     return payments.map((p) => ({
       ...p,
-      franchise: franchiseNameById.get(p.franchiseId) ?? `#${p.franchiseId}`,
+      franchise: franchiseNameById.get(String(p.franchiseId)) ?? `#${p.franchiseId}`,
       orderCode: orderCodeById.get(p.orderId) ?? `#${p.orderId}`,
       createdByName: p.createdBy
         ? userNameById.get(p.createdBy) ?? `User #${p.createdBy}`
@@ -309,7 +309,7 @@ const PaymentPage = () => {
                   </p>
                   <p>
                     <span className="font-medium text-gray-600">Chi nhánh:</span>{" "}
-                    {franchiseNameById.get(selectedPayment.franchiseId) ?? "--"}
+                    {franchiseNameById.get(String(selectedPayment.franchiseId)) ?? "--"}
                   </p>
                   <p>
                     <span className="font-medium text-gray-600">Phương thức:</span>{" "}

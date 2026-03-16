@@ -71,7 +71,7 @@ delete: async (id) => {
   set((state) => ({
     items: state.items.map((i) =>
       i.id === id
-        ? { ...i, isDeleted: true, isActive: false }
+        ? { ...i, is_deleted: true, isActive: false }
         : i
     )
   }))
@@ -112,7 +112,7 @@ try {
       items: data
     })
 
-    return data   // ⚠️ THÊM DÒNG NÀY
+    return data  
 
   } finally {
 

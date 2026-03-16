@@ -5,7 +5,7 @@ import * as z from "zod";
 import { Modal } from "../../UI/Modal";
 import type { Product } from "../../../models/product.model";
 import { Trash2 } from "lucide-react";
-import { FormInput } from "@/components/Admin/Form/FormInput";
+import { FormInput } from "@/components/Admin/form/FormInput";
 
 // --- Schema ---
 const productSchema = z

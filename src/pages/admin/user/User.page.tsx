@@ -1,716 +1,403 @@
-﻿import {
-  useEffect,
-  useState,
-  type SyntheticEvent,
-} from "react";
-import { toastSuccess, toastError } from "../../../utils/toast.util";
-import {
-  changeUserStatus,
-  createUser,
-  deleteUser,
-  getUsers,
-  searchUsers,
-  updateUser,
-  updateUserRole,
-  type UserListItem,
-} from "../../../services/user.service";
+﻿import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useAdminContextStore } from "@/stores";
+
+import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
+import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import ClientLoading from "@/components/Client/Client.Loading";
-import { Modal } from "@/components/UI/Modal";
-import { ImageUpload } from "@/components/ImageUpload/ImageUpload";
-import {
-  CRUDTable,
-  type Column,
-} from "../../../components/Admin/template/CRUD.template";
 
-interface UserFormData {
-  email: string;
-  password: string;
-  name: string;
-  phone: string; // added phone field
-  roleCode: string;
-  avatarUrl?: string;
-}
+import type { User } from "@/models/user.model";
+import type { RequestUser } from "./models/requestUser.model";
+import { UserForm, type UserFormValues } from "./components/UserForm";
 
-const ROLE_OPTIONS = ["ADMIN", "MANAGER", "STAFF", "CUSTOMER"];
+import { searchUsersUsecase } from "./usecases/searchUsers.usecase";
+import { updateUserStatusUsecase } from "./usecases/updateUserStatus.usecase";
+import { deleteUserUsecase } from "./usecases/deleteUser.usecase";
+import { restoreUserUsecase } from "./usecases/restoreUserUsecase";
+import { createUserUsecase } from "./usecases/createUser.usecase";
+import { updateUserUsecase } from "./usecases/updateUser.usecase";
+import { getUserDetailUsecase } from "./usecases/getUserDetail.usecase";
 
-const formatDateTime = (value: string) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("vi-VN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-};
+const DEFAULT_AVATAR = "https://i.pinimg.com/736x/af/80/37/af80374611f4673d1928a881727e13b0.jpg";
 
 const UserPage = () => {
-  const [users, setUsers] = useState<UserListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const selectedFranchiseId = useAdminContextStore((state) => state.selectedFranchiseId);
+  const isAdmin = selectedFranchiseId === null;
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [detailUser, setDetailUser] = useState<UserListItem | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [deletingUser, setDeletingUser] = useState<UserListItem | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [formData, setFormData] = useState<UserFormData>({
-    email: "",
-    password: "",
-    name: "",
-    phone: "", // initialize phone
-    roleCode: "",
-    avatarUrl: "",
-  });
+  // Modal xác nhận (Xóa/Khôi phục)
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    type: "delete" | "restore";
+    user: User | null;
+  }>({ isOpen: false, type: "delete", user: null });
+
+  // Modal Form (Thêm/Sửa/Xem)
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  // Helper function to map API response to User with proper property names
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const toUserRow = (item: any): User => {
+    return {
+      id: item.id,
+      email: item.email,
+      name: item.name,
+      phone: item.phone,
+      avatar_url: item.avatar_url,
+      is_active: item.is_active,
+      is_deleted: item.is_deleted,
+      is_verified: item.is_verified,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    } as User;
+  };
+
+  // Hàm Fetch ban đầu
+  const fetchUsers = useCallback(
+    async (pageNum = 1, size?: number) => {
+      try {
+        setIsTableLoading(true);
+
+        const searchPayload = {
+          searchCondition: {
+            keyword: "",
+            is_active: "",
+            is_deleted: false,
+          },
+          pageInfo: {
+            pageNum,
+            pageSize: size || pageSize,
+          },
+        };
+
+        const res = await searchUsersUsecase(searchPayload);
+
+        if (res && typeof res === "object") {
+          const userList = res.data || [];
+          const paginationInfo = res.pageInfo || {};
+
+          if (Array.isArray(userList)) {
+            setUsers(userList.map(toUserRow));
+            setTotalItems(paginationInfo.totalItems || userList.length);
+            setPage(paginationInfo.pageNum || pageNum);
+            if (paginationInfo.pageSize) {
+              setPageSize(paginationInfo.pageSize);
+            }
+          } else {
+            setUsers([]);
+          }
+        } else {
+          setUsers([]);
+        }
+      } catch {
+        toast.error("Không thể tải danh sách người dùng");
+        setUsers([]);
+      } finally {
+        setIsTableLoading(false);
+      }
+    },
+    [pageSize]
+  );
 
   useEffect(() => {
-    let isMounted = true;
+    fetchUsers(1);
+  }, [fetchUsers]);
 
-    const loadUsers = async () => {
-      try {
-        const data = await getUsers();
-        if (!isMounted) return;
-        setUsers(data);
-      } catch {
-        toastError("Không thể tải danh sách user");
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void loadUsers();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const handleSearch = async (keyword: string) => {
-    setIsLoading(true);
+  const handleSearchUsers = async (keyword: string, filters?: Record<string, string>) => {
     try {
-      const data = await searchUsers(keyword);
-      setUsers(data);
+      setIsLoading(true);
+
+      let isActive: boolean | string = "";
+      if (filters?.is_active === "true") {
+        isActive = true;
+      } else if (filters?.is_active === "false") {
+        isActive = false;
+      }
+
+      let isDeleted: boolean | string = "";
+      if (filters?.is_deleted === "true") {
+        isDeleted = true;
+      } else if (filters?.is_deleted === "false") {
+        isDeleted = false;
+      }
+
+      const searchPayload = {
+        searchCondition: {
+          keyword,
+          is_active: isActive,
+          is_deleted: isDeleted,
+        },
+        pageInfo: {
+          pageNum: 1,
+          pageSize: pageSize,
+        },
+      };
+
+      const res = await searchUsersUsecase(searchPayload);
+
+      if (res && typeof res === "object") {
+        const userList = res.data || [];
+        const paginationInfo = res.pageInfo || {};
+
+        if (Array.isArray(userList) && userList.length > 0) {
+          setUsers(userList.map(toUserRow));
+          setTotalItems(paginationInfo.totalItems || userList.length);
+          setPage(1);
+        } else {
+          setUsers([]);
+          setTotalItems(0);
+          setPage(1);
+          toast.error("Không tìm thấy người dùng");
+        }
+      } else {
+        setUsers([]);
+      }
     } catch {
-      toastError("Không thể tìm kiếm user");
+      toast.error("Lỗi khi tìm kiếm");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleOpenModal = (user?: UserListItem) => {
-    if (user) {
-      setEditingUser(user);
-      setFormData({
-        email: user.email,
-        password: "",
-        name: user.name,
-        phone: user.phone || "", // include phone
-        roleCode: user.roleCode,
-        avatarUrl: user.avatarUrl || "",
-      });
-    } else {
-      setEditingUser(null);
-      setFormData({
-        email: "",
-        password: "",
-        name: "",
-        phone: "", // include default phone
-        roleCode: "",
-        avatarUrl: "",
-      });
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingUser(null);
-    setFormData({
-      email: "",
-      password: "",
-      name: "",
-      phone: "",
-      roleCode: "",
-      avatarUrl: "",
-    });
-  };
-
-  const handleOpenDetails = (user: UserListItem) => {
-    setDetailUser(user);
-    setIsDetailOpen(true);
-  };
-
-  const handleCloseDetails = () => {
-    setIsDetailOpen(false);
-    setDetailUser(null);
-  };
-
-  const handleEditFromDetails = () => {
-    if (!detailUser) return;
-    const user = detailUser;
-    handleCloseDetails();
-    handleOpenModal(user);
-  };
-
-  const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (editingUser) {
-      const prevRoleCode = editingUser.roleCode;
-      const result = await updateUser(editingUser.id, {
-        email: formData.email,
-        name: formData.name,
-        phone: formData.phone,
-        avatar_url: formData.avatarUrl,
-        ...(formData.password ? { password: formData.password } : {}),
-      });
-
-      if (!result.ok) {
-        toastError(result.message);
+  // Xử lý mở Modal Form
+  const handleOpenForm = async (
+    mode: "create" | "edit" | "view",
+    user: User | null = null
+  ) => {
+    setFormMode(mode);
+    if (mode === "view" && user) {
+      try {
+        const detail = await getUserDetailUsecase(user.id);
+        setSelectedUser(toUserRow(detail.data));
+      } catch {
+        toast.error("Không thể tải chi tiết người dùng");
         return;
       }
-
-      let updatedUser = result.user;
-
-      if (formData.roleCode !== prevRoleCode) {
-        const roleResult = await updateUserRole(
-          String(editingUser.id),
-          formData.roleCode,
-        );
-
-        if (roleResult.ok) {
-          updatedUser = { ...updatedUser, roleCode: formData.roleCode };
-        } else {
-          toastError(roleResult.message);
-        }
-      }
-
-      setUsers((prev) =>
-        prev.map((user) => (user.id === editingUser.id ? updatedUser : user)),
-      );
-      toastSuccess("Cập nhật user thành công");
     } else {
-      const result = await createUser({
-        email: formData.email,
-        password: formData.password,
-        name: formData.name,
-        phone: formData.phone,
-        roleCode: formData.roleCode,
-        avatarUrl: formData.avatarUrl,
-      });
-
-      if (!result.ok) {
-        toastError(result.message);
-        return;
-      }
-
-      setUsers((prev) => [...prev, result.user]);
-      toastSuccess("Tạo user mới thành công");
+      setSelectedUser(user);
     }
-
-    handleCloseModal();
+    setIsFormOpen(true);
   };
 
-  const handleDelete = (user: UserListItem) => {
-    setDeletingUser(user);
-    setIsDeleteOpen(true);
-  };
-
-  const handleCloseDelete = () => {
-    if (isDeleting) return;
-    setIsDeleteOpen(false);
-    setDeletingUser(null);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deletingUser) return;
-    setIsDeleting(true);
+  // Xử lý Submit Form (Create/Edit)
+  const handleSubmitUser = async (data: UserFormValues, setError: (field: keyof UserFormValues, error: { message: string }) => void) => {
+    setIsProcessing(true);
     try {
-      const result = await deleteUser(deletingUser.id);
-      if (!result.ok) {
-        toastError(result.message);
-        return;
+      if (formMode === "create") {
+        const createPayload: RequestUser = {
+          email: data.email,
+          password: data.password || "",
+          phone: data.phone,
+          name: data.name,
+          roleCode: data.roleCode,
+          avatar_url: data.avatar_url?.trim() ? data.avatar_url : DEFAULT_AVATAR,
+        };
+
+        await createUserUsecase(createPayload);
+        toast.success("Thêm người dùng thành công!");
+      } else if (formMode === "edit" && selectedUser) {
+        const updatePayload: RequestUser = {
+          email: data.email,
+          phone: data.phone,
+          name: data.name,
+          roleCode: data.roleCode,
+          avatar_url: data.avatar_url?.trim() ? data.avatar_url : DEFAULT_AVATAR,
+        };
+        await updateUserUsecase(selectedUser.id, updatePayload);
+        toast.success("Cập nhật người dùng thành công!");
       }
 
-      setUsers((prev) => prev.filter((user) => user.id !== deletingUser.id));
-      if (detailUser?.id === deletingUser.id) {
-        setIsDetailOpen(false);
-        setDetailUser(null);
+      await fetchUsers(page);
+      setIsFormOpen(false);
+    } catch (error: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const errData = (error as Record<string, any>)?.response?.data || error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const serverErrors = (errData as Record<string, any>)?.errors as Array<Record<string, any>> | undefined;
+
+      if (Array.isArray(serverErrors)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serverErrors.forEach((e: Record<string, any>) => {
+          setError(e.field as keyof UserFormValues, { message: e.message as string });
+          toast.error(e.message as string);
+        });
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        toast.error((errData as Record<string, any>)?.message || "Thao tác thất bại!");
       }
-      toastSuccess("Xóa user thành công");
-      setIsDeleteOpen(false);
-      setDeletingUser(null);
     } finally {
-      setIsDeleting(false);
+      setIsProcessing(false);
     }
   };
 
-  const handleStatusChange = async (user: UserListItem, newStatus: boolean) => {
-    const prevStatus = user.isActive;
-    const prevUpdatedAt = user.updatedAt;
-    const nextUpdatedAt = new Date().toISOString();
-
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === user.id
-          ? { ...u, isActive: newStatus, updatedAt: nextUpdatedAt }
-          : u,
-      ),
-    );
-    setDetailUser((prev) =>
-      prev?.id === user.id
-        ? { ...prev, isActive: newStatus, updatedAt: nextUpdatedAt }
-        : prev,
-    );
-
-    const result = await changeUserStatus(
-      user.id,
-      newStatus ? "active" : "inactive",
-    );
-
-    if (!result.ok) {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === user.id
-            ? { ...u, isActive: prevStatus, updatedAt: prevUpdatedAt }
-            : u,
-        ),
-      );
-      setDetailUser((prev) =>
-        prev?.id === user.id
-          ? { ...prev, isActive: prevStatus, updatedAt: prevUpdatedAt }
-          : prev,
-      );
-      toastError(result.message);
-      return;
+  // Xử lý đổi trạng thái nhanh (Active/Inactive)
+  const handleStatusChange = async (user: User, newStatus: boolean) => {
+    try {
+      const res = await updateUserStatusUsecase(user.id, newStatus);
+      if (res?.success || res?.status === 200) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === user.id ? { ...u, is_active: newStatus } : u))
+        );
+        toast.success("Cập nhật trạng thái thành công");
+      }
+    } catch {
+      toast.error("Lỗi cập nhật trạng thái");
     }
-
-    toastSuccess(
-      `Đã cập nhật trạng thái: ${newStatus ? "Hoạt động" : "Ngưng hoạt động"}`,
-    );
   };
 
-  const columns: Column<UserListItem>[] = [
+  // Xử lý Xóa/Khôi phục qua Modal xác nhận
+  const handleConfirmAction = async () => {
+    const { type, user } = modalConfig;
+    if (!user) return;
+
+    try {
+      setIsProcessing(true);
+      const res = type === "delete"
+        ? await deleteUserUsecase(user.id)
+        : await restoreUserUsecase(user.id);
+
+      if (res?.success) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === user.id ? { ...u, is_deleted: type === "delete" } : u))
+        );
+        toast.success(type === "delete" ? "Đã xóa người dùng" : "Đã khôi phục người dùng");
+        setModalConfig((prev) => ({ ...prev, isOpen: false }));
+      }
+    } catch {
+      toast.error("Thao tác thất bại");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Delete
+  const handleDeleteClick = (user: User) => {
+    setModalConfig({ isOpen: true, type: "delete", user });
+  };
+
+  // Restore
+  const handleRestoreClick = (user: User) => {
+    setModalConfig({ isOpen: true, type: "restore", user });
+  };
+
+  // TABLE COLUMNS
+  const columns: Column<User>[] = [
     {
-      header: "User",
+      header: "Người dùng",
       accessor: "name",
-      className: "min-w-[250px]",
-      sortable: true,
-      render: (user) => (
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg border border-gray-100 overflow-hidden shrink-0 bg-gray-50 flex items-center justify-center text-xs text-gray-400">
-            {user.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-gray-600 font-medium">
-                {user.name.charAt(0).toUpperCase()}
-              </span>
-            )}
-          </div>
-          <div className="min-w-0">
-            <div className="font-medium text-gray-900 truncate">
-              {user.name}
-            </div>
+      className: "min-w-[250px] md:min-w-[350px]",
+      render: (item) => (
+        <div className="flex items-center gap-3 min-w-0">
+          <img
+            src={item.avatar_url || DEFAULT_AVATAR}
+            alt={item.name}
+            className="w-10 h-10 rounded-full object-cover border border-black/10 flex-shrink-0"
+          />
+          <div className="flex flex-col min-w-0">
+            <span className="font-medium text-gray-800 truncate">{item.name}</span>
+            <span className="text-sm text-gray-500 truncate">{item.email}</span>
           </div>
         </div>
       ),
-    },
-    {
-      header: "Email",
-      accessor: "email",
       sortable: true,
-      className: "min-w-[220px]",
     },
+    { header: "Số điện thoại", accessor: "phone" },
     {
-      header: "Phone",
-      accessor: "phone",
-      className: "min-w-[140px]",
-      render: (user) => user.phone || "—",
-    },
-    {
-      header: "Vai trò",
-      accessor: "roleCode",
-      sortable: true,
-      className: "w-28",
-    },
-    {
-      header: "Cập nhật",
-      accessor: (user) => formatDateTime(user.updatedAt),
-      sortable: true,
-      className: "text-gray-500 text-sm w-40",
+      header: "Verified",
+      accessor: "is_verified",
+      render: (item) => (
+        <span className={`px-2 py-1 text-[10px] rounded-xl ${item.is_verified ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+          }`}>
+          {item.is_verified ? "Đã xác thực" : "Chưa xác thực"}
+        </span>
+      ),
     },
   ];
 
 
-
   return (
-    <div className="p-6 h-[calc(100vh-4rem)] min-h-0 flex flex-col overflow-hidden transition-all animate-fade-in">
-      {isLoading && <ClientLoading />}
+    <>
+      {(isLoading || isTableLoading) && <ClientLoading />}
+      {isProcessing && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20">
+          <ClientLoading />
+        </div>
+      )}
 
-      <div className="mb-4">
-        <CRUDTable<UserListItem>
-          title="Quản lý Users"
-          data={users}
-          columns={columns}
-          pageSize={5}
-          tableMaxHeightClass="max-h-[60vh]"
-          deferToolsApply
-          // Actions
-          onAdd={() => handleOpenModal()}
-          onView={handleOpenDetails}
-          onEdit={handleOpenModal}
-          onDelete={(user) => handleDelete(user)}
-          // Status (giống Product)
-          statusField="isActive"
-          onStatusChange={handleStatusChange}
-          // Search & Filter
-          searchKeys={["name", "email", "phone"]}
-          onSearch={handleSearch}
-          filters={[
-            {
-              key: "roleCode",
-              label: "vai trò",
-              options: ROLE_OPTIONS.map((roleCode) => ({
-                value: roleCode,
-                label: roleCode,
-              })),
-            },
-            {
-              key: "isActive",
-              label: "trạng thái",
-              options: [
-                { value: "true", label: "Hoạt động" },
-                { value: "false", label: "Ngưng hoạt động" },
-              ],
-            },
-          ]}
-        />
-      </div>
+      <CRUDPageTemplate<User>
+        title="Quản lý người dùng"
+        data={users}
+        columns={columns}
+        pageSize={pageSize}
+        totalItems={totalItems}
+        currentPage={page}
+        onPageChange={(page) => fetchUsers(page)}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          fetchUsers(1, size);
+        }}
+        statusField="is_active"
+        onStatusChange={isAdmin ? handleStatusChange : undefined}
+        filters={[
+          {
+            key: "is_active",
+            label: "trạng thái",
+            options: [
+              { value: "true", label: "Hoạt động" },
+              { value: "false", label: "Ngưng hoạt động" }
+            ]
+          },
+          {
+            key: "is_deleted",
+            label: "trạng thái xóa",
+            options: [
+              { value: "false", label: "Còn tồn tại" },
+              { value: "true", label: "Đã xóa" },
+            ]
+          }
+        ]}
+        onAdd={() => handleOpenForm("create")}
+        onView={(item) => handleOpenForm("view", item)}
+        onEdit={(item) => handleOpenForm("edit", item)}
+        onDelete={isAdmin ? handleDeleteClick : undefined}
+        onRestore={isAdmin ? handleRestoreClick : undefined}
+        onRefresh={() => fetchUsers(1)}
+        onSearch={handleSearchUsers}
+        isTableLoading={isTableLoading}
+      />
 
-      {/* Modal for Create/Edit User (use shared Modal) */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title={editingUser ? "Chỉnh sửa User" : "Thêm User mới"}
-        maxWidth="max-w-md"
-      >
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 max-h-[70vh] overflow-y-auto pr-1"
-        >
-          <div>
-            <label
-              htmlFor="user-name"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Tên <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="user-name"
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-              placeholder="Nhập tên người dùng"
-            />
-          </div>
+      <UserForm
+        isOpen={isFormOpen}
+        mode={formMode}
+        initialData={selectedUser || undefined}
+        isLoading={isProcessing}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={handleSubmitUser}
+        setIsLoadingGlobal={setIsProcessing}
+      />
 
-          <div>
-            <label
-              htmlFor="user-email"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Email <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="user-email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-              placeholder="Nhập email"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="user-password"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Mật khẩu {editingUser && "(Để trống nếu không đổi)"}
-              {!editingUser && <span className="text-red-500"> *</span>}
-            </label>
-            <input
-              id="user-password"
-              type="password"
-              required={!editingUser}
-              value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-              placeholder={
-                editingUser
-                  ? "Nhập mật khẩu mới (tùy chọn)"
-                  : "Nhập mật khẩu"
-              }
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="user-phone"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Phone <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="user-phone"
-              type="tel"
-              required
-              value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-              placeholder="Nhập số điện thoại"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="user-role-form"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Vai trò <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="user-role-form"
-              required
-              value={formData.roleCode}
-              onChange={(e) =>
-                setFormData({ ...formData, roleCode: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all cursor-pointer"
-            >
-              <option value="" disabled>
-                -- Chọn vai trò --
-              </option>
-              {ROLE_OPTIONS.map((roleCode) => (
-                <option key={roleCode} value={roleCode}>
-                  {roleCode}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <div className="block text-sm font-medium text-gray-700 mb-2">
-              Avatar
-            </div>
-
-            <ImageUpload
-              folder="users"
-              multiple={false}
-              maxFiles={1}
-              onUploadSuccess={(imageUrl) =>
-                setFormData((prev) => ({ ...prev, avatarUrl: imageUrl }))
-              }
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={handleCloseModal}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
-            >
-              {editingUser ? "Cập nhật" : "Thêm mới"}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Modal for User Details (use shared Modal) */}
-      <Modal
-        isOpen={isDetailOpen && !!detailUser}
-        onClose={handleCloseDetails}
-        title="Chi tiết người dùng"
-        maxWidth="max-w-lg"
-      >
-        {detailUser ? (
-          <div className="space-y-5">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 flex-shrink-0">
-                <div className="h-14 w-14 rounded-lg border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center">
-                  {detailUser.avatarUrl ? (
-                    <img
-                      className="h-14 w-14 object-cover"
-                      src={detailUser.avatarUrl}
-                      alt={detailUser.name}
-                    />
-                  ) : (
-                    <span className="text-gray-700 font-semibold text-lg">
-                      {detailUser.name.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-lg font-semibold text-gray-900 truncate">
-                  {detailUser.name}
-                </div>
-                <div className="text-sm text-gray-600 truncate">
-                  {detailUser.email}
-                </div>
-              </div>
-              <div className="ml-auto">
-                <span
-                  className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                    detailUser.isActive
-                      ? "bg-primary/10 text-primary"
-                      : "bg-gray-100 text-gray-500"
-                  }`}
-                >
-                  {detailUser.isActive ? "Hoạt động" : "Ngưng"}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID
-                </div>
-                <div className="text-sm text-gray-900">{detailUser.id}</div>
-              </div>
-
-              <div>
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Số điện thoại
-                </div>
-                <div className="text-sm text-gray-900">
-                  {detailUser.phone || "—"}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Vai trò
-                </div>
-                <div className="text-sm text-gray-900">
-                  {detailUser.roleCode}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Avatar URL
-                </div>
-                <div className="text-sm text-gray-900 break-all">
-                  {detailUser.avatarUrl || "—"}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ngày tạo
-                </div>
-                <div className="text-sm text-gray-900">
-                  {formatDateTime(detailUser.createdAt)}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Cập nhật lần cuối
-                </div>
-                <div className="text-sm text-gray-900">
-                  {formatDateTime(detailUser.updatedAt)}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={handleEditFromDetails}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
-              >
-                Sửa
-              </button>
-              <button
-                type="button"
-                onClick={handleCloseDetails}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </Modal>
-
-      {/* Modal for Delete confirmation */}
-      <Modal
-        isOpen={isDeleteOpen && !!deletingUser}
-        onClose={handleCloseDelete}
-        title="Xóa người dùng"
-        maxWidth="max-w-md"
-      >
-        {deletingUser ? (
-          <div className="space-y-5">
-            <div className="text-sm text-gray-700">
-              Bạn có chắc chắn muốn xóa người dùng
-              {" "}
-              <span className="font-semibold text-gray-900">{deletingUser.name}</span>
-              {deletingUser.email ? (
-                <span className="text-gray-500"> ({deletingUser.email})</span>
-              ) : null}
-              ?
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={handleCloseDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-600 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {isDeleting ? "Đang xóa..." : "Xóa"}
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </Modal>
-    </div>
+      <ActionConfirmModal
+        isOpen={modalConfig.isOpen}
+        type={modalConfig.type}
+        isLoading={isProcessing}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        onConfirm={handleConfirmAction}
+        message={
+          modalConfig.type === "delete"
+            ? `Bạn có chắc muốn xóa "${modalConfig.user?.name}"?`
+            : `Khôi phục tài khoản cho "${modalConfig.user?.name}"?`
+        }
+      />
+    </>
   );
 };
 

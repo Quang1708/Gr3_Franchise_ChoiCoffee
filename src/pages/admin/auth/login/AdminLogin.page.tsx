@@ -39,7 +39,7 @@ const AdminLoginPage: React.FC = () => {
   } = useForm<AdminAuthSchemaType>({
     resolver: zodResolver(AdminAuthSchema),
     mode: "onChange",
-    defaultValues: { email: "dangkhoaa.0213@gmail.com", password: "12345678" },
+    defaultValues: { email: "group3@gmail.com", password: "123456789" },
   });
 
   const setAuthError = (message: string) => {
@@ -69,9 +69,9 @@ const AdminLoginPage: React.FC = () => {
     if (roleFranchiseId != null) {
       setSelectedFranchiseId(String(roleFranchiseId));
     } else if (primaryRole?.scope === "GLOBAL") {
-      setSelectedFranchiseId("ALL");
+      setSelectedFranchiseId(null);
     } else {
-      setSelectedFranchiseId(undefined);
+      setSelectedFranchiseId(null);
     }
     useAuthStore.getState().login(user, token);
     toastSuccess?.("Đăng nhập thành công!");
@@ -102,7 +102,7 @@ const AdminLoginPage: React.FC = () => {
           Array.isArray(user.roles) && user.roles.length > 1;
 
         if (hasMultipleRoles) {
-          setSelectedFranchiseId(undefined);
+          setSelectedFranchiseId(null);
           setItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED, true);
           useAuthStore.getState().login(user, result.token ?? "SESSION");
           navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_SELECT_CONTEXT, {

@@ -12,6 +12,17 @@ export interface ProductCategoryFranchiseSearchResponse {
   pageInfo: PageInfo;
 }
 
+export interface ProductCategoryFranchiseReorderPayload {
+  category_franchise_id: string;
+  item_id: string;
+  new_position: number;
+}
+
+export interface ProductCategoryFranchiseReorderResponse {
+  success: boolean;
+  data: null;
+}
+
 // Lấy danh sách (search + phân trang)
 export const searchProductCategoryFranchisesService = async (
   payload: ProductCategoryFranchiseSearchInput,
@@ -85,12 +96,10 @@ export const updateProductCategoryFranchiseStatusService = async (
   return res.data;
 };
 
-// Thay đổi thứ tự hiển thị (reorder)
-// payload tùy backend định nghĩa, ví dụ: { items: [{ id, display_order }, ...] }
 export const reorderProductCategoryFranchisesService = async (
-  payload: unknown,
+  payload: ProductCategoryFranchiseReorderPayload,
 ) => {
-  const res = await axiosAdminClient.patch(
+  const res = await axiosAdminClient.put<ProductCategoryFranchiseReorderResponse>(
     "/api/product-category-franchises/reorder",
     payload,
   );

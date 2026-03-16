@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import type { Column } from "@/components/Admin/template/CRUD.template";
-import { CRUDPageTemplate } from "@/components/Admin/template/CRUDPage.template";
+import {
+  CRUDPageTemplate,
+  type Column,
+} from "@/components/Admin/template/CRUDPage.template";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import ClientLoading from "@/components/Client/Client.Loading";
 import { useAuthStore } from "@/stores/auth.store";
@@ -32,14 +34,26 @@ type ProductCategoryFranchiseRow = ProductCategoryFranchise & {
   is_deleted?: boolean;
 };
 
+type ApiErrorLike = {
+  status?: number;
+  message?: string | null;
+  errors?: Array<{
+    field?: string;
+    message?: string;
+  }>;
+};
+
 const ProductCategoryFranchisePage = () => {
   const { user } = useAuthStore();
   const role = user?.roles?.[0]?.role;
   const isAdmin = role === "ADMIN";
 
   const [rows, setRows] = useState<ProductCategoryFranchiseRow[]>([]);
+  const [filteredRows, setFilteredRows] = useState<ProductCategoryFranchiseRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const [formState, setFormState] = useState<{
     isOpen: boolean;
@@ -60,6 +74,30 @@ const ProductCategoryFranchisePage = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+    const nextRows = rows.filter((row) => {
+      const matchesSearch =
+        normalizedSearchTerm.length === 0 ||
+        [row.franchiseName, row.categoryName, row.productName].some((value) =>
+          String(value).toLowerCase().includes(normalizedSearchTerm),
+        );
+
+      if (!matchesSearch) {
+        return false;
+      }
+
+      if (statusFilter === "all") {
+        return true;
+      }
+
+      return String(row.isActive) === statusFilter;
+    });
+
+    setFilteredRows(nextRows);
+  }, [rows, searchTerm, statusFilter]);
 
 const fetchData = async () => {
   try {
@@ -100,14 +138,24 @@ const fetchData = async () => {
       }));
 
       setRows(mappedData);
+      setFilteredRows(mappedData);
     }
   } catch (error) {
     console.error("Lỗi khi lấy dữ liệu:", error);
     setRows([]);
+    setFilteredRows([]);
   } finally {
     setIsLoading(false);
   }
 };
+
+  const handleSearch = (
+    term: string,
+    filters?: Partial<Record<keyof ProductCategoryFranchiseRow, string>>,
+  ) => {
+    setSearchTerm(term);
+    setStatusFilter(String(filters?.isActive ?? "all"));
+  };
 
   const handleOpenForm = (
     mode: "create" | "edit" | "view",
@@ -116,8 +164,57 @@ const fetchData = async () => {
     setFormState({ isOpen: true, mode, item });
   };
 
+  const isDuplicateMapping = (
+    categoryFranchiseId: string,
+    productFranchiseId: string,
+  ) =>
+    rows.some(
+      (row) =>
+        !row.is_deleted &&
+        String(row.category_franchise_id ?? row.categoryFranchiseId ?? "") ===
+          categoryFranchiseId &&
+        String(row.product_franchise_id ?? row.productFranchiseId ?? "") ===
+          productFranchiseId,
+    );
+
+  const getCreateErrorMessage = (error: unknown) => {
+    const apiError = error as ApiErrorLike;
+    const messages = [
+      apiError.message,
+      ...(apiError.errors?.map((item) => item.message) ?? []),
+    ]
+      .filter(Boolean)
+      .map((message) => String(message).toLowerCase());
+
+    const isDuplicateError =
+      apiError.status === 409 ||
+      messages.some(
+        (message) =>
+          message.includes("duplicate") ||
+          message.includes("already exists") ||
+          message.includes("đã tồn tại") ||
+          message.includes("exists"),
+      );
+
+    if (isDuplicateError) {
+      return "Sản phẩm này đã tồn tại trong danh mục chi nhánh đã chọn";
+    }
+
+    return apiError.message || apiError.errors?.[0]?.message || "Thêm mới sản phẩm vào danh mục thất bại";
+  };
+
   const handleSubmitForm = async (data: ProductCategoryFranchiseFormValues) => {
     try {
+      if (
+        isDuplicateMapping(
+          data.category_franchise_id,
+          data.product_franchise_id,
+        )
+      ) {
+        toastError("Sản phẩm này đã tồn tại trong danh mục chi nhánh đã chọn");
+        return;
+      }
+
       setIsProcessing(true);
       const res = await createProductCategoryFranchiseUsecase({
         category_franchise_id: data.category_franchise_id,
@@ -133,7 +230,7 @@ const fetchData = async () => {
       }
     } catch (error) {
       console.error("Lỗi khi thêm:", error);
-      toastError("Thêm mới sản phẩm vào danh mục thất bại");
+      toastError(getCreateErrorMessage(error));
     } finally {
       setIsProcessing(false);
     }
@@ -243,29 +340,19 @@ const fetchData = async () => {
     const targetItem = groupRows[targetIndex];
     if (!targetItem) return;
 
+    const nextPosition = targetIndex + 1;
+
     try {
       setIsProcessing(true);
 
       const res = await reorderProductCategoryFranchisesService({
         category_franchise_id: getCategoryFranchiseId(item),
         item_id: String(item.id),
-        new_position: targetItem.displayOrder,
+        new_position: nextPosition,
       });
 
       if (res?.success) {
-        setRows((prev) =>
-          prev.map((row) => {
-            if (String(row.id) === String(item.id)) {
-              return { ...row, displayOrder: targetItem.displayOrder };
-            }
-
-            if (String(row.id) === String(targetItem.id)) {
-              return { ...row, displayOrder: item.displayOrder };
-            }
-
-            return row;
-          }),
-        );
+        await fetchData();
         toastSuccess("Cập nhật thứ tự hiển thị thành công");
       } else {
         toastError("Cập nhật thứ tự hiển thị thất bại");
@@ -326,22 +413,7 @@ const fetchData = async () => {
         </div>
       ),
     },
-    {
-      header: "Trạng thái",
-      accessor: "isActive",
-      className: "w-[140px]",
-      render: (item) => (
-        <span
-          className={`px-2 py-1 text-xs rounded-full ${
-            item.isActive
-              ? "bg-green-100 text-green-800"
-              : "bg-gray-200 text-gray-500"
-          }`}
-        >
-          {item.isActive ? "Đang hiển thị" : "Ẩn trên menu"}
-        </span>
-      ),
-    },
+    
   ];
 
   if (isLoading) {
@@ -352,10 +424,9 @@ const fetchData = async () => {
     <>
       <CRUDPageTemplate<ProductCategoryFranchiseRow>
         title="Quản lý Menu theo chi nhánh"
-        data={rows}
+        data={filteredRows}
         columns={columns}
         pageSize={10}
-        isAdmin={isAdmin}
         statusField="isActive"
         searchKeys={["franchiseName", "categoryName", "productName"]}
         filters={[
@@ -372,6 +443,7 @@ const fetchData = async () => {
         onDelete={isAdmin ? handleDeleteClick : undefined}
         onRestore={isAdmin ? handleRestoreClick : undefined}
         onRefresh={fetchData}
+        onSearch={handleSearch}
         onAdd={isAdmin ? () => handleOpenForm("create") : undefined}
         onView={(item) => handleOpenForm("view", item)}
       />

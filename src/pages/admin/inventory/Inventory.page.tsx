@@ -19,7 +19,9 @@ import { useAdminContextStore } from "@/stores/adminContext.store";
 import { Save } from "lucide-react";
 import InventoryExcelTools from "./InventoryExcelTools";
 import { inventoryTableSchema } from "./schemas/inventory.schema";
-
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { InventoryTableForm } from "./schemas/inventory.schema";
 type InventoryRow = {
   id: string;
   product_franchise_id: string;
@@ -63,6 +65,20 @@ const InventoryPage = () => {
   const [errorRowIds, setErrorRowIds] = useState<string[]>([]);
 
   const hasSelection = selectedIds.length > 0;
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<InventoryTableForm>({
+    resolver: zodResolver(inventoryTableSchema),
+    defaultValues: {
+      rows: [],
+    },
+  });
   /* ===============================
      LOAD DATA
   =============================== */
@@ -105,18 +121,19 @@ const InventoryPage = () => {
   }, [items, lowOnly]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTableRows(rows);
-  }, [rows]);
+    reset({ rows });
+  }, [rows, reset]);
 
   /* ===============================
      UPDATE SELECTED
   =============================== */
 
   const updateSelected = async () => {
-    const parse = inventoryTableSchema.safeParse({
-      rows: tableRows,
-    });
+    const formValues = watch();
 
+    const parse = inventoryTableSchema.safeParse(formValues);
     if (!parse.success) {
       const issues = parse.error.issues;
 
@@ -233,17 +250,20 @@ const InventoryPage = () => {
 
     {
       header: "Số lượng",
-      render: (row) => (
+      render: (row, index) => (
         <input
           type="number"
-          value={row.quantity}
           disabled={row.isDeleted}
+          {...register(`rows.${index}.quantity`, { valueAsNumber: true })}
+          value={row.quantity}
           onChange={(e) => {
             const val = Number(e.target.value);
 
             setTableRows((prev) =>
               prev.map((r) => (r.id === row.id ? { ...r, quantity: val } : r)),
             );
+
+            setValue(`rows.${index}.quantity`, val);
 
             if (!selectedIds.includes(row.id)) {
               setSelectedIds((prev) => [...prev, row.id]);
@@ -323,7 +343,7 @@ const InventoryPage = () => {
             <button
               onClick={updateSelected}
               disabled={!hasSelection}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm cursor-pointer
               ${
                 hasSelection
                   ? "bg-primary text-white hover:bg-primary/90"
@@ -370,6 +390,7 @@ const InventoryPage = () => {
           data={tableRows}
           columns={columns}
           pageSize={5}
+          tableMaxHeightClass="max-h-[45vh]"
           searchKeys={[]}
           deferToolsApply
           onSearch={async (value) => {

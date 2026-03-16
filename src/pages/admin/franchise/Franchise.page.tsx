@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import {
-  CRUDTable,
+  CRUDPageTemplate,
   type Column,
-} from "../../../components/Admin/template/CRUD.template";
+} from "../../../components/Admin/template/CRUDPage.template";
 
 import type { Franchise } from "./models/franchise.model";
 import { useFranchiseStore } from "./stores/useFranchiseStore";
@@ -40,7 +40,7 @@ const FranchisePage = () => {
     fetchAll();
   }, [fetchAll]);
 
-  const handleSearch = async (keyword: string) => {
+  const handleSearch = async (keyword: string, filters?: any) => {
     if (searchTimeout.current) {
       clearTimeout(searchTimeout.current);
     }
@@ -92,11 +92,12 @@ const FranchisePage = () => {
 
   return (
     <div className="p-6">
-      <CRUDTable<Franchise>
+      <CRUDPageTemplate<Franchise>
         title="Quản lý Chi nhánh"
         data={items}
         columns={columns}
         pageSize={5}
+        isTableLoading={loading}
         statusField="isActive"
         onStatusChange={(item, status) => {
           if (item.isDeleted) return;
@@ -115,8 +116,8 @@ const FranchisePage = () => {
           setSelected(item);
           setRestoreOpen(true);
         }}
-        searchKeys={["name", "code"]}
         onSearch={handleSearch}
+        onRefresh={fetchAll}
       />
 
       <CreateFranchiseModal

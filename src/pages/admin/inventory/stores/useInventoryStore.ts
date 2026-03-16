@@ -5,20 +5,28 @@ import { inventoryService } from "../services/inventory.service";
 import type { Inventory } from "../models/inventory.model";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 
+
 type InventoryState = {
   items: Inventory[];
+  logs: any[];
   loading: boolean;
+  logsLoading: boolean;
 
   fetchAll: () => Promise<void>;
+  searchInventory: (keyword?: string) => Promise<void>;
   create: (data: any) => Promise<void>;
   delete: (id: string) => Promise<void>;
   restore: (id: string) => Promise<void>;
   adjust: (data: any) => Promise<void>;
+  adjustBulk: (data: any) => Promise<void>;
+  fetchLogs: (inventoryId: string) => Promise<void>
 };
 
 export const useInventoryStore = create<InventoryState>((set) => ({
   items: [],
+  logs: [],
   loading: false,
+  logsLoading: false,
 
   fetchAll: async () => {
     try {
@@ -51,7 +59,39 @@ export const useInventoryStore = create<InventoryState>((set) => ({
       set({ items: [], loading: false });
     }
   },
+searchInventory: async (keyword = "") => {
+  try {
+    set({ loading: true });
 
+    const selectedFranchiseId =
+      useAdminContextStore.getState().selectedFranchiseId;
+
+    const franchiseId =
+      selectedFranchiseId && selectedFranchiseId !== "ALL"
+        ? String(selectedFranchiseId)
+        : null;
+
+    const res = await inventoryService.search({
+      searchCondition: {
+        ...(keyword && { keyword }),
+        ...(franchiseId ? { franchise_id: franchiseId } : {}),
+      },
+      pageInfo: {
+        pageNum: 1,
+        pageSize: 100,
+      },
+    });
+
+    set({
+      items: res?.data?.data ?? [],
+      loading: false,
+    });
+  } catch (err) {
+    console.error(err);
+    set({ loading: false });
+  }
+},
+  
   /**
    * CREATE
    * nếu tồn tại → restore
@@ -101,4 +141,31 @@ create: async (data) => {
   adjust: async (data) => {
     await inventoryService.adjust(data);
   },
+
+  adjustBulk: async (data) => {
+  try {
+    await inventoryService.adjustBulk(data);
+    toast.success("Inventory updated");
+  } catch (err) {
+    console.error(err);
+    toast.error("Bulk update failed");
+  }
+},
+
+  fetchLogs: async (inventoryId) => {
+  try {
+    set({ logsLoading: true })
+
+    const res = await inventoryService.getLogs(inventoryId)
+
+    set({
+      logs: res?.data?.data ?? [],
+      logsLoading: false
+    })
+
+  } catch (err) {
+    console.error(err)
+    set({ logs: [], logsLoading: false })
+  }
+}
 }));

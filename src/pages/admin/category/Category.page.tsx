@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  CRUDTable,
+  CRUDPageTemplate,
   type Column,
-} from "../../../components/Admin/template/CRUD.template";
+} from "../../../components/Admin/template/CRUDPage.template";
 import { toast } from "sonner";
 import type { Category } from "../../../models/category.model";
 import ClientLoading from "@/components/Client/Client.Loading";
@@ -27,6 +27,11 @@ import {
   restoreCategoryUsecase,
 } from "./usecases";
 
+const normalizeFilterValue = (value?: string) => {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return "";
+};
 
 const CategoryPage = () => {
   const user = useAuthStore((s) => s.user);
@@ -40,10 +45,20 @@ const CategoryPage = () => {
   const [data, setData] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isTableLoading, setIsTableLoading] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"active" | "deleted">("active");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchFilters, setSearchFilters] = useState<
+    Partial<Record<keyof Category, string>>
+  >({
+    is_active: "all",
+    is_deleted: "false",
+  });
 
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(
     null,
@@ -81,19 +96,33 @@ const CategoryPage = () => {
     },
   ];
 
-  const fetchCategories = useCallback(async () => {
+  const fetchCategories = useCallback(async (
+    pageNum: number,
+    type: "full" | "table",
+    size: number,
+    keyword: string,
+    filters: Partial<Record<keyof Category, string>>,
+  ) => {
     try {
-      setIsLoading(true);
+      if (type === "full") setIsLoading(true);
+      if (type === "table") setIsTableLoading(true);
+
+      const safeFilters = filters ?? {};
+      const isActive = normalizeFilterValue(safeFilters.is_active);
+      const isDeleted = normalizeFilterValue(safeFilters.is_deleted);
       const res = await searchCategoriesUsecase({
-        keyword: "",
-        is_active: "",
-        is_deleted: viewMode === "deleted" ? true : false,
-        pageNum: 1,
-        pageSize: 1000,
+        keyword: keyword ?? "",
+        is_active: isActive,
+        is_deleted: isDeleted,
+        pageNum,
+        pageSize: size,
       });
 
       if (res?.success) {
         setData(res.data || []);
+        setPage(res.pageInfo?.pageNum || pageNum);
+        setPageSize(res.pageInfo?.pageSize || size);
+        setTotalItems(res.pageInfo?.totalItems || 0);
         return;
       }
 
@@ -103,12 +132,14 @@ const CategoryPage = () => {
       toast.error("Không thể tải danh mục.");
     } finally {
       setIsLoading(false);
+      setIsTableLoading(false);
     }
-  }, [viewMode]);
+  }, []);
 
   useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    fetchCategories(1, "full", pageSize, searchTerm, searchFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Create
   const handleCreateOpen = () => {
@@ -131,7 +162,7 @@ const CategoryPage = () => {
       if (res?.success) {
         toast.success("Thêm danh mục thành công");
         setIsCreateOpen(false);
-        await fetchCategories();
+        await fetchCategories(page, "table", pageSize, searchTerm, searchFilters);
         return;
       }
 
@@ -167,7 +198,7 @@ const CategoryPage = () => {
         toast.success("Cập nhật danh mục thành công");
         setIsEditOpen(false);
         setEditingCategory(null);
-        await fetchCategories();
+        await fetchCategories(page, "table", pageSize, searchTerm, searchFilters);
         return;
       }
 
@@ -198,7 +229,7 @@ const CategoryPage = () => {
         toast.success("Đã xóa danh mục thành công");
         setIsDeleteOpen(false);
         setDeletingCategory(null);
-        await fetchCategories();
+        await fetchCategories(page, "table", pageSize, searchTerm, searchFilters);
         return;
       }
 
@@ -229,7 +260,7 @@ const CategoryPage = () => {
         toast.success("Đã khôi phục danh mục thành công");
         setIsRestoreOpen(false);
         setRestoringCategory(null);
-        await fetchCategories();
+        await fetchCategories(page, "table", pageSize, searchTerm, searchFilters);
         return;
       }
 
@@ -264,7 +295,7 @@ const CategoryPage = () => {
         toast.success(
           `Đã cập nhật trạng thái: ${newStatus ? "Hoạt động" : "Ngưng hoạt động"}`,
         );
-        await fetchCategories();
+        await fetchCategories(page, "table", pageSize, searchTerm, searchFilters);
         return;
       }
 
@@ -277,6 +308,32 @@ const CategoryPage = () => {
     }
   };
 
+  const handleSearch = async (
+    term: string,
+    filters?: Partial<Record<keyof Category, string>>,
+  ) => {
+    const nextFilters: Partial<Record<keyof Category, string>> = {
+      is_active: searchFilters.is_active ?? "all",
+      is_deleted: searchFilters.is_deleted ?? "false",
+      ...filters,
+    };
+    setSearchTerm(term);
+    setSearchFilters(nextFilters);
+    await fetchCategories(1, "table", pageSize, term, nextFilters);
+  };
+
+  const handleRefresh = () => {
+    const resetFilters: Partial<Record<keyof Category, string>> = {
+      is_active: "all",
+      is_deleted: "false",
+    };
+    setSearchTerm("");
+    setSearchFilters(resetFilters);
+    fetchCategories(1, "full", pageSize, "", resetFilters);
+  };
+
+  const isDeletedView = searchFilters.is_deleted === "true";
+
   if (isLoading) {
     return <ClientLoading />;
   }
@@ -284,62 +341,48 @@ const CategoryPage = () => {
   return (
     <div className="p-6 h-[calc(100vh-4rem)] min-h-0 flex flex-col overflow-hidden transition-all animate-fade-in">
       {isProcessing && <ClientLoading />}
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          type="button"
-          onClick={() => setViewMode("active")}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
-            viewMode === "active"
-              ? "bg-primary text-white border-primary"
-              : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-          }`}
-        >
-          Đang hoạt động
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode("deleted")}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
-            viewMode === "deleted"
-              ? "bg-red-600 text-white border-red-600"
-              : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-          }`}
-        >
-          Đã xóa
-        </button>
-      </div>
-      <CRUDTable<Category>
+      <CRUDPageTemplate<Category>
         title="Quản lý Danh mục"
         data={data}
         columns={columns}
-        pageSize={5}
+        pageSize={pageSize}
+        totalItems={totalItems}
+        currentPage={page}
+        onPageChange={(nextPage) =>
+          fetchCategories(nextPage, "table", pageSize, searchTerm, searchFilters)
+        }
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          fetchCategories(1, "full", size, searchTerm, searchFilters);
+        }}
         tableMaxHeightClass="max-h-[60vh]"
-        // ✅ RBAC: STAFF không thấy Add/Edit/Delete
-        onAdd={canWrite && viewMode === "active" ? handleCreateOpen : undefined}
-        onEdit={canWrite && viewMode === "active" ? handleEditOpen : undefined}
-        onDelete={canWrite && viewMode === "active" ? handleDeleteOpen : undefined}
+        onAdd={canWrite && !isDeletedView ? handleCreateOpen : undefined}
+        onEdit={canWrite && !isDeletedView ? handleEditOpen : undefined}
+        onDelete={canWrite && !isDeletedView ? handleDeleteOpen : undefined}
         onRestore={canWrite ? handleRestoreOpen : undefined}
-        showRestore={(item) => !!item.is_deleted}
-        // ✅ Status vẫn hiển thị nhưng sẽ disable (nhờ CRUD.template.tsx đã sửa)
-        statusField={viewMode === "active" ? "is_active" : undefined}
-        onStatusChange={
-          canWrite && viewMode === "active" ? handleStatusChange : undefined
-        }
-        searchKeys={["name", "code", "description"]}
-        filters={
-          viewMode === "active"
-            ? [
-                {
-                  key: "is_active",
-                  label: "Trạng thái",
-                  options: [
-                    { value: "true", label: "Hoạt động" },
-                    { value: "false", label: "Ngưng hoạt động" },
-                  ],
-                },
-              ]
-            : []
-        }
+        statusField="is_active"
+        onStatusChange={canWrite ? handleStatusChange : undefined}
+        onSearch={handleSearch}
+        onRefresh={handleRefresh}
+        isTableLoading={isTableLoading}
+        filters={[
+          {
+            key: "is_active",
+            label: "Trạng thái",
+            options: [
+              { value: "true", label: "Hoạt động" },
+              { value: "false", label: "Ngưng hoạt động" },
+            ],
+          },
+          {
+            key: "is_deleted",
+            label: "",
+            options: [
+              { value: "true", label: "Đã xóa" },
+              { value: "false", label: "Chưa xóa" },
+            ],
+          },
+        ]}
       />
 
       {/* ✅ STAFF không render modal write */}

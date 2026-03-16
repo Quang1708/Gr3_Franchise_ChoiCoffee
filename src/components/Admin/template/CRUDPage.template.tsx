@@ -14,7 +14,6 @@ import {
     Check,
     ChevronDown,
     RotateCw,
-    Loader2,
 } from "lucide-react";
 
 // --- Types ---
@@ -160,7 +159,7 @@ const CustomSelect = ({
 };
 
 // --- Main Template ---
-export function CRUDPageTemplate<T extends { id?: string | number }>({
+export function CRUDPageTemplate<T extends { id?: string | any }>({
     title,
     data,
     columns,
@@ -201,7 +200,11 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
     const [filterInput, setFilterInput] = useState<Partial<Record<keyof T, string>>>(() => {
         const initial: Partial<Record<keyof T, string>> = {};
         filters.forEach((f) => {
-            initial[f.key] = "all";
+            if (f.key === "is_deleted") {
+                initial[f.key] = "false";
+            } else {
+                initial[f.key] = "all";
+            }
         });
         return initial;
     });
@@ -286,7 +289,11 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
         setInputValue("");
         const resetFilters: Partial<Record<keyof T, string>> = {};
         filters.forEach((f) => {
-            resetFilters[f.key] = "all";
+            if (f.key === "is_deleted") {
+                resetFilters[f.key] = "false";
+            } else {
+                resetFilters[f.key] = "all";
+            }
         });
         setFilterInput(resetFilters);
         onRefresh?.();
@@ -329,7 +336,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
     const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
     return (
-        <div className="w-full h-full flex flex-col bg-white overflow-hidden font-sans">
+        <div className="w-full h-full flex flex-col justify-between bg-white overflow-hidden font-sans">
             {/* Header */}
             <div className="px-8 py-3 border-b border-gray-200 flex flex-col sm:flex-row sm:flex-nowrap sm:items-center justify-between gap-3">
                 <div>

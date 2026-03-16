@@ -10,9 +10,13 @@ export interface Inventory {
 }
 
 export interface InventoryLog {
-  id: string;
-  inventoryId: string;
-  type: string;
-  quantity: number;
-  createdAt: string;
+  _id: string
+  inventory_id: string
+  product_franchise_id: string
+  change: number
+  type: string
+  reference_type: string
+  reason?: string
+  created_by: string
+  created_at: string
 }

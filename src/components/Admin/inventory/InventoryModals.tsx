@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Modal } from "@/components/UI/Modal";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -6,7 +7,7 @@ import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { axiosAdminClient } from "@/api";
 import { useAdminContextStore } from "@/stores/adminContext.store";
-
+import { useInventoryStore } from "@/pages/admin/inventory/stores/useInventoryStore";
 /* ===============================
 SCHEMA
 ================================ */
@@ -19,9 +20,11 @@ const schema = z.object({
 });
 
 const adjustInventorySchema = z.object({
-  quantity: z.coerce.number().min(0, "Số lượng phải >= 0"),
+  quantity: z.number().min(0, "Số lượng phải >= 0"),
+  alert_threshold: z.number().min(0, "Ngưỡng cảnh báo phải >= 0"),
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const inputClass = (error?: any) =>
   `w-full px-3 py-2 rounded-lg border outline-none transition
    ${error ? "border-red-500 bg-red-50 focus:ring-red-200" : "border-gray-300"}`;
@@ -296,9 +299,10 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
     if (inventory && isOpen) {
       reset({
         quantity: inventory.quantity,
+        alert_threshold: inventory.alert_threshold,
       });
     }
-  }, [inventory, isOpen]);
+  }, [inventory, isOpen, reset]);
 
   const submitHandler = async (data: AdjustInventoryForm) => {
     if (!inventory) return;
@@ -308,7 +312,7 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
     await onSubmit({
       product_franchise_id: inventory.product_franchise_id,
       change,
-      alert_threshold: inventory.alert_threshold,
+      alert_threshold: data.alert_threshold,
       reason: "",
     });
 
@@ -319,6 +323,9 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
   if (!inventory) return null;
 
   const changePreview = newQuantity - inventory.quantity;
+  const newAlert = watch("alert_threshold", inventory?.alert_threshold ?? 0);
+  const alertChanged = newAlert !== inventory.alert_threshold;
+  const quantityChanged = changePreview !== 0;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Điều chỉnh tồn kho">
@@ -333,8 +340,18 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
 
           <input
             type="number"
-            {...register("quantity")}
+            {...register("quantity", { valueAsNumber: true })}
             className={inputClass(errors.quantity)}
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Ngưỡng cảnh báo</label>
+
+          <input
+            type="number"
+            {...register("alert_threshold", { valueAsNumber: true })}
+            className={inputClass(errors.alert_threshold)}
           />
         </div>
 
@@ -357,15 +374,15 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="border px-4 py-2 rounded-lg"
+            className="border px-4 py-2 rounded-lg cursor-pointer"
           >
             Hủy
           </button>
 
           <button
-            disabled={isSubmitting}
+            disabled={isSubmitting || (!alertChanged && !quantityChanged)}
             type="submit"
-            className="bg-primary text-white px-4 py-2 rounded-lg"
+            className="bg-primary text-white px-4 py-2 rounded-lg disabled:bg-gray-400 cursor-pointer disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Đang cập nhật..." : "Cập nhật"}
           </button>
@@ -424,6 +441,102 @@ export const DeleteInventoryModal: React.FC<DeleteInventoryModalProps> = ({
             Xóa
           </button>
         </div>
+      </div>
+    </Modal>
+  );
+};
+
+interface InventoryLogModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  inventoryId: string | null;
+}
+
+export const InventoryLogModal: React.FC<InventoryLogModalProps> = ({
+  isOpen,
+  onClose,
+  inventoryId,
+}) => {
+  const { logs, fetchLogs, logsLoading } = useInventoryStore();
+
+  useEffect(() => {
+    if (!inventoryId) return;
+
+    fetchLogs(inventoryId);
+  }, [inventoryId, fetchLogs]);
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Inventory Logs" size="xl">
+      <div className="max-h-[500px] overflow-auto">
+        {logsLoading ? (
+          <div className="text-center py-10 text-gray-500">
+            Loading inventory logs...
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="text-center py-10 text-gray-500">
+            Không có lịch sử thay đổi
+          </div>
+        ) : (
+          <table className="w-full text-sm border rounded-lg overflow-hidden">
+            <thead className="bg-gray-100 text-gray-700">
+              <tr>
+                <th className="px-4 py-3 text-left">Time</th>
+                <th className="px-4 py-3 text-left">Type</th>
+                <th className="px-4 py-3 text-left">Change</th>
+                <th className="px-4 py-3 text-left">Reason</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {logs.map((log: any, i) => {
+                const type =
+                  log.change > 0
+                    ? "IMPORT"
+                    : log.change < 0
+                      ? "EXPORT"
+                      : "UPDATE";
+
+                return (
+                  <tr key={i} className="border-t hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      {new Date(log.created_at).toLocaleString()}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <span
+                        className={`px-2 py-1 text-xs rounded font-medium
+                        ${
+                          type === "IMPORT"
+                            ? "bg-green-100 text-green-700"
+                            : type === "EXPORT"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-blue-100 text-blue-700"
+                        }`}
+                      >
+                        {type}
+                      </span>
+                    </td>
+
+                    <td
+                      className={`px-4 py-3 font-semibold
+                      ${
+                        log.change > 0
+                          ? "text-green-600"
+                          : log.change < 0
+                            ? "text-red-600"
+                            : ""
+                      }`}
+                    >
+                      {log.change > 0 ? `+${log.change}` : log.change}
+                    </td>
+
+                    <td className="px-4 py-3">{log.reason || "-"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </Modal>
   );

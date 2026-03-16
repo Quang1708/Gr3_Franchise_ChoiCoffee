@@ -1,7 +1,10 @@
 import { productApi } from "@/api";
-import type { SearchProductRequest } from "../models";
+import type { SearchProductRequest, SearchProductResponse } from "../models";
 
-export const searchProductsService = async (payload: SearchProductRequest) => {
+export const searchProductsService = async (
+  payload: SearchProductRequest
+): Promise<SearchProductResponse> => {
   const res = await productApi.searchByRequest(payload);
-  return res.data;
+  // res is already SearchProductResponse (productApi already unwrapped res.data)
+  return res;
 };

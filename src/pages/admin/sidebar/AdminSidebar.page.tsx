@@ -47,8 +47,6 @@ const menuItems: MenuItem[] = [
   { icon: <User size={20} />, label: "Users", path: "user" },
   { icon: <Package size={20} />, label: "Category Franchise", path: "category-franchise" },
   { icon: <User size={20} />, label: "Shift", path: "shift" },
-  
-  { icon: <Package size={20} />, label: "Category (Franchise)", path: "category-franchise" },
 ];
 
 type AdminSidebarProps = {

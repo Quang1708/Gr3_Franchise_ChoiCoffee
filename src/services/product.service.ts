@@ -112,17 +112,6 @@ const toSafeNumber = (value: unknown, fallback = 0): number => {
   return fallback;
 };
 
-const toSafeId = (value: unknown): ProductId => {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return "";
-    if (/^\d+$/.test(trimmed)) return Number(trimmed);
-    return trimmed;
-  }
-  return "";
-};
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
 
@@ -191,32 +180,36 @@ function mapProductRecord(raw: unknown): ProductListItem {
     product.SKU ?? product.sku ?? product.product_sku ?? product.productSku;
 
   const rawImg =
-    (product.img as string | undefined) ??
-    (product.image as string | undefined) ??
     (product.image_url as string | undefined) ??
     (product.img_url as string | undefined) ??
-    undefined;
+    (product.img as string | undefined) ??
+    (product.image as string | undefined) ??
+    "";
+
+  const rawImages = Array.isArray(product.images_url) ? product.images_url : (rawImg ? [rawImg] : []);
 
   return {
-    id: toSafeId(rawId),
+    id: toSafeString(rawId),
     SKU: toSafeString(rawSku),
     name: toSafeString(product.name),
-    description: toSafeString(product.description, "") || undefined,
-    content: toSafeString(product.content, "") || undefined,
-    img: rawImg,
-    minPrice: toSafeNumber(product.minPrice ?? product.min_price, 0),
-    maxPrice: toSafeNumber(product.maxPrice ?? product.max_price, 0),
-    isActive: toSafeBoolean(product.isActive ?? product.is_active, true),
-    isDeleted: toSafeBoolean(product.isDeleted ?? product.is_deleted, false),
-    createdAt: toSafeString(
-      product.createdAt ?? product.created_at,
+    description: toSafeString(product.description, ""),
+    content: toSafeString(product.content, ""),
+    image_url: rawImg,
+    images_url: rawImages as string[],
+    min_price: toSafeNumber(product.min_price ?? product.minPrice, 0),
+    max_price: toSafeNumber(product.max_price ?? product.maxPrice, 0),
+    is_active: toSafeBoolean(product.is_active ?? product.isActive, false),
+    is_deleted: toSafeBoolean(product.is_deleted ?? product.isDeleted, false),
+    is_have_topping: toSafeBoolean(product.is_have_topping, false),
+    created_at: toSafeString(
+      product.created_at ?? product.createdAt,
       new Date().toISOString(),
     ),
-    updatedAt: toSafeString(
-      product.updatedAt ?? product.updated_at,
+    updated_at: toSafeString(
+      product.updated_at ?? product.updatedAt,
       new Date().toISOString(),
     ),
-  };
+  } as ProductListItem;
 }
 
 function extractArray(payload: unknown): unknown[] {

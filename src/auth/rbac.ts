@@ -12,7 +12,7 @@ export type CmsUser = {
   roles?: {
   role?: string;
   scope?: "GLOBAL" | "FRANCHISE";
-  franchise_id?: string | number | null;
+  franchise_id?: string | null;
   franchise_name?: string | null;
   }[];
 };
@@ -48,7 +48,7 @@ export const getAccessibleFranchises = (
 
 export function getEffectivePermissions(
   user: CmsUser | null,
-  franchiseId?: string | number,
+  franchiseId?: string | null,
 ): PermissionCode[] {
   if (!user?.roles?.length) return [];
 
@@ -81,7 +81,7 @@ export function getEffectivePermissions(
 export function can(
   user: CmsUser | null,
   perm: PermissionCode,
-  franchiseId?: string | number,
+  franchiseId?: string | null,
 ) {
   return getEffectivePermissions(user, franchiseId).includes(perm);
 }

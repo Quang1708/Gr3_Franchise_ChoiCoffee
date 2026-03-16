@@ -9,7 +9,7 @@ export type AdminRoleLike = {
   role?: Role["code"];
   role_code?: Role["code"];
   scope?: Role["scope"];
-  franchise_id?: string | number | null;
+  franchise_id?: string | null;
   franchise_name?: string | null;
 };
 
@@ -42,7 +42,7 @@ export type AdminProfileResponse = {
         active_context?: {
           role: Role["code"];
           scope: Role["scope"];
-          franchiseId: string | number | null;
+          franchiseId: string | null;
         };
       }
     | AdminLoginUserProfile

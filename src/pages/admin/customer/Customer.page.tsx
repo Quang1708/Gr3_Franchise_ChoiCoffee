@@ -2,11 +2,10 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useAdminContextStore } from "@/stores";
 
-import { CRUDPageTemplate } from "@/components/Admin/template/CRUDPage.template";
+import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import ClientLoading from "@/components/Client/Client.Loading";
 
-import { type Column } from "@/components/Admin/template/CRUD.template";
 import type { Customer } from "@/models/customer.model";
 import type { RequestCustomer } from "./models/requestCustomer.model";
 import { CustomerForm, type CustomerFormValues } from "./components/CustomerForm";
@@ -59,7 +58,7 @@ const CustomerPage = () => {
         searchCondition: {
           keyword: "",
           is_active: "",
-          is_deleted: ""
+          is_deleted: false
         },
         pageInfo: {
           pageNum,
@@ -171,7 +170,7 @@ const CustomerPage = () => {
       const serverErrors = errData?.errors;
 
       if (Array.isArray(serverErrors)) {
-        serverErrors.forEach((e: any) => {
+        serverErrors.forEach((e) => {
           setError(e.field as keyof CustomerFormValues, { message: e.message });
           toast.error(e.message);
         });
@@ -193,7 +192,7 @@ const CustomerPage = () => {
         );
         toast.success("Cập nhật trạng thái thành công");
       }
-    } catch (error) {
+    } catch {
       toast.error("Lỗi cập nhật trạng thái");
     }
   };
@@ -216,7 +215,7 @@ const CustomerPage = () => {
         toast.success(type === "delete" ? "Đã xóa khách hàng" : "Đã khôi phục khách hàng");
         setModalConfig((prev) => ({ ...prev, isOpen: false }));
       }
-    } catch (error) {
+    } catch {
       toast.error("Thao tác thất bại");
     } finally {
       setIsProcessing(false);

@@ -1,12 +1,13 @@
 export interface User {
-  id: number;
+  id: string | number;
   email: string;
-  passwordHash: string;
   name: string;
   phone: string;
-  avatarUrl?: string;
-  isActive: boolean;
-  isDeleted: boolean;
-  createdAt: string;
-  updatedAt: string;
+  avatar_url?: string;
+  roleCode?: string;
+  is_active: boolean;
+  is_deleted: boolean;
+  is_verified?: boolean;
+  created_at: string;
+  updated_at: string;
 }

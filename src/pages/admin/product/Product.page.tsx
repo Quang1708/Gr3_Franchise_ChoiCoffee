@@ -55,7 +55,7 @@ const ProductPage = () => {
           searchCondition: {
             keyword: "",
             is_active: "",
-            is_deleted: "",
+            is_deleted: "false",
           },
           pageInfo: {
             pageNum,

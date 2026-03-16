@@ -9,6 +9,7 @@ interface FormSelectProps {
   error?: FieldError;
   placeholder?: string;
   className?: string;
+  onChange?: (value: string) => void;
 }
 
 const FormSelect: React.FC<FormSelectProps> = ({
@@ -17,6 +18,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
   register,
   error,
   placeholder = "Chọn...",
+  onChange,
   className,
 }) => {
   const [value, setValue] = useState("");
@@ -51,6 +53,9 @@ const FormSelect: React.FC<FormSelectProps> = ({
         value: val,
       },
     });
+
+    
+    onChange?.(val);
 
     setIsOpen(false);
     setSearch("");

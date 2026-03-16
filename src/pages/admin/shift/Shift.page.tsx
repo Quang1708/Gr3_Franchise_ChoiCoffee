@@ -72,23 +72,23 @@ const ShiftPage = () => {
     }, [franchiseId, pageSize]);
 
     useEffect(() => {
-  const loadFranchises = async () => {
-    const data = await getAllFranchises();
-    if (data) setFranchises(data);
-  };
+      const loadFranchises = async () => {
+        const data = await getAllFranchises();
+        if (data) setFranchises(data);
+      };
 
-  void loadFranchises();
-}, []);
+      void loadFranchises();
+    }, []);
 
-const franchiseMap = useMemo(() => {
-  const map: Record<string, string> = {};
+    const franchiseMap = useMemo(() => {
+      const map: Record<string, string> = {};
 
-  franchises.forEach((f) => {
-    map[f.value] = f.name;
-  });
+      franchises.forEach((f) => {
+        map[f.value] = f.name;
+      });
 
-  return map;
-}, [franchises]);
+      return map;
+    }, [franchises]);
 
     useEffect(() => {
         void fetchShifts();

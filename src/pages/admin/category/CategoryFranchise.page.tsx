@@ -17,7 +17,10 @@ import { updateStatusCategoryFranchsie } from "./services/categoryFranchise06.se
 import { restoreCategoryFranchise } from "./services/categoryFranchise05.service";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import { deleteCategoryFranchise } from "./services/categoryFranchise04.service";
-import { is } from "zod/v4/locales";
+import FormSelect from "@/components/Admin/Form/FormSelect";
+import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";
+import type { FieldError } from "node_modules/react-hook-form/dist/types/errors";
+import { useForm} from "react-hook-form";
 
 
 const CategoryPage = () => {
@@ -50,8 +53,11 @@ const CategoryPage = () => {
   const [restoringCategory, setRestoringCategory] = useState<CategoryItem | null>(
     null,
   );
+   const {register, watch, formState: { errors }, } = useForm();
   const [isRestoreOpen, setIsRestoreOpen] = useState(false);
   const editRef = useRef<EditCategoryFranchiseRef>(null);
+  const [franchises, setFranchises] = useState<any>();
+  const franchiseIdSelected = watch("franchise_id");
   // Extract fetch function để có thể gọi lại sau khi create và phân trang
   const fetchCategoryFranchise = useCallback(async (
     pageNum = 1,
@@ -64,7 +70,7 @@ const CategoryPage = () => {
 
       const response = await getCategoryFranchise({
         searchCondition: {
-          franchise_id: franchiseId || "",
+          franchise_id: franchiseId || franchiseIdSelected  || "",
           is_deleted: false // Mặc định chỉ lấy những mục chưa bị xóa, trừ khi filter có is_deleted
         },
         pageInfo: {
@@ -88,10 +94,22 @@ const CategoryPage = () => {
       setIsTableLoading(false);
     }
   }, [franchiseId, pageSize]);
+
   useEffect(() => {
-    fetchCategoryFranchise(1, "full");
-  
-  }, [fetchCategoryFranchise]);
+      const loadFranchises = async () => {
+        try{
+            setIsLoading(true);
+           const data = await getAllFranchises();
+        if (data) setFranchises(data);
+        }catch(error) {
+          console.error("Error fetching franchises:", error);
+        }
+      };
+
+      void loadFranchises();
+    }, []);
+
+   
 
   // Search
   const handleSearchCategoryFranchise = async (searchTerm: string, filter: any) => {
@@ -99,7 +117,7 @@ const CategoryPage = () => {
       setIsTableLoading(true);
       const response = await getCategoryFranchise({
         searchCondition: {
-          franchise_id: franchiseId || "",
+          franchise_id: franchiseId || franchiseIdSelected  || "",
           category_id: searchTerm || "",
           is_active: filter?.is_active  === "true"
             ? true
@@ -234,6 +252,11 @@ const CategoryPage = () => {
     setIsViewOpen(true);
   };
 
+  const franchiseOptions = franchises?.map((f: any) => ({
+  label: f.name,
+  value: f.value,
+})) || [];
+
   if (isLoading || isTableLoading) {
     return (
         <ClientLoading/>
@@ -264,9 +287,13 @@ const CategoryPage = () => {
     }
   };
 
+    
+
+
   return (
     < >       
       <CRUDPageTemplate<CategoryItem>
+        
         title="Quản lý Danh mục"
         data={categoryFranchiseList}
         columns={columns}
@@ -294,6 +321,25 @@ const CategoryPage = () => {
         onRefresh={() => fetchCategoryFranchise(1, "full")}
         onRestore={canWrite ? handleRestore : undefined}
         isTableLoading={isTableLoading}
+        searchContent={
+          <div className="flex gap-3 w-full">
+            <FormSelect
+              label=""
+              options={franchiseOptions}
+              register={register("franchise_id")}
+              error={errors.franchise_id as FieldError}
+              placeholder="Chọn chi nhánh"
+              // onChange={(val) => setSelectedFranchiseId(val)}
+            />
+            {/* <FormSelect
+              label=""
+              options={categoryOptions}
+              register={register("category_id")}
+              error={errors.category_id as FieldError}
+              placeholder="Chọn danh mục"
+            /> */}
+          </div>
+        }
         filters={[
           {
             key: "is_active",

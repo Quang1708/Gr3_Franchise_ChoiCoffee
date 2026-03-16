@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Modal } from "@/components/UI/Modal";
 import type { Category } from "@/models/category.model";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, RotateCcw } from "lucide-react";
 
 // --- Schema ---
 const categorySchema = z.object({
@@ -161,18 +161,19 @@ interface CreateCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CategoryFormData) => void;
+  isLoading?: boolean;
 }
 
 export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  isLoading,
 }) => {
   const handleSubmit = (data: CategoryFormData) => {
     // Simulate API call
     console.log("Creating:", data);
     onSubmit(data);
-    onClose();
   };
 
   return (
@@ -182,6 +183,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
         onCancel={onClose}
         submitLabel="Thêm mới"
         hideStatus // Hide status field for Create modal
+        isLoading={isLoading}
       />
     </Modal>
   );
@@ -192,6 +194,7 @@ interface EditCategoryModalProps {
   onClose: () => void;
   category: Category | null;
   onSubmit: (data: CategoryFormData) => void;
+  isLoading?: boolean;
 }
 
 export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
@@ -199,6 +202,7 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
   onClose,
   category,
   onSubmit,
+  isLoading,
 }) => {
   if (!category) return null;
 
@@ -206,7 +210,6 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
     // Simulate API call
     console.log("Updating:", data);
     onSubmit(data);
-    onClose();
   };
 
   return (
@@ -216,11 +219,12 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
           code: category.code,
           name: category.name,
           description: category.description,
-          is_active: category.isActive,
+          is_active: category.is_active,
         }}
         onSubmit={handleSubmit}
         onCancel={onClose}
         submitLabel="Lưu thay đổi"
+        isLoading={isLoading}
       />
     </Modal>
   );
@@ -276,6 +280,63 @@ export const DeleteCategoryModal: React.FC<DeleteCategoryModalProps> = ({
             className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 cursor-pointer"
           >
             Xóa danh mục
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+interface RestoreCategoryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  category: Category | null;
+  onConfirm: () => void;
+  isLoading?: boolean;
+}
+
+export const RestoreCategoryModal: React.FC<RestoreCategoryModalProps> = ({
+  isOpen,
+  onClose,
+  category,
+  onConfirm,
+  isLoading,
+}) => {
+  if (!category) return null;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Xác nhận khôi phục"
+      maxWidth="max-w-sm"
+    >
+      <div className="flex flex-col items-center text-center p-2">
+        <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+          <RotateCcw className="w-6 h-6 text-emerald-600" />
+        </div>
+        <h4 className="text-gray-900 font-medium text-lg mb-2">
+          Khôi phục danh mục?
+        </h4>
+        <p className="text-sm text-gray-600 mb-6">
+          Danh mục <span className="font-semibold">{category.name}</span> sẽ
+          được khôi phục và hiển thị lại trong hệ thống.
+        </p>
+        <div className="flex justify-center gap-3 w-full">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
+            type="button"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+          >
+            Khôi phục
           </button>
         </div>
       </div>

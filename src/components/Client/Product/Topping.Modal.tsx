@@ -219,8 +219,8 @@ const ToppingModal = ({
               </div>
             </div>
           )}
-
-          <div>
+          {product.is_have_topping && (
+            <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 {/* <div className="w-7 h-7 rounded-lg bg-linear-to-br from-pink-400 to-rose-500 flex items-center justify-center shadow-md">
@@ -340,6 +340,8 @@ const ToppingModal = ({
               })}
             </div>
           </div>
+          )}
+          
         </div>
         <div className="shrink-0 border-t border-gray-200 dark:border-white/10 bg-white dark:bg-charcoal">
           

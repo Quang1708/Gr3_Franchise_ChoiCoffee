@@ -64,6 +64,7 @@ const CategoryFranchiseCreateModal = ( { isOpen, onClose, onSuccess, franchiseId
         const response = await getCategoryFranchise({
           searchCondition: {
             franchise_id: targetFranchiseId,
+            
           },
           pageInfo: {
             pageNum: 1,

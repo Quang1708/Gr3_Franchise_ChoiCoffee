@@ -88,6 +88,19 @@ const ClientHeader = () => {
     fetchFranchise();
   }, []);
 
+  useEffect(() => {
+    const savedFranchise = localStorage.getItem("selectedFranchise");
+    if (!savedFranchise && franchises.length > 0) {
+      const firstFranchiseId = franchises[0].id;
+      setSelectedFranchise(firstFranchiseId);
+      window.dispatchEvent(
+        new CustomEvent("franchiseChanged", {
+          detail: { franchiseId: firstFranchiseId },
+        }),
+      );
+    }
+  }, [franchises]);
+
   const handleClickOutside = (event: MouseEvent) => {
     if (
       franchiseDropdownRef.current &&

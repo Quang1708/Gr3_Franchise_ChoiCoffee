@@ -17,6 +17,7 @@ import { updateStatusCategoryFranchsie } from "./services/categoryFranchise06.se
 import { restoreCategoryFranchise } from "./services/categoryFranchise05.service";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import { deleteCategoryFranchise } from "./services/categoryFranchise04.service";
+import { is } from "zod/v4/locales";
 
 
 const CategoryPage = () => {
@@ -64,6 +65,7 @@ const CategoryPage = () => {
       const response = await getCategoryFranchise({
         searchCondition: {
           franchise_id: franchiseId || "",
+          is_deleted: false // Mặc định chỉ lấy những mục chưa bị xóa, trừ khi filter có is_deleted
         },
         pageInfo: {
           pageNum,
@@ -92,7 +94,6 @@ const CategoryPage = () => {
   }, [fetchCategoryFranchise]);
 
   // Search
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSearchCategoryFranchise = async (searchTerm: string, filter: any) => {
     try{
       setIsTableLoading(true);
@@ -233,7 +234,7 @@ const CategoryPage = () => {
     setIsViewOpen(true);
   };
 
-  if (isLoading) {
+  if (isLoading || isTableLoading) {
     return (
         <ClientLoading/>
     );
@@ -266,6 +267,7 @@ const CategoryPage = () => {
   return (
     < >       
       <CRUDPageTemplate<CategoryItem>
+        
         title="Quản lý Danh mục"
         data={categoryFranchiseList}
         columns={columns}

@@ -12,20 +12,29 @@ const ProductCard = ({ item }: ProductCardProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
-  const needsModal = item.is_have_topping || item.sizes.length >= 2;
-
-  const handleAddToCart = (product: Product) => {    
-    toast.success(`${product.name} đã được thêm vào giỏ hàng!`);
-    setIsModalOpen(false); 
+  const handleAddToCart = (
+    product: Product,
+    selectedSize: any,
+    selectedToppings: any,
+    quantity: any
+  ) => {
+    console.log(
+      product,
+      selectedSize,
+      selectedToppings,
+      quantity
+    );
+    toast.success(
+      `${quantity} ${product.name} (${
+        selectedSize.size
+      }) đã được thêm vào giỏ hàng!`
+    );
+    setIsModalOpen(false);
   };
 
   const handleCartButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (needsModal) {
-      setIsModalOpen(true);
-    } else {
-      handleAddToCart(item);
-    }
+    setIsModalOpen(true);
   };
 
   return (

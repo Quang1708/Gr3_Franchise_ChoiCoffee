@@ -7,7 +7,7 @@ import {
   removeItemInSessionStorage,
   setItemInSessionStorage,
 } from "../../../utils/sessionStorage.util";
-import { verifyToken } from "./login/services/adminAuth.service";
+import { verifyToken } from "@/pages/admin/auth/login/services/auth08.service";
 
 type VerifyStatus = "idle" | "loading" | "success" | "error";
 type VerifyType = "verify" | "reset";

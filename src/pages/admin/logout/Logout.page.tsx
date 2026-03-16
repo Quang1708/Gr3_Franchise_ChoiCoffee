@@ -1,59 +1,48 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-import ROUTER_URL from "@/routes/router.const";
-
-import { clearAdminAuth } from "@/utils/localStorage.util";
-import { removeItemInSessionStorage } from "@/utils/sessionStorage.util";
-
-import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
-
+import ROUTER_URL from "../../../routes/router.const";
 import ClientLoading from "@/components/Client/Client.Loading";
-
-import { logoutApi } from "./services/Auth07.service";
-
+import { logout as logoutApi } from "@/pages/admin/auth/login/services/auth07.service";
 import { useAuthStore } from "@/stores/auth.store";
-
-import { toast } from "react-toastify";
+import { removeItemInSessionStorage } from "../../../utils/sessionStorage.util";
+import { SESSION_STORAGE } from "../../../consts/sessionstorage.const";
 
 const LogoutPage = () => {
   const navigate = useNavigate();
-
-  const logoutStore = useAuthStore((s) => s.logout);
+  const logout = useAuthStore((s) => s.logout);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const doLogout = async () => {
+    let isActive = true;
+
+    const handleLogout = async () => {
+      setIsLoading(true);
       try {
         await logoutApi();
-
-        toast.success("Đăng xuất thành công");
-      } catch (err) {
-        console.error("Logout error:", err);
       } finally {
-        /**
-         * clear local storage
-         */
-        clearAdminAuth();
+        if (!isActive) return;
+        logout();
         removeItemInSessionStorage(SESSION_STORAGE.RESET_TOKEN);
-
-        /**
-         * reset zustand auth store
-         */
-        logoutStore();
-
-        /**
-         * redirect login
-         */
-        navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, {
-          replace: true,
-        });
+        setIsLoading(false);
+        navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, { replace: true });
       }
     };
 
-    doLogout();
-  }, [navigate, logoutStore]);
+    handleLogout();
 
-  return <ClientLoading />;
+    return () => {
+      isActive = false;
+    };
+  }, [logout, navigate]);
+
+  return (
+    <div className="p-6">
+      {isLoading && <ClientLoading />}
+      <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+        <p className="text-gray-600">Logging out...</p>
+      </div>
+    </div>
+  );
 };
 
 export default LogoutPage;

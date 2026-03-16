@@ -9,8 +9,12 @@ export const PERM = {
   PRODUCT_READ: "product.read",
   PRODUCT_WRITE: "product.write",
 
+  PRODUCT_CATEGORY_READ: "product_category.read",
+
   CATEGORY_READ: "category.read",
   CATEGORY_WRITE: "category.write",
+  CATEGORY_FRANCHISE_READ: "category_franchise.read",
+  CATEGORY_FRANCHISE_WRITE: "category_franchise.write",
 
   // Customer
   CUSTOMER_READ: "customer.read",
@@ -36,6 +40,10 @@ export const PERM = {
   // Users/IAM (admin only)
   USER_READ: "user.read",
   USER_MANAGE: "user.manage",
+
+  // Voucher (admin / manager)
+  VOUCHER_READ: "voucher.read",
+  VOUCHER_WRITE: "voucher.write",
 } as const;
 
 export type PermissionCode = (typeof PERM)[keyof typeof PERM];

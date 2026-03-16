@@ -1,4 +1,5 @@
 import { axiosAdminClient } from "@/api/axios.config";
+import type { SearchProductRequest, SearchProductResponse } from "@/pages/admin/product/models";
 
 const BASE = "/api/products";
 
@@ -115,6 +116,14 @@ export const productApi = {
     return res.data;
   },
 
+  async searchByRequest(payload: SearchProductRequest) {
+    const res = await axiosAdminClient.post<SearchProductResponse>(
+      `${BASE}/search`,
+      payload
+    );
+    return res.data;
+  },
+
   async getById(productId: number | string) {
     const res = await axiosAdminClient.get(`${BASE}/${productId}`);
     return res.data;
@@ -136,7 +145,7 @@ export const productApi = {
   },
 
   async restore(productId: number | string) {
-    const res = await axiosAdminClient.patch(`${BASE}/${productId}/restore`, {});
+    const res = await axiosAdminClient.patch(`${BASE}/${productId}/restore`);
     return res.data;
   },
 };

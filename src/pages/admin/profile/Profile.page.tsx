@@ -2,8 +2,13 @@
 import { useEffect, useState, type SyntheticEvent } from "react";
 import { toast } from "react-toastify";
 import { Mail, Phone, User, Building2, Shield, Loader, Lock } from "lucide-react";
-import { getAdminProfile, changeAdminPassword } from "../auth/login/services/api.profile";
-import type { AdminProfileResponse, AdminUser, AdminRole, ActiveContext } from "../auth/login/services/api.profile";
+import { getAdminProfile } from "../auth/login/services/auth03.service";
+import { changePassword } from "@/pages/admin/auth/login/services/auth06.service";
+import type {
+  AdminLoginUserProfile,
+  AdminProfileResponse,
+  AdminRoleLike,
+} from "../auth/login/models/api.model";
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState<AdminProfileResponse | null>(null);
@@ -55,10 +60,10 @@ const ProfilePage = () => {
 
     try {
       setIsSubmittingPassword(true);
-      const response = await changeAdminPassword({
-        old_password: passwordFormData.old_password,
-        new_password: passwordFormData.new_password,
-      });
+      const response = await changePassword(
+        passwordFormData.old_password,
+        passwordFormData.new_password,
+      );
 
       if (response.success) {
         toast.success("Đổi mật khẩu thành công!");
@@ -119,9 +124,23 @@ const ProfilePage = () => {
     );
   }
 
-  const userData = profile?.data?.user as AdminUser;
-  const roles = profile?.data?.roles as AdminRole[];
-  const activeContext = profile?.data?.active_context as ActiveContext;
+  const profileData = profile?.data ?? null;
+  const userData =
+    (profileData as { user?: AdminLoginUserProfile } | null)?.user ??
+    (profileData as AdminLoginUserProfile | null);
+  const roles =
+    (profileData as { roles?: AdminRoleLike[] } | null)?.roles ??
+    userData?.roles ??
+    [];
+  const activeContext =
+    (profileData as {
+      active_context?: {
+        role?: string;
+        scope?: string;
+        franchiseId?: string | number | null;
+        franchiseid?: string | number | null;
+      };
+    } | null)?.active_context;
 
   if (!userData) {
     return (
@@ -216,7 +235,9 @@ const ProfilePage = () => {
             </div>
             <div className="bg-white rounded-lg p-4">
               <p className="text-sm font-semibold text-gray-600">Franchise ID</p>
-              <p className="text-lg font-mono text-gray-800 text-sm break-all">{activeContext.franchiseid}</p>
+              <p className="text-lg font-mono text-gray-800 text-sm break-all">
+                {activeContext.franchiseId ?? activeContext.franchiseid}
+              </p>
             </div>
           </div>
         </div>
@@ -235,7 +256,7 @@ const ProfilePage = () => {
                 <div className="flex items-start justify-between mb-3">
                   <Shield className="w-5 h-5 text-purple-600 flex-shrink-0" />
                   <span className="text-xs font-semibold px-3 py-1 bg-purple-100 text-purple-800 rounded-full">
-                    {role.role || "N/A"}
+                    {role.role || role.role_code || "N/A"}
                   </span>
                 </div>
                 <p className="text-sm font-semibold text-gray-600">Scope</p>

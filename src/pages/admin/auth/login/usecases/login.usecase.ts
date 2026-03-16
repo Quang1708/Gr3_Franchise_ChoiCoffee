@@ -4,10 +4,11 @@ import type {
   AdminRoleLike,
 } from "../models/api.model";
 import type { AxiosError } from "axios";
-import { getAdminProfile, loginAdmin } from "../services/login.service";
+import { loginAdmin } from "../services/auth01.service";
+import { getAdminProfile } from "../services/auth03.service";
 
 type AdminLoginResult = {
-  ok: boolean;
+  success: boolean;
   user?: AdminLoginUserProfile;
   token?: string;
   message?: string;
@@ -15,11 +16,16 @@ type AdminLoginResult = {
 
 const normalizeRoles = (roles: unknown) =>
   Array.isArray(roles)
-    ? roles.map((r) =>
-        typeof r === "object" && r !== null && "role" in r
-          ? { ...(r as AdminRoleLike), role_code: (r as AdminRoleLike).role }
-          : r,
-      )
+    ? roles.map((r) => {
+        if (typeof r !== "object" || r === null) return r;
+        const roleLike = r as AdminRoleLike;
+        const normalizedRole = roleLike.role ?? roleLike.role_code;
+        return {
+          ...roleLike,
+          role: normalizedRole,
+          role_code: normalizedRole,
+        };
+      })
     : roles;
 
 const buildUser = (data: unknown): AdminLoginUserProfile | null => {
@@ -48,12 +54,12 @@ export const runAdminLogin = async (
     const err = error as AxiosError<{ message?: string }>;
     const message =
       err.response?.data?.message ?? err.message ?? "Dang nhap that bai.";
-    return { ok: false, message };
+    return { success: false, message };
   }
 
   if (result.success && result.data) {
     return {
-      ok: true,
+      success: true,
       user: buildUser(result.data) ?? result.data.user,
       token: result.data.token,
     };
@@ -64,14 +70,14 @@ export const runAdminLogin = async (
     const user = profile.success ? buildUser(profile.data) : null;
 
     if (user) {
-      return { ok: true, user, token: "SESSION" };
+      return { success: true, user, token: "SESSION" };
     }
 
     return {
-      ok: false,
+      success: false,
       message: profile.message ?? result.message ?? "Đăng nhập thất bại.",
     };
   }
 
-  return { ok: false, message: result.message ?? "Đăng nhập thất bại." };
+  return { success: false, message: result.message ?? "Đăng nhập thất bại." };
 };

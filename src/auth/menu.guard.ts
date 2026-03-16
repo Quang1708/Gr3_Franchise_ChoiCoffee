@@ -12,6 +12,7 @@ export type MenuPath =
   | "payment"
   | "voucher"
   | "inventory"
+  | "shift-assignment"
   | "loyalty"
   | "user"
   | "logout"
@@ -45,6 +46,8 @@ export function isMenuVisible(
   if (path === "customer") return can(user, PERM.CUSTOMER_READ, fid);
   if (path === "order") return can(user, PERM.ORDER_READ, fid);
   if (path === "inventory") return can(user, PERM.INVENTORY_READ, fid);
+  if (path === "shift-assignment")
+    return can(user, PERM.SHIFT_ASSIGNMENT_READ, fid);
   if (path === "loyalty") return can(user, PERM.LOYALTY_READ, fid);
 
   return true;

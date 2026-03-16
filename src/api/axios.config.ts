@@ -4,8 +4,8 @@ import { useCustomerAuthStore } from "@/stores/customerAuth.store";
 import { useAuthStore } from "@/stores/auth.store";
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
-// import { getItemInSessionStorage } from "@/utils/sessionStorage.util";
-// import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
+import { getItemInSessionStorage } from "@/utils/sessionStorage.util";
+import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
 
 // Message constants for token expiration
 export const MSG_CONSTANT = {
@@ -46,20 +46,20 @@ axiosClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Check if error response contains CUSTOMER_ACCESS_TOKEN_EXPIRED message
     const errorData = error.response?.data as ApiErrorResponse | undefined;
     const isAccessTokenExpired =
       errorData?.message === MSG_CONSTANT.CUSTOMER_ACCESS_TOKEN_EXPIRED;
 
-    // If access token expired and we haven't retried yet
-    if (isAccessTokenExpired && !originalRequest._retry) {
+    // Chỉ refresh khi gọi customer-auth API (không phải admin API)
+    const isCustomerAuthAPI = originalRequest.url?.includes("/customer-auth");
+
+    if (isAccessTokenExpired && !originalRequest._retry && isCustomerAuthAPI) {
       if (originalRequest.url?.includes("/refresh-token")) {
         useCustomerAuthStore.getState().clearCustomer();
         return Promise.reject(error);
       }
 
       if (isRefreshing) {
-        // If already refreshing, queue this request
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -71,17 +71,13 @@ axiosClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Call refresh token API
         await axiosClient.get("/api/customer-auth/refresh-token");
 
-        // Token refreshed successfully, process queued requests
         processQueue();
         isRefreshing = false;
 
-        // Retry original request
         return axiosClient(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, clear auth (component will handle navigation)
         processQueue(refreshError as AxiosError);
         isRefreshing = false;
         useCustomerAuthStore.getState().clearCustomer();
@@ -100,15 +96,15 @@ export const axiosAdminClient = axios.create({
   withCredentials: true,
 });
 
-// axiosAdminClient.interceptors.request.use((config) => {
-//   const token = getItemInSessionStorage<string>(SESSION_STORAGE.ACCESS_TOKEN);
+axiosAdminClient.interceptors.request.use((config) => {
+  const token = getItemInSessionStorage<string>(SESSION_STORAGE.ACCESS_TOKEN);
 
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
 
-//   return config;
-// });
+  return config;
+});
 // Track if we're currently refreshing admin token
 let isRefreshingAdmin = false;
 // Queue of admin requests waiting for token refresh

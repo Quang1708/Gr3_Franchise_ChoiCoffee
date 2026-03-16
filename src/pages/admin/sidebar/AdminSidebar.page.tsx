@@ -13,6 +13,7 @@ import {
   Boxes,
   Gift,
   User,
+  CalendarCheck,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -38,17 +39,29 @@ const menuItems: MenuItem[] = [
   { icon: <Menu size={20} />, label: "Menu", path: "menu" },
   { icon: <ShoppingBag size={20} />, label: "Products", path: "product" },
   { icon: <Package size={20} />, label: "Categories", path: "category" },
-  { icon: <Package size={20} />, label: "Product Category Franchise", path: "product-category" },
+  {
+    icon: <Package size={20} />,
+    label: "Product Category Franchise",
+    path: "product-category",
+  },
   { icon: <Users size={20} />, label: "Customers", path: "customer" },
   { icon: <ShoppingCart size={20} />, label: "Orders", path: "order" },
   { icon: <CreditCard size={20} />, label: "Payments", path: "payment" },
   { icon: <Ticket size={20} />, label: "Voucher", path: "voucher" },
   { icon: <Boxes size={20} />, label: "Inventory", path: "inventory" },
+  {
+    icon: <CalendarCheck size={20} />,
+    label: "Shift Assignment",
+    path: "shift-assignment",
+  },
   { icon: <Gift size={20} />, label: "Loyalty", path: "loyalty" },
   { icon: <User size={20} />, label: "Users", path: "user" },
-  { icon: <Package size={20} />, label: "Category (Franchise)", path: "category-franchise" },
+  {
+    icon: <Package size={20} />,
+    label: "Category (Franchise)",
+    path: "category-franchise",
+  },
   { icon: <LogOut size={20} />, label: "Logout", path: "logout" },
-  
 ];
 
 type AdminSidebarProps = {

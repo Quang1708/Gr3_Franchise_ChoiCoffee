@@ -10,7 +10,9 @@ import { PERM } from "@/auth/rbac.permissions";
 const DashboardPage = React.lazy(() => import("../../pages/admin/dashboard"));
 const MenuPage = React.lazy(() => import("../../pages/admin/menu"));
 const CategoryPage = React.lazy(() => import("../../pages/admin/category"));
-const CategoryFranchisePage = React.lazy(() => import("../../pages/admin/category/CategoryFranchise.page"));
+const CategoryFranchisePage = React.lazy(
+  () => import("../../pages/admin/category/CategoryFranchise.page"),
+);
 const CustomerPage = React.lazy(() => import("../../pages/admin/customer"));
 const FranchisePage = React.lazy(
   () => import("../../pages/admin/franchise/Franchise.page"),
@@ -21,10 +23,15 @@ const FranchiseDetailPage = React.lazy(
 const InventoryPage = React.lazy(
   () => import("../../pages/admin/inventory/Inventory.page"),
 );
+const ShiftAssignmentPage = React.lazy(
+  () => import("../../pages/admin/shift_assignment"),
+);
 const LoyaltyPage = React.lazy(() => import("../../pages/admin/loyalty"));
 const OrderPage = React.lazy(() => import("../../pages/admin/order"));
 const PaymentPage = React.lazy(() => import("../../pages/admin/payment"));
-const VoucherPage = React.lazy(() => import("../../pages/admin/voucher/Voucher.page"));
+const VoucherPage = React.lazy(
+  () => import("../../pages/admin/voucher/Voucher.page"),
+);
 const ProductPage = React.lazy(() => import("../../pages/admin/product"));
 const ProductCategoryFranchisePage = React.lazy(
   () => import("../../pages/admin/product_category_franchise"),
@@ -67,13 +74,23 @@ const AdminRoutes = (
         <Route element={<RequirePermission perm={PERM.CATEGORY_READ} />}>
           <Route path="category" element={<CategoryPage />} />
         </Route>
-        
-        <Route element={<RequirePermission perm={PERM.PRODUCT_CATEGORY_READ} />}>
-          <Route path="product-category" element={<ProductCategoryFranchisePage />} />
+
+        <Route
+          element={<RequirePermission perm={PERM.PRODUCT_CATEGORY_READ} />}
+        >
+          <Route
+            path="product-category"
+            element={<ProductCategoryFranchisePage />}
+          />
         </Route>
 
-        <Route element={<RequirePermission perm={PERM.CATEGORY_FRANCHISE_READ} />}>
-          <Route path="category-franchise" element={<CategoryFranchisePage />} />
+        <Route
+          element={<RequirePermission perm={PERM.CATEGORY_FRANCHISE_READ} />}
+        >
+          <Route
+            path="category-franchise"
+            element={<CategoryFranchisePage />}
+          />
         </Route>
 
         <Route element={<RequirePermission perm={PERM.CUSTOMER_READ} />}>
@@ -86,6 +103,12 @@ const AdminRoutes = (
 
         <Route element={<RequirePermission perm={PERM.INVENTORY_READ} />}>
           <Route path="inventory" element={<InventoryPage />} />
+        </Route>
+
+        <Route
+          element={<RequirePermission perm={PERM.SHIFT_ASSIGNMENT_READ} />}
+        >
+          <Route path="shift-assignment" element={<ShiftAssignmentPage />} />
         </Route>
 
         <Route element={<RequirePermission perm={PERM.LOYALTY_READ} />}>

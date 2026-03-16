@@ -44,7 +44,6 @@ const menuItems: MenuItem[] = [
   { icon: <Gift size={20} />, label: "Loyalty", path: "loyalty" },
   { icon: <User size={20} />, label: "Users", path: "user" },
   { icon: <Package size={20} />, label: "Category (Franchise)", path: "category-franchise" },
-
 ];
 
 type AdminSidebarProps = {
@@ -56,7 +55,7 @@ const AdminSidebar = ({ collapsed = false, onToggle }: AdminSidebarProps) => {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const franchiseIdStr = useAdminContextStore((s) => s.selectedFranchiseId);
-  const franchiseId = franchiseIdStr ? Number(franchiseIdStr) : null;
+  const franchiseId = franchiseIdStr ?? null;
 
   const visibleItems = menuItems.filter((it) =>
     isMenuVisible(user, franchiseId, it.path),

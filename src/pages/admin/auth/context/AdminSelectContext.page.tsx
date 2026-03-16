@@ -18,11 +18,16 @@ import { switchAdminContext } from "../login/services/auth02.service";
 
 const normalizeRoles = (rolesInput: unknown) =>
   Array.isArray(rolesInput)
-    ? rolesInput.map((r) =>
-        typeof r === "object" && r !== null && "role" in r
-          ? { ...(r as AdminRoleLike), role_code: (r as AdminRoleLike).role }
-          : r,
-      )
+    ? rolesInput.map((r) => {
+        if (typeof r !== "object" || r === null) return r;
+        const roleLike = r as AdminRoleLike;
+        const normalizedRole = roleLike.role ?? roleLike.role_code;
+        return {
+          ...roleLike,
+          role: normalizedRole,
+          role_code: normalizedRole,
+        };
+      })
     : rolesInput;
 
 const getRoleLabel = (role: AdminRoleLike) => {
@@ -152,8 +157,15 @@ const AdminSelectContextPage: React.FC = () => {
         }
       }
 
-      if (selected.franchise_id != null) {
-        setSelectedFranchiseId(String(selected.franchise_id));
+      const roleFranchiseId =
+        selected.franchise_id ??
+        (selected as { franchiseId?: string | number } | undefined)
+          ?.franchiseId;
+
+      if (roleFranchiseId != null) {
+        setSelectedFranchiseId(String(roleFranchiseId));
+      } else if (selected.scope === "GLOBAL") {
+        setSelectedFranchiseId("ALL");
       } else {
         setSelectedFranchiseId(null);
       }

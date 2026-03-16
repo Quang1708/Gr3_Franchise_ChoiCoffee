@@ -16,11 +16,16 @@ type AdminLoginResult = {
 
 const normalizeRoles = (roles: unknown) =>
   Array.isArray(roles)
-    ? roles.map((r) =>
-        typeof r === "object" && r !== null && "role" in r
-          ? { ...(r as AdminRoleLike), role_code: (r as AdminRoleLike).role }
-          : r,
-      )
+    ? roles.map((r) => {
+        if (typeof r !== "object" || r === null) return r;
+        const roleLike = r as AdminRoleLike;
+        const normalizedRole = roleLike.role ?? roleLike.role_code;
+        return {
+          ...roleLike,
+          role: normalizedRole,
+          role_code: normalizedRole,
+        };
+      })
     : roles;
 
 const buildUser = (data: unknown): AdminLoginUserProfile | null => {

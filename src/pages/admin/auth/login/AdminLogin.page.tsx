@@ -39,7 +39,7 @@ const AdminLoginPage: React.FC = () => {
   } = useForm<AdminAuthSchemaType>({
     resolver: zodResolver(AdminAuthSchema),
     mode: "onChange",
-    defaultValues: { email: "dangkhoaa0213@gmail.com", password: "123456789" },
+    defaultValues: { email: "dangkhoaa.0213@gmail.com", password: "12345678" },
   });
 
   const setAuthError = (message: string) => {
@@ -61,8 +61,15 @@ const AdminLoginPage: React.FC = () => {
   };
   const handleLoginSuccess = (user: AdminLoginUserProfile, token: string) => {
     const primaryRole = user.roles?.[0];
-    if (primaryRole?.franchise_id != null) {
-      setSelectedFranchiseId(String(primaryRole.franchise_id));
+    const roleFranchiseId =
+      primaryRole?.franchise_id ??
+      (primaryRole as { franchiseId?: string | number } | undefined)
+        ?.franchiseId;
+
+    if (roleFranchiseId != null) {
+      setSelectedFranchiseId(String(roleFranchiseId));
+    } else if (primaryRole?.scope === "GLOBAL") {
+      setSelectedFranchiseId("ALL");
     } else {
       setSelectedFranchiseId(null);
     }

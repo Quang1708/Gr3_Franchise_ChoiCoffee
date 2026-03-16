@@ -16,7 +16,7 @@ type AdminContextState = {
   franchises: FranchiseOption[];
 
   hydrate: () => void;
-  setSelectedFranchiseId: (id: string | "ALL" | undefined) => void;
+  setSelectedFranchiseId: (id: string | "ALL" | null | undefined) => void;
   setFranchises: (list: FranchiseOption[]) => void;
 };
 

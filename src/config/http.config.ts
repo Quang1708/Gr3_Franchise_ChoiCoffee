@@ -71,6 +71,6 @@ export const API_PATHS = {
   ADMIN: {
     AUTH: "api/auth",
     LOGIN: "api/auth",
-    LOGOUT: "api/auth/logout",
+    LOGOUT: "api/auth/log-out",
   },
 };

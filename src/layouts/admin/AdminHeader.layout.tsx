@@ -1,8 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Store } from "lucide-react";
 import { useAuthStore } from "@/stores/auth.store";
 import { useAdminContextStore } from "@/stores/adminContext.store";
+import ClientLoading from "@/components/Client/Client.Loading";
+import { logout as logoutApi } from "@/pages/admin/auth/login/services/auth07.service";
+import { removeItemInSessionStorage } from "@/utils/sessionStorage.util";
+import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
 
 import ROUTER_URL from "@/routes/router.const";
 import { LOCAL_STORAGE } from "@/consts/localstorage.const";
@@ -21,6 +25,8 @@ const AdminHeader = () => {
   const navigate = useNavigate();
 
   const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const selectedFranchiseId = useAdminContextStore(
     (s) => s.selectedFranchiseId,
@@ -75,8 +81,23 @@ const AdminHeader = () => {
     return `${currentRole.role} (${franchise})`;
   }, [currentRole, user]);
 
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+
+    try {
+      await logoutApi();
+    } finally {
+      logout();
+      removeItemInSessionStorage(SESSION_STORAGE.RESET_TOKEN);
+      setIsLoggingOut(false);
+      navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, { replace: true });
+    }
+  };
+
   return (
     <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-40">
+      {isLoggingOut && <ClientLoading />}
       <div className="h-full px-4 flex items-center justify-between gap-3">
         {/* Franchise Switcher */}
         <div className="flex items-center gap-3 min-w-0">
@@ -101,7 +122,7 @@ const AdminHeader = () => {
                 onClick={() =>
                   navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_SELECT_CONTEXT)
                 }
-                className="h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-800 hover:bg-gray-50"
+                className="h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-800 hover:bg-gray-50 cursor-pointer"
               >
                 Đổi Roles
               </button>
@@ -129,10 +150,11 @@ const AdminHeader = () => {
 
           <button
             type="button"
-            onClick={() => navigate("/admin/logout")}
+            onClick={handleLogout}
+            disabled={isLoggingOut}
             className="inline-flex items-center gap-2 h-9 px-3 rounded-xl
                      border border-gray-200 bg-white text-sm font-medium text-gray-800
-                     hover:bg-gray-50 transition"
+                     hover:bg-gray-50 transition cursor-pointer"
           >
             <LogOut size={16} />
             <span className="hidden md:inline">Đăng xuất</span>

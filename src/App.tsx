@@ -33,7 +33,7 @@ function App() {
         pauseOnHover
         theme="light"
       />
-      <Suspense fallback={<div>Loading...</div>}>
+      <Suspense>
         <Routes>
           {/* Admin Auth */}
           {AdminAuthRoutes}

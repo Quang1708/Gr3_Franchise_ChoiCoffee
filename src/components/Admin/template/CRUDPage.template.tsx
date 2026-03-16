@@ -11,10 +11,9 @@ import {
   Edit,
   Trash2,
   Eye,
-  Check,
-  ChevronDown,
   RotateCw,
 } from "lucide-react";
+import CustomSelect from "../filters/CustomSelect";
 
 // --- Types ---
 export interface Column<T> {
@@ -49,6 +48,7 @@ export interface CRUDPageTemplateProps<T> {
   onPageSizeChange?: (size: number) => void;
 
   tableMaxHeightClass?: string;
+
   onAdd?: () => void;
   onView?: (item: T) => void;
   onEdit?: (item: T) => void;
@@ -59,6 +59,7 @@ export interface CRUDPageTemplateProps<T> {
 
   searchKeys?: (keyof T)[];
   searchRight?: React.ReactNode;
+  searchContent?: React.ReactNode;
   filters?: FilterConfig<T>[];
   onRefresh?: () => void;
 
@@ -95,91 +96,8 @@ const ToggleSwitch = ({
   </button>
 );
 
-interface CustomSelectProps {
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  placeholder?: string;
-  icon?: React.ReactNode;
-  className?: string;
-  position?: "top" | "bottom";
-}
-
-const CustomSelect = ({
-  value,
-  onChange,
-  options,
-  placeholder,
-  icon,
-  className,
-  position = "bottom",
-}: CustomSelectProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      )
-        setIsOpen(false);
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const selectedOption = options.find((opt) => opt.value === value);
-
-  return (
-    <div
-      className={`relative ${className || "min-w-[200px]"}`}
-      ref={containerRef}
-    >
-      <div
-        onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 w-full py-2 px-3 text-sm bg-white border rounded-lg cursor-pointer transition-all select-none 
-                    ${isOpen ? "border-primary ring-2 ring-primary/20" : "border-gray-200 hover:border-gray-300"}`}
-      >
-        {icon && <span className="text-gray-500">{icon}</span>}
-        <span
-          className={`flex-1 truncate ${!selectedOption ? "text-gray-500" : "text-gray-700"}`}
-        >
-          {selectedOption ? selectedOption.label : placeholder || "Chọn..."}
-        </span>
-        <ChevronDown
-          className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
-        />
-      </div>
-
-      {isOpen && (
-        <div
-          className={`absolute z-50 w-full bg-white border border-gray-100 rounded-lg shadow-lg max-h-60 overflow-auto mt-1 ${position === "top" ? "bottom-full mb-1" : "mt-1"}`}
-        >
-          <div className="p-1">
-            {options.map((opt) => (
-              <div
-                key={opt.value}
-                onClick={() => {
-                  onChange(opt.value);
-                  setIsOpen(false);
-                }}
-                className={`flex items-center justify-between px-3 py-2 text-sm rounded-md cursor-pointer ${opt.value === value ? "bg-primary/10 text-primary font-medium" : "text-gray-700 hover:bg-gray-50"}`}
-              >
-                <span className="truncate">{opt.label}</span>
-                {opt.value === value && <Check className="w-3.5 h-3.5" />}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 // --- Main Template ---
-export function CRUDPageTemplate<T extends { id?: string | any }>({
+export function CRUDPageTemplate<T extends { id?: string | number }>({
   title,
   data,
   columns,
@@ -204,6 +122,7 @@ export function CRUDPageTemplate<T extends { id?: string | any }>({
 
   filters = [],
   searchRight,
+  searchContent,
 
   onRefresh,
   onSearch,
@@ -388,31 +307,41 @@ export function CRUDPageTemplate<T extends { id?: string | any }>({
           e.preventDefault();
           handleSearch();
         }}
-        className="px-4 md:px-8 py-3 bg-gray-50/50 flex flex-col lg:flex-row gap-3 lg:items-center"
+        className="px-4 md:px-8 py-3 bg-gray-50/50 
+  flex flex-col lg:flex-row gap-3 lg:items-center"
       >
+        {/* SEARCH */}
         <div className="relative w-full lg:flex-1 group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
-          </div>
-          <input
-            type="text"
-            placeholder="Tìm kiếm..."
-            className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-white
-                            text-sm text-gray-900 placeholder-gray-400
-                            focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
-                            transition-all hover:border-gray-300"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault(); // tránh reload
-                handleSearch();
-              }
-            }}
-          />
+          {searchContent ? (
+            <div className="w-full">{searchContent}</div>
+          ) : (
+            <>
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
+              </div>
+
+              <input
+                type="text"
+                placeholder="Tìm kiếm..."
+                className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-white
+          text-sm text-gray-900 placeholder-gray-400
+          focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
+          transition-all hover:border-gray-300"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSearch();
+                  }
+                }}
+              />
+            </>
+          )}
         </div>
 
-        <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+        {/* FILTERS */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
           {filters.map((filter) => (
             <CustomSelect
               key={String(filter.key)}
@@ -428,24 +357,26 @@ export function CRUDPageTemplate<T extends { id?: string | any }>({
                 ...filter.options,
               ]}
               icon={<Filter className="w-4 h-4" />}
+              className="w-full sm:min-w-[180px]"
             />
           ))}
         </div>
 
-        <div className="flex gap-2 w-full lg:w-auto">
+        {/* ACTION BUTTONS */}
+        <div className="flex gap-2 w-full sm:w-auto">
           <button
             type="submit"
-            onClick={handleSearch}
-            title="Tìm kiếm khách hàng"
-            className="flex-1 lg:flex-none px-4 py-2 text-sm rounded-lg bg-primary text-white transition-all duration-200 active:scale-95 hover:brightness-110 cursor-pointer"
+            className="flex-1 sm:flex-none px-4 py-2 text-sm rounded-lg bg-primary text-white 
+      transition-all duration-200 active:scale-95 hover:brightness-110"
           >
             Tìm kiếm
           </button>
+
           <button
             type="button"
             onClick={handleRefresh}
-            title="Làm mới"
-            className="px-3 py-2 text-sm rounded-lg bg-gray-200 text-gray-600 transition-all duration-200 active:scale-95 hover:bg-gray-300 cursor-pointer"
+            className="px-3 py-2 text-sm rounded-lg bg-gray-200 text-gray-600 
+      transition-all duration-200 active:scale-95 hover:bg-gray-300"
           >
             <RotateCw className="w-4 h-4" />
           </button>
@@ -453,7 +384,7 @@ export function CRUDPageTemplate<T extends { id?: string | any }>({
 
         {/* RIGHT SLOT */}
         {searchRight && (
-          <div className="lg:ml-auto w-full lg:w-auto flex justify-end">
+          <div className="w-full lg:w-auto lg:ml-auto flex justify-end">
             {searchRight}
           </div>
         )}
@@ -485,8 +416,8 @@ export function CRUDPageTemplate<T extends { id?: string | any }>({
                   <th
                     key={idx}
                     className={`px-3 py-3 text-xs font-semibold text-gray-500 uppercase
-                                            ${col.className || ""}
-                                            ${col.sortable ? "cursor-pointer hover:bg-gray-100" : ""}`}
+                        ${col.className || ""}
+                        ${col.sortable ? "cursor-pointer hover:bg-gray-100" : ""}`}
                     onClick={() =>
                       col.sortable &&
                       typeof col.accessor === "string" &&
@@ -525,11 +456,11 @@ export function CRUDPageTemplate<T extends { id?: string | any }>({
                     <tr
                       key={item.id ?? index}
                       className={`transition-colors
-                                                ${
-                                                  isDeleted
-                                                    ? "bg-gray-50 text-gray-400"
-                                                    : "bg-white hover:bg-primary/5"
-                                                }`}
+                        ${
+                          isDeleted
+                            ? "bg-gray-50 text-gray-400"
+                            : "bg-white hover:bg-primary/5"
+                        }`}
                     >
                       <td className="px-4 py-3 text-center text-gray-500">
                         {(page - 1) * pageSizeState + index + 1}
@@ -559,13 +490,11 @@ export function CRUDPageTemplate<T extends { id?: string | any }>({
                               />
                               <span
                                 className={`text-[9px] font-medium uppercase
-                                                                    ${
-                                                                      item[
-                                                                        statusField
-                                                                      ]
-                                                                        ? "text-primary"
-                                                                        : "text-gray-400"
-                                                                    }`}
+                                    ${
+                                      item[statusField]
+                                        ? "text-primary"
+                                        : "text-gray-400"
+                                    }`}
                               >
                                 {item[statusField]
                                   ? "Hoạt động"

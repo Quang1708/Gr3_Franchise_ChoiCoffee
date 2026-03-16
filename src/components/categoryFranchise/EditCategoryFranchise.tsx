@@ -12,11 +12,11 @@ import { updateDisplayOrder } from "./services/categoryFranchise07.service";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 
 type EditCategoryFranchiseProps = {
-    category: CategoryItem ;
-    onClose: () => void;
-    onSuccess: () => void;
-    onView: boolean;
-}
+  category: CategoryItem;
+  onClose: () => void;
+  onSuccess: () => void;
+  onView: boolean;
+};
 
 export type EditCategoryFranchiseRef = {
   submit: () => Promise<void>;
@@ -26,20 +26,27 @@ const EditCategoryFranchise = forwardRef<
   EditCategoryFranchiseRef,
   EditCategoryFranchiseProps
 >(({ category, onClose, onSuccess, onView }, ref) => {
-  const [categoryFranchise, setCategoryFranchise] = useState<CategoryFranchise | null>(null);
-  const [categoryData, setCategoryData] = useState<GetCategoryByIdResponse | null>(null);
+  const [categoryFranchise, setCategoryFranchise] =
+    useState<CategoryFranchise | null>(null);
+  const [categoryData, setCategoryData] =
+    useState<GetCategoryByIdResponse | null>(null);
   const [franchiseName, setFranchiseName] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  const { register, handleSubmit, formState: { errors }, setValue } = useForm({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+  } = useForm({
     defaultValues: {
       display_order: 0,
     },
   });
 
   const onSubmit = async (data: { display_order: number }) => {
-    if (isSaving || !categoryFranchise) return; 
+    if (isSaving || !categoryFranchise) return;
     if (data.display_order < 0) {
       toastError("Thứ tự hiển thị phải lớn hơn hoặc bằng 0");
       return;
@@ -47,13 +54,10 @@ const EditCategoryFranchise = forwardRef<
     console.log("data", data.display_order);
     setIsSaving(true);
     try {
-       await updateDisplayOrder(
-        categoryFranchise.id, 
-        data.display_order,
-      );
-        toastSuccess("Cập nhật thứ tự hiển thị thành công");
-        onSuccess();
-        onClose();
+      await updateDisplayOrder(categoryFranchise.id, data.display_order);
+      toastSuccess("Cập nhật thứ tự hiển thị thành công");
+      onSuccess();
+      onClose();
     } catch (error) {
       console.error("Error updating display order:", error);
       toastError("Cập nhật thất bại");
@@ -197,9 +201,7 @@ const EditCategoryFranchise = forwardRef<
             label="Ngày tạo"
             isDisabled={true}
             defaultValue={displayDate(categoryFranchise.created_at)}
-            register={{
-              
-            }}
+            register={{}}
           />
         </div>
         <div className="flex flex-col gap-6">
@@ -218,4 +220,4 @@ const EditCategoryFranchise = forwardRef<
 
 EditCategoryFranchise.displayName = "EditCategoryFranchise";
 
-export default EditCategoryFranchise
+export default EditCategoryFranchise;

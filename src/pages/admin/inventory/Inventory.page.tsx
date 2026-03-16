@@ -124,9 +124,6 @@ const InventoryPage = () => {
     setTableRows(rows);
   }, [rows]);
 
-  useEffect(() => {
-    reset({ rows: rows });
-  }, [rows, reset]);
   /* ===============================
      UPDATE SELECTED
   =============================== */
@@ -252,92 +249,50 @@ const InventoryPage = () => {
 
     {
       header: "Số lượng",
-      render: (row) => {
-        const index = tableRows.findIndex((r) => r.id === row.id);
+      render: (row) => (
+        <input
+          type="number"
+          value={row.quantity}
+          disabled={row.isDeleted}
+          onChange={(e) => {
+            const val = Number(e.target.value);
 
-        return (
-          <div>
-            <Controller
-              control={control}
-              name={`rows.${index}.quantity`}
-              render={({ field }) => (
-                <input
-                  type="number"
-                  {...field}
-                  disabled={row.isDeleted}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
+            setTableRows((prev) =>
+              prev.map((r) => (r.id === row.id ? { ...r, quantity: val } : r)),
+            );
 
-                    field.onChange(val);
-
-                    setTableRows((prev) =>
-                      prev.map((r) =>
-                        r.id === row.id ? { ...r, quantity: val } : r,
-                      ),
-                    );
-
-                    if (!selectedIds.includes(row.id)) {
-                      setSelectedIds((prev) => [...prev, row.id]);
-                    }
-                  }}
-                  className="border border-gray-200 px-2 py-1 w-20 rounded-md"
-                />
-              )}
-            />
-
-            {errors.rows?.[index]?.quantity && (
-              <div className="text-xs text-red-500">
-                {errors.rows[index]?.quantity?.message}
-              </div>
-            )}
-          </div>
-        );
-      },
+            if (!selectedIds.includes(row.id)) {
+              setSelectedIds((prev) => [...prev, row.id]);
+            }
+          }}
+          className="border border-gray-200 px-2 py-1 w-20 rounded-md disabled:bg-gray-100"
+        />
+      ),
     },
 
     {
       header: "Ngưỡng cảnh báo",
-      render: (row) => {
-        const index = tableRows.findIndex((r) => r.id === row.id);
+      render: (row) => (
+        <input
+          type="number"
+          value={row.alertThreshold}
+          disabled={row.isDeleted}
+          onChange={(e) => {
+            const val = Number(e.target.value);
 
-        return (
-          <div>
-            <Controller
-              control={control}
-              name={`rows.${index}.alertThreshold`}
-              render={({ field }) => (
-                <input
-                  type="number"
-                  {...field}
-                  disabled={row.isDeleted}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
+            setTableRows((prev) =>
+              prev.map((r) =>
+                r.id === row.id ? { ...r, alertThreshold: val } : r,
+              ),
+            );
 
-                    field.onChange(val);
-
-                    setTableRows((prev) =>
-                      prev.map((r) =>
-                        r.id === row.id ? { ...r, alertThreshold: val } : r,
-                      ),
-                    );
-
-                    if (!selectedIds.includes(row.id)) {
-                      setSelectedIds((prev) => [...prev, row.id]);
-                    }
-                  }}
-                  className="border border-gray-200 px-2 py-1 w-20 rounded-md"
-                />
-              )}
-            />
-
-            {errors.rows?.[index]?.alertThreshold && (
-              <div className="text-xs text-red-500">
-                {errors.rows[index]?.alertThreshold?.message}
-              </div>
-            )}
-          </div>
-        );
-      },
+            if (!selectedIds.includes(row.id)) {
+              setSelectedIds((prev) => [...prev, row.id]);
+            }
+          }}
+          className="border border-gray-200 px-2 py-1 w-20 rounded-md disabled:bg-gray-100"
+        />
+      ),
     },
   ];
 

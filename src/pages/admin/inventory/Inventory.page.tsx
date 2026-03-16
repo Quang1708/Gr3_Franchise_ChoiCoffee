@@ -18,12 +18,7 @@ import ClientLoading from "@/components/Client/Client.Loading";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import { Save } from "lucide-react";
 import InventoryExcelTools from "./InventoryExcelTools";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  inventoryTableSchema,
-  type InventoryTableForm,
-} from "./schemas/inventory.schema";
+import { inventoryTableSchema } from "./schemas/inventory.schema";
 
 type InventoryRow = {
   id: string;
@@ -68,17 +63,6 @@ const InventoryPage = () => {
   const [errorRowIds, setErrorRowIds] = useState<string[]>([]);
 
   const hasSelection = selectedIds.length > 0;
-  const {
-    control,
-    formState: { errors, isValid },
-    reset,
-  } = useForm<InventoryTableForm>({
-    resolver: zodResolver(inventoryTableSchema),
-    mode: "onChange",
-    defaultValues: {
-      rows: [],
-    },
-  });
   /* ===============================
      LOAD DATA
   =============================== */

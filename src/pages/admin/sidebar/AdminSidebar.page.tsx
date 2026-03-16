@@ -13,7 +13,6 @@ import {
   Boxes,
   Gift,
   User,
-  LogOut,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -48,8 +47,8 @@ const menuItems: MenuItem[] = [
   { icon: <User size={20} />, label: "Users", path: "user" },
   { icon: <Package size={20} />, label: "Category Franchise", path: "category-franchise" },
   { icon: <User size={20} />, label: "Shift", path: "shift" },
-  { icon: <LogOut size={20} />, label: "Logout", path: "logout" },
   
+  { icon: <Package size={20} />, label: "Category (Franchise)", path: "category-franchise" },
 ];
 
 type AdminSidebarProps = {
@@ -61,7 +60,7 @@ const AdminSidebar = ({ collapsed = false, onToggle }: AdminSidebarProps) => {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const franchiseIdStr = useAdminContextStore((s) => s.selectedFranchiseId);
-  const franchiseId = franchiseIdStr ? Number(franchiseIdStr) : null;
+  const franchiseId = franchiseIdStr ?? null;
 
   const visibleItems = menuItems.filter((it) =>
     isMenuVisible(user, franchiseId, it.path),

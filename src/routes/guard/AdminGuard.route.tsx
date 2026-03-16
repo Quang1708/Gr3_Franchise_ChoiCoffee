@@ -7,7 +7,7 @@ import ClientLoading from "@/components/Client/Client.Loading";
 
 const AdminGuard = () => {
   const location = useLocation();
-  const { user, token, isInitialized } = useAuthStore();
+  const { user, isInitialized } = useAuthStore();
 
   if (!isInitialized) return <ClientLoading />;
 
@@ -17,7 +17,7 @@ const AdminGuard = () => {
     allowed.includes(r.role_code),
   );
 
-  if (!user || !token || !hasAllowedRole) {
+  if (!user || !hasAllowedRole) {
     return <Navigate to={ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN} replace />;
   }
 

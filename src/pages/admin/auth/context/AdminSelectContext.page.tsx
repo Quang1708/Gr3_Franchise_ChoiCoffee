@@ -13,18 +13,21 @@ import type {
   AdminLoginUserProfile,
   AdminRoleLike,
 } from "../login/models/api.model";
-import {
-  getAdminProfile,
-  switchAdminContext,
-} from "../login/services/login.service";
+import { getAdminProfile } from "../login/services/auth03.service";
+import { switchAdminContext } from "../login/services/auth02.service";
 
 const normalizeRoles = (rolesInput: unknown) =>
   Array.isArray(rolesInput)
-    ? rolesInput.map((r) =>
-        typeof r === "object" && r !== null && "role" in r
-          ? { ...(r as AdminRoleLike), role_code: (r as AdminRoleLike).role }
-          : r,
-      )
+    ? rolesInput.map((r) => {
+        if (typeof r !== "object" || r === null) return r;
+        const roleLike = r as AdminRoleLike;
+        const normalizedRole = roleLike.role ?? roleLike.role_code;
+        return {
+          ...roleLike,
+          role: normalizedRole,
+          role_code: normalizedRole,
+        };
+      })
     : rolesInput;
 
 const getRoleLabel = (role: AdminRoleLike) => {
@@ -61,7 +64,7 @@ const AdminSelectContextPage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (!user || !token) {
+    if (!user) {
       navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, { replace: true });
       return;
     }
@@ -76,7 +79,7 @@ const AdminSelectContextPage: React.FC = () => {
       removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
       navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
     }
-  }, [user, token, roles, navigate, setSelectedFranchiseId]);
+  }, [user, roles, navigate, setSelectedFranchiseId]);
 
   useEffect(() => {
     if (selectedRoleIndex != null) return;
@@ -95,70 +98,86 @@ const AdminSelectContextPage: React.FC = () => {
 
   const handleSwitchContext = async () => {
     if (selectedRoleIndex == null) {
-      setContextError("Vui lòng chọn ngữ cảnh.");
+      setContextError("Vui lòng chọn Roles.");
       return;
     }
 
     const selected = roles[selectedRoleIndex];
     if (!selected) return;
 
+    const roleFranchiseId =
+      selected.franchise_id ??
+      (selected as { franchiseId?: string | number } | undefined)?.franchiseId ??
+      null;
+
     setContextLoading(true);
     setContextError(null);
 
+    // Note: switch-context expects franchise_id as string or null per spec.
     try {
-      await switchAdminContext({ franchise_id: selected.franchise_id ?? "" });
+      const response = await switchAdminContext({
+        franchise_id: roleFranchiseId != null ? String(roleFranchiseId) : null,
+      });
 
-      const profile = await getAdminProfile();
+      if (!response?.success) {
+        setContextError(response?.message || "Không thể chuyển Roles.");
+        return;
+      }
 
-      if (profile.success && profile.data) {
-        const profileUser =
-          (profile.data as { user?: AdminLoginUserProfile } | null)?.user ??
-          (profile.data as AdminLoginUserProfile);
+      const nextToken = response.data?.token ?? token ?? "SESSION";
 
-        const normalizedRoles = normalizeRoles(
-          (profile.data as { roles?: unknown } | null)?.roles,
-        );
+      try {
+        const profile = await getAdminProfile();
 
-        const fallbackRoles = normalizeRoles(profileUser?.roles);
+        if (profile.success && profile.data) {
+          const profileUser =
+            (profile.data as { user?: AdminLoginUserProfile } | null)?.user ??
+            (profile.data as AdminLoginUserProfile);
 
-        const mergedRoles = Array.isArray(normalizedRoles)
-          ? normalizedRoles
-          : fallbackRoles;
+          const normalizedRoles = normalizeRoles(
+            (profile.data as { roles?: unknown } | null)?.roles,
+          );
 
-        const userWithRoles =
-          profileUser && Array.isArray(mergedRoles)
-            ? {
-                ...(profileUser as AdminLoginUserProfile),
-                roles: mergedRoles as AdminRoleLike[],
-              }
-            : profileUser;
+          const fallbackRoles = normalizeRoles(profileUser?.roles);
 
-        if (selected.franchise_id != null) {
-          setSelectedFranchiseId(String(selected.franchise_id));
-        } else {
-          setSelectedFranchiseId(null);
+          const mergedRoles = Array.isArray(normalizedRoles)
+            ? normalizedRoles
+            : fallbackRoles;
+
+          const userWithRoles =
+            profileUser && Array.isArray(mergedRoles)
+              ? {
+                  ...(profileUser as AdminLoginUserProfile),
+                  roles: mergedRoles as AdminRoleLike[],
+                }
+              : profileUser;
+
+          if (userWithRoles) {
+            setAuth(userWithRoles as AdminLoginUserProfile, nextToken);
+          }
         }
-
-        /**
-         * ⚠️ UPDATE AUTH SAU
-         */
-
-        if (userWithRoles && token) {
-          setAuth(userWithRoles as AdminLoginUserProfile, token);
+      } catch (profileError) {
+        console.error("Get profile failed after switch context", profileError);
+        if (user) {
+          setAuth(user, nextToken);
         }
+      }
+
+      if (roleFranchiseId != null) {
+        setSelectedFranchiseId(String(roleFranchiseId));
+      } else {
+        setSelectedFranchiseId(null);
       }
 
       removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
 
-      /**
-       * ⚠️ FORCE RESET APP
-       * đảm bảo guard + menu + profile render lại
-       */
-
-      window.location.href = ROUTER_URL.ADMIN;
+      navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
     } catch (error) {
       console.error(error);
-      setContextError("Không thể chuyển ngữ cảnh. Vui lòng thử lại.");
+      const err = error as { message?: string };
+      setContextError(
+        err.message || "Không thể chuyển Roles. Vui lòng thử lại.",
+      );
     } finally {
       setContextLoading(false);
     }
@@ -203,7 +222,7 @@ const AdminSelectContextPage: React.FC = () => {
                   active
                     ? "border-primary bg-primary/5 text-primary"
                     : "border-gray-200 hover:bg-gray-50"
-                }`}
+                } cursor-pointer`}
               >
                 <div className="font-semibold">{role.role ?? "ROLE"}</div>
                 <div className="mt-1 text-xs text-gray-500">
@@ -222,7 +241,7 @@ const AdminSelectContextPage: React.FC = () => {
           <button
             type="button"
             onClick={handleExit}
-            className="h-9 rounded-lg border border-gray-200 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="h-9 rounded-lg border border-gray-200 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
             disabled={contextLoading}
           >
             Thoát
@@ -230,7 +249,7 @@ const AdminSelectContextPage: React.FC = () => {
           <button
             type="button"
             onClick={handleSwitchContext}
-            className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90"
+            className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90 cursor-pointer"
             disabled={contextLoading}
           >
             {contextLoading ? "Đang xử lý..." : "Xác nhận"}

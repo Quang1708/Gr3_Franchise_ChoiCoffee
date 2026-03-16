@@ -9,7 +9,7 @@ import {
   AdminResetPasswordSchema,
   type AdminResetPasswordSchemaType,
 } from "./login/schema/AdminAuth.schema";
-import { changePassword } from "./login/services/adminAuth.service";
+import { changePassword } from "@/pages/admin/auth/login/services/auth06.service";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 
 const ResetPasswordPage: React.FC = () => {

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Camera, Check, Eye, EyeOff } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Camera, Eye, EyeOff } from "lucide-react";
 import { useImageUpload } from "@/hooks/useImageUpload";
 
 // Ảnh mặc định khi không có avatar
@@ -22,7 +22,7 @@ interface FormInputProps {
 }
 
 export const FormInput = ({
-    label, type = "text", variant, register, error, defaultValue, placeholder, isView, className, onUploadSuccess, isDisabled, setIsExternalLoading, uploadFolder = "customers"
+    label, type = "text", register, error, defaultValue, placeholder, isView, className, onUploadSuccess, isDisabled, setIsExternalLoading, uploadFolder = "customers"
 }: FormInputProps) => {
     const [showPassword, setShowPassword] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(defaultValue);

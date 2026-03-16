@@ -7,7 +7,8 @@ import {
   updateProduct,
   type ProductId,
 } from "../../../../services/product.service";
-import type { RequestProduct, UpdateRequestProduct } from "../models";
+import { productApi } from "@/api";
+import type { RequestProduct, UpdateRequestProduct, GetProductResponse } from "../models";
 
 export const getProductsService = async () => {
   return await getProducts();
@@ -15,6 +16,13 @@ export const getProductsService = async () => {
 
 export const searchProductsService = async (keyword: string) => {
   return await searchProducts(keyword);
+};
+
+export const getProductDetailService = async (
+  productId: ProductId
+): Promise<GetProductResponse> => {
+  const res = await productApi.getById(productId);
+  return res;
 };
 
 export const createProductService = async (payload: RequestProduct) => {

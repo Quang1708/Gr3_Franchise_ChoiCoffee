@@ -78,7 +78,7 @@ const ForgotPasswordPage: React.FC = () => {
 
       redirectTimeoutRef.current = window.setTimeout(() => {
         navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, { replace: true });
-      }, 5000);
+      }, 10000);
     } catch (error: unknown) {
       const err = error as { message?: string };
       setError("email", {
@@ -163,7 +163,7 @@ const ForgotPasswordPage: React.FC = () => {
           ${
             isSubmitting || isLoading
               ? "bg-gray-400 cursor-not-allowed"
-              : "bg-primary hover:bg-[#d48315] hover:shadow-lg active:scale-[0.98]"
+              : "bg-primary hover:bg-[#d48315] hover:shadow-lg active:scale-[0.98] cursor-pointer"
           }
         `}
         >
@@ -174,7 +174,7 @@ const ForgotPasswordPage: React.FC = () => {
         <div className="mt-6 text-center">
           <button
             type="button"
-            className="text-sm text-gray-500 hover:text-primary transition-colors"
+            className="text-sm text-gray-500 hover:text-primary transition-colors cursor-pointer"
             onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN)}
           >
             Về đăng nhập

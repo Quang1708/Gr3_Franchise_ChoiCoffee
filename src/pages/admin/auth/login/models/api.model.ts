@@ -19,7 +19,7 @@ export type AdminLoginUserProfile = {
   phone: User["phone"];
   name: User["name"];
   avatar_url?: string;
-  avatarUrl?: User["avatarUrl"];
+  avatarUrl?: User["avatar_url"];
   roles?: AdminRoleLike[];
 };
 

@@ -47,10 +47,16 @@ export const ProductCategoryFranchiseForm = ({
     reset,
     formState: { errors },
   } = useForm<ProductCategoryFranchiseFormValues>({
-    defaultValues: { category_franchise_id: "", product_franchise_id: "", display_order: "1" },
+    defaultValues: {
+      category_franchise_id: "",
+      product_franchise_id: "",
+      display_order: "1",
+    },
   });
 
-  const [categoryOptions, setCategoryOptions] = useState<CategoryFranchiseOption[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<
+    CategoryFranchiseOption[]
+  >([]);
   const [productOptions, setProductOptions] = useState<ProductFranchise[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
 
@@ -59,15 +65,21 @@ export const ProductCategoryFranchiseForm = ({
   const { selectedFranchiseId, franchises } = useAdminContextStore();
 
   const isGlobalAdmin = useMemo(() => {
-    return user?.roles?.some(
-      (r) => (r.role_code === "ADMIN" || r.role === "ADMIN") && r.scope === "GLOBAL"
-    ) ?? false;
+    return (
+      user?.roles?.some(
+        (r) =>
+          (r.role_code === "ADMIN" || r.role === "ADMIN") &&
+          r.scope === "GLOBAL",
+      ) ?? false
+    );
   }, [user]);
 
   // Get franchise name for display
   const currentFranchiseName = useMemo(() => {
     if (!selectedFranchiseId || selectedFranchiseId === "ALL") return null;
-    const franchise = franchises.find((f) => String(f.id) === String(selectedFranchiseId));
+    const franchise = franchises.find(
+      (f) => String(f.id) === String(selectedFranchiseId),
+    );
     return franchise?.name || selectedFranchiseId;
   }, [selectedFranchiseId, franchises]);
 
@@ -84,7 +96,7 @@ export const ProductCategoryFranchiseForm = ({
     }
 
     return categoryOptions.filter(
-      (cat) => String(cat.franchise_id) === String(selectedFranchiseId)
+      (cat) => String(cat.franchise_id) === String(selectedFranchiseId),
     );
   }, [categoryOptions, isGlobalAdmin, selectedFranchiseId]);
 
@@ -92,7 +104,12 @@ export const ProductCategoryFranchiseForm = ({
     if (!isOpen) return;
 
     if (mode === "create") {
-      reset({ category_franchise_id: "", product_franchise_id: "", display_order: "1" });
+      reset({
+        category_franchise_id: "",
+        product_franchise_id: "",
+        display_order: "1",
+      });
+      loadOptions();
     } else {
       reset({
         category_franchise_id: String(initialData?.categoryFranchiseId ?? ""),
@@ -193,11 +210,16 @@ export const ProductCategoryFranchiseForm = ({
                 </label>
                 {!isGlobalAdmin && currentFranchiseName && (
                   <p className="text-xs text-blue-600 mb-1">
-                    Chỉ hiển thị danh mục của chi nhánh: <span className="font-semibold">{currentFranchiseName}</span>
+                    Chỉ hiển thị danh mục của chi nhánh:{" "}
+                    <span className="font-semibold">
+                      {currentFranchiseName}
+                    </span>
                   </p>
                 )}
                 <select
-                  {...register("category_franchise_id", { required: "Không được để trống" })}
+                  {...register("category_franchise_id", {
+                    required: "Không được để trống",
+                  })}
                   disabled={loadingOptions}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50 disabled:text-gray-400"
                 >
@@ -206,7 +228,8 @@ export const ProductCategoryFranchiseForm = ({
                   </option>
                   {filteredCategoryOptions.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.category_name ?? c.category_id} {c.franchise_name ? `(${c.franchise_name})` : ""}
+                      {c.category_name ?? c.category_id}{" "}
+                      {c.franchise_name ? `(${c.franchise_name})` : ""}
                     </option>
                   ))}
                 </select>
@@ -223,7 +246,9 @@ export const ProductCategoryFranchiseForm = ({
                   Sản phẩm chi nhánh
                 </label>
                 <select
-                  {...register("product_franchise_id", { required: "Không được để trống" })}
+                  {...register("product_franchise_id", {
+                    required: "Không được để trống",
+                  })}
                   disabled={loadingOptions}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50 disabled:text-gray-400"
                 >
@@ -232,7 +257,8 @@ export const ProductCategoryFranchiseForm = ({
                   </option>
                   {productOptions.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.product_name} {p.size ? `- ${p.size}` : ""} {p.franchise_name ? `(${p.franchise_name})` : ""}
+                      {p.product_name} {p.size ? `- ${p.size}` : ""}{" "}
+                      {p.franchise_name ? `(${p.franchise_name})` : ""}
                     </option>
                   ))}
                 </select>
@@ -249,7 +275,10 @@ export const ProductCategoryFranchiseForm = ({
                 placeholder="1"
                 register={register("display_order", {
                   required: "Không được để trống",
-                  pattern: { value: /^\d+$/, message: "Phải là số nguyên dương" },
+                  pattern: {
+                    value: /^\d+$/,
+                    message: "Phải là số nguyên dương",
+                  },
                 })}
                 error={errors.display_order}
                 isView={false}

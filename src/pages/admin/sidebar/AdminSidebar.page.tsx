@@ -45,7 +45,8 @@ const menuItems: MenuItem[] = [
   { icon: <Boxes size={20} />, label: "Inventory", path: "inventory" },
   { icon: <Gift size={20} />, label: "Loyalty", path: "loyalty" },
   { icon: <User size={20} />, label: "Users", path: "user" },
-  { icon: <Package size={20} />, label: "Category (Franchise)", path: "category-franchise" },
+  { icon: <Package size={20} />, label: "Category Franchise", path: "category-franchise" },
+  { icon: <User size={20} />, label: "Shift", path: "shift" },
 ];
 
 type AdminSidebarProps = {

@@ -5,6 +5,7 @@ import AdminGuard from "../guard/AdminGuard.route";
 import RequirePermission from "../guard/RequirePermission.route";
 import ROUTER_URL from "../router.const";
 import { PERM } from "@/auth/rbac.permissions";
+import ShiftPage from "@/pages/admin/shift/Shift.page";
 
 /* ==================== PAGES ==================== */
 const DashboardPage = React.lazy(() => import("../../pages/admin/dashboard"));
@@ -90,6 +91,10 @@ const AdminRoutes = (
 
         <Route element={<RequirePermission perm={PERM.LOYALTY_READ} />}>
           <Route path="loyalty" element={<LoyaltyPage />} />
+        </Route>
+
+        <Route element={<RequirePermission perm={PERM.SHIFT_READ} />}>
+          <Route path="shift" element={<ShiftPage />} />
         </Route>
 
         {/* ADMIN ONLY */}

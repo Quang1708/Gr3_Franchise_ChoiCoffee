@@ -4,13 +4,14 @@ import {
   type Column,
 } from "../../../components/Admin/template/CRUDPage.template";
 import { toast } from "sonner";
-import type { Category } from "../../../models/category.model";
+import type { Category, CategorySelectItem } from "../../../models/category.model";
 import ClientLoading from "@/components/Client/Client.Loading";
 import {
   CreateCategoryModal,
   EditCategoryModal,
   DeleteCategoryModal,
   RestoreCategoryModal,
+  ViewCategoryModal,
   type CategoryFormData,
 } from "../../../components/Admin/category/CategoryModals";
 
@@ -25,6 +26,7 @@ import {
   updateCategoryUsecase,
   deleteCategoryUsecase,
   restoreCategoryUsecase,
+  getCategorySelectUsecase,
 } from "./usecases";
 
 const normalizeFilterValue = (value?: string) => {
@@ -32,6 +34,9 @@ const normalizeFilterValue = (value?: string) => {
   if (value === "false") return false;
   return "";
 };
+
+const isMongoId = (value?: string) =>
+  Boolean(value && /^[a-fA-F0-9]{24}$/.test(value));
 
 const CategoryPage = () => {
   const user = useAuthStore((s) => s.user);
@@ -49,6 +54,9 @@ const CategoryPage = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [parentOptions, setParentOptions] = useState<CategorySelectItem[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
@@ -141,6 +149,24 @@ const CategoryPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const fetchParentOptions = useCallback(async () => {
+    try {
+      const res = await getCategorySelectUsecase();
+      if (res?.success && Array.isArray(res.data)) {
+        setParentOptions(res.data);
+        return;
+      }
+      setParentOptions([]);
+    } catch (error) {
+      console.error("Fetch category select failed:", error);
+      setParentOptions([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchParentOptions();
+  }, [fetchParentOptions]);
+
   // Create
   const handleCreateOpen = () => {
     if (!canWrite) return;
@@ -153,10 +179,12 @@ const CategoryPage = () => {
 
     try {
       setIsProcessing(true);
+      const parentId = newData.parent_id?.trim();
       const res = await createCategoryUsecase({
         code: newData.code,
         name: newData.name,
         description: newData.description || "",
+        ...(isMongoId(parentId) ? { parent_id: parentId } : {}),
       });
 
       if (res?.success) {
@@ -182,15 +210,23 @@ const CategoryPage = () => {
     setIsEditOpen(true);
   };
 
+  // View
+  const handleViewOpen = (item: Category) => {
+    setViewingCategory(item);
+    setIsViewOpen(true);
+  };
+
   const handleEditSubmit = async (updatedData: CategoryFormData) => {
     if (!canWrite || !editingCategory) return;
 
     try {
       setIsProcessing(true);
+      const parentId = updatedData.parent_id?.trim();
       const res = await updateCategoryUsecase(editingCategory.id, {
         code: updatedData.code,
         name: updatedData.name,
         description: updatedData.description || "",
+        ...(isMongoId(parentId) ? { parent_id: parentId } : {}),
         is_active: updatedData.is_active,
       });
 
@@ -279,15 +315,10 @@ const CategoryPage = () => {
 
     try {
       setIsProcessing(true);
-      const parentId =
-        item.parent_id && item.parent_id !== "undefined"
-          ? item.parent_id
-          : undefined;
       const res = await updateCategoryUsecase(item.id, {
         code: item.code,
         name: item.name,
         description: item.description || "",
-        ...(parentId ? { parent_id: parentId } : {}),
         is_active: newStatus,
       });
 
@@ -339,8 +370,12 @@ const CategoryPage = () => {
   }
 
   return (
-    <div className="p-6 h-[calc(100vh-4rem)] min-h-0 flex flex-col overflow-hidden transition-all animate-fade-in">
-      {isProcessing && <ClientLoading />}
+    <>
+      {isProcessing && (
+        <div className="fixed inset-0 z-[60]">
+          <ClientLoading />
+        </div>
+      )}
       <CRUDPageTemplate<Category>
         title="Quản lý Danh mục"
         data={data}
@@ -357,6 +392,7 @@ const CategoryPage = () => {
         }}
         tableMaxHeightClass="max-h-[60vh]"
         onAdd={canWrite && !isDeletedView ? handleCreateOpen : undefined}
+        onView={handleViewOpen}
         onEdit={canWrite && !isDeletedView ? handleEditOpen : undefined}
         onDelete={canWrite && !isDeletedView ? handleDeleteOpen : undefined}
         onRestore={canWrite ? handleRestoreOpen : undefined}
@@ -379,7 +415,7 @@ const CategoryPage = () => {
             label: "",
             options: [
               { value: "true", label: "Đã xóa" },
-              { value: "false", label: "Chưa xóa" },
+              { value: "false", label: "Còn tồn tại" },
             ],
           },
         ]}
@@ -393,6 +429,7 @@ const CategoryPage = () => {
             onClose={() => setIsCreateOpen(false)}
             onSubmit={handleCreateSubmit}
             isLoading={isProcessing}
+            parentOptions={parentOptions}
           />
 
           <EditCategoryModal
@@ -404,6 +441,17 @@ const CategoryPage = () => {
             category={editingCategory}
             onSubmit={handleEditSubmit}
             isLoading={isProcessing}
+            parentOptions={parentOptions}
+          />
+
+          <ViewCategoryModal
+            isOpen={isViewOpen}
+            onClose={() => {
+              setIsViewOpen(false);
+              setViewingCategory(null);
+            }}
+            category={viewingCategory}
+            parentOptions={parentOptions}
           />
 
           <DeleteCategoryModal
@@ -428,7 +476,7 @@ const CategoryPage = () => {
           />
         </>
       ) : null}
-    </div>
+    </>
   );
 };
 

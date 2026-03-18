@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Modal } from "@/components/UI/Modal";
-import type { Category } from "@/models/category.model";
+import type { Category, CategorySelectItem } from "@/models/category.model";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 
 // --- Schema ---
@@ -11,6 +11,13 @@ const categorySchema = z.object({
   code: z.string().min(1, "Mã danh mục là bắt buộc").max(50, "Mã quá dài"),
   name: z.string().min(1, "Tên danh mục là bắt buộc"),
   description: z.string().optional(),
+  parent_id: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (value) => !value || /^[a-fA-F0-9]{24}$/.test(value),
+    ),
   is_active: z.boolean(),
 });
 
@@ -24,6 +31,7 @@ interface CategoryFormProps {
   isLoading?: boolean;
   submitLabel: string;
   hideStatus?: boolean; 
+  parentOptions?: CategorySelectItem[];
 }
 
 const CategoryForm: React.FC<CategoryFormProps> = ({
@@ -33,6 +41,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
   isLoading,
   submitLabel,
   hideStatus,
+  parentOptions,
 }) => {
   const {
     register,
@@ -43,6 +52,10 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
     resolver: zodResolver(categorySchema),
     defaultValues: {
       ...defaultValues,
+      parent_id:
+        defaultValues?.parent_id != null
+          ? String(defaultValues.parent_id)
+          : "",
       is_active: defaultValues?.is_active ?? true,
     },
   });
@@ -52,6 +65,10 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
     if (defaultValues) {
       reset({
         ...defaultValues,
+        parent_id:
+          defaultValues?.parent_id != null
+            ? String(defaultValues.parent_id)
+            : "",
         is_active: defaultValues?.is_active ?? true,
       });
     }
@@ -70,7 +87,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
           className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
             ${errors.code ? "border-red-500 bg-red-50" : "border-gray-300"}
           `}
-          placeholder="VD: CATE01"
+          placeholder="Mã danh mục"
         />
         {errors.code && (
           <p className="text-red-500 text-xs mt-1">{errors.code.message}</p>
@@ -88,7 +105,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
           className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
             ${errors.name ? "border-red-500 bg-red-50" : "border-gray-300"}
           `}
-          placeholder="VD: Cà phê hạt"
+          placeholder="Tên danh mục"
         />
         {errors.name && (
           <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
@@ -106,6 +123,41 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none"
           placeholder="Mô tả chi tiết về danh mục..."
         />
+      </div>
+
+      {/* Parent */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Danh mục cha
+        </label>
+        {parentOptions && parentOptions.length > 0 ? (
+          <select
+            {...register("parent_id")}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all bg-white"
+          >
+            <option value="">-- Không có --</option>
+            {parentOptions.map((option) => (
+              <option key={String(option.value)} value={String(option.value)}>
+                {option.name} ({option.code})
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            {...register("parent_id")}
+            type="text"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+            placeholder="VD: 64f1c2a9b5e3d0c2a1f9e0ab"
+          />
+        )}
+        <p className="text-xs text-gray-500 mt-1">
+          Bỏ trống nếu không có danh mục cha.
+        </p>
+        {errors.parent_id && (
+          <p className="text-red-500 text-xs mt-1">
+            {errors.parent_id.message}
+          </p>
+        )}
       </div>
 
       {/* Status */}
@@ -162,6 +214,7 @@ interface CreateCategoryModalProps {
   onClose: () => void;
   onSubmit: (data: CategoryFormData) => void;
   isLoading?: boolean;
+  parentOptions?: CategorySelectItem[];
 }
 
 export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
@@ -169,6 +222,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   onClose,
   onSubmit,
   isLoading,
+  parentOptions,
 }) => {
   const handleSubmit = (data: CategoryFormData) => {
     // Simulate API call
@@ -184,6 +238,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
         submitLabel="Thêm mới"
         hideStatus // Hide status field for Create modal
         isLoading={isLoading}
+        parentOptions={parentOptions}
       />
     </Modal>
   );
@@ -195,6 +250,14 @@ interface EditCategoryModalProps {
   category: Category | null;
   onSubmit: (data: CategoryFormData) => void;
   isLoading?: boolean;
+  parentOptions?: CategorySelectItem[];
+}
+
+interface ViewCategoryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  category: Category | null;
+  parentOptions?: CategorySelectItem[];
 }
 
 export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
@@ -203,6 +266,7 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
   category,
   onSubmit,
   isLoading,
+  parentOptions,
 }) => {
   if (!category) return null;
 
@@ -219,13 +283,90 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
           code: category.code,
           name: category.name,
           description: category.description,
+          parent_id:
+            category.parent_id != null ? String(category.parent_id) : "",
           is_active: category.is_active,
         }}
         onSubmit={handleSubmit}
         onCancel={onClose}
         submitLabel="Lưu thay đổi"
         isLoading={isLoading}
+        parentOptions={parentOptions}
       />
+    </Modal>
+  );
+};
+
+export const ViewCategoryModal: React.FC<ViewCategoryModalProps> = ({
+  isOpen,
+  onClose,
+  category,
+  parentOptions,
+}) => {
+  if (!category) return null;
+
+  const parentId =
+    category.parent_id && category.parent_id !== "undefined"
+      ? String(category.parent_id)
+      : "";
+  const parentMatch = parentOptions?.find(
+    (option) => String(option.value) === parentId,
+  );
+  const parentLabel = parentMatch
+    ? `${parentMatch.name} (${parentMatch.code})`
+    : parentId || "";
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Chi tiết danh mục">
+      <div className="space-y-3 text-sm text-gray-700">
+        <div className="flex items-center justify-between">
+          <span className="text-gray-500">Mã danh mục</span>
+          <span className="font-medium text-gray-900">{category.code}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-gray-500">Tên danh mục</span>
+          <span className="font-medium text-gray-900">{category.name}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-gray-500">Danh mục cha</span>
+          <span className="font-medium text-gray-900">{parentLabel}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-gray-500">Trạng thái</span>
+          <span className="font-medium text-gray-900">
+            {category.is_active ? "Hoạt động" : "Ngưng hoạt động"}
+          </span>
+        </div>
+        <div>
+          <span className="text-gray-500">Mô tả</span>
+          <div className="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">
+            {category.description || "Không có mô tả"}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <span className="text-gray-500">Ngày tạo</span>
+            <div className="mt-1 text-gray-900">
+              {new Date(category.created_at).toLocaleString("vi-VN")}
+            </div>
+          </div>
+          <div>
+            <span className="text-gray-500">Ngày cập nhật</span>
+            <div className="mt-1 text-gray-900">
+              {new Date(category.updated_at).toLocaleString("vi-VN")}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 flex justify-end">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary cursor-pointer"
+        >
+          Đóng
+        </button>
+      </div>
     </Modal>
   );
 };

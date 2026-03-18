@@ -25,4 +25,7 @@ export const inventoryService = {
 
   getLogs: (inventoryId: string) =>
     axiosAdminClient.get(`/api/inventories/logs/${inventoryId}`),
+
+  adjustBulk: (data: any) =>
+  axiosAdminClient.post("/api/inventories/adjust/bulk", data),
 };

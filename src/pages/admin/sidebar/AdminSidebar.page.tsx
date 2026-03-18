@@ -14,6 +14,7 @@ import {
   Gift,
   User,
   CalendarCheck,
+  BadgePercent,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -53,6 +54,7 @@ const menuItems: MenuItem[] = [
   { icon: <Boxes size={20} />, label: "Inventory", path: "inventory" },
   { icon: <Menu size={20} />, label: "Menu", path: "menu" },
   { icon: <Ticket size={20} />, label: "Voucher", path: "voucher" },
+  { icon: <BadgePercent size={20} />, label: "Promotion", path: "promotion" },
   { icon: <Gift size={20} />, label: "Loyalty", path: "loyalty" },
   { icon: <Package size={20} />, label: "Categories", path: "category" },
 

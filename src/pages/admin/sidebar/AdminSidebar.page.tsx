@@ -35,32 +35,34 @@ const menuItems: MenuItem[] = [
     path: "dashboard",
   },
   { icon: <Store size={20} />, label: "Franchise", path: "franchise" },
-  { icon: <Menu size={20} />, label: "Menu", path: "menu" },
-  { icon: <ShoppingBag size={20} />, label: "Products", path: "product" },
-  { icon: <Package size={20} />, label: "Categories", path: "category" },
-  {
-    icon: <Package size={20} />,
-    label: "Product Category Franchise",
-    path: "product-category",
-  },
-  { icon: <Users size={20} />, label: "Customers", path: "customer" },
-  { icon: <ShoppingCart size={20} />, label: "Orders", path: "order" },
-  { icon: <CreditCard size={20} />, label: "Payments", path: "payment" },
-  { icon: <Ticket size={20} />, label: "Voucher", path: "voucher" },
-  { icon: <Boxes size={20} />, label: "Inventory", path: "inventory" },
-  {
-    icon: <CalendarCheck size={20} />,
-    label: "Shift Assignment",
-    path: "shift-assignment",
-  },
-  { icon: <Gift size={20} />, label: "Loyalty", path: "loyalty" },
-  { icon: <User size={20} />, label: "Users", path: "user" },
   {
     icon: <Package size={20} />,
     label: "Category Franchise",
     path: "category-franchise",
   },
+  {
+    icon: <Package size={20} />,
+    label: "Product Category Franchise",
+    path: "product-category",
+  },
+
+  { icon: <ShoppingCart size={20} />, label: "Orders", path: "order" },
+  { icon: <CreditCard size={20} />, label: "Payments", path: "payment" },
+  { icon: <Users size={20} />, label: "Customers", path: "customer" },
+  { icon: <ShoppingBag size={20} />, label: "Products", path: "product" },
+  { icon: <Boxes size={20} />, label: "Inventory", path: "inventory" },
+  { icon: <Menu size={20} />, label: "Menu", path: "menu" },
+  { icon: <Ticket size={20} />, label: "Voucher", path: "voucher" },
+  { icon: <Gift size={20} />, label: "Loyalty", path: "loyalty" },
+  { icon: <Package size={20} />, label: "Categories", path: "category" },
+
+  { icon: <User size={20} />, label: "Users", path: "user" },
   { icon: <User size={20} />, label: "Shift", path: "shift" },
+  {
+    icon: <CalendarCheck size={20} />,
+    label: "Shift Assignment",
+    path: "shift-assignment",
+  },
 ];
 
 type AdminSidebarProps = {

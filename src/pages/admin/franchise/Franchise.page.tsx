@@ -33,27 +33,40 @@ const FranchisePage = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [selected, setSelected] = useState<Franchise | null>(null);
 
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSearch = async (keyword: string, filters?: any) => {
+  // pagination state giống CustomerPage
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
+  // fetch data
+  const fetchFranchises = async () => {
+    await fetchAll();
+  };
+
+  useEffect(() => {
+    fetchFranchises();
+  }, []);
+
+  const handleSearch = async (keyword: string) => {
     if (searchTimeout.current) {
       clearTimeout(searchTimeout.current);
     }
 
     searchTimeout.current = setTimeout(async () => {
       if (!keyword.trim()) {
-        await fetchAll();
+        await fetchFranchises();
         return;
       }
 
       await search(keyword);
+      setPage(1);
     }, 400);
   };
+
   const columns: Column<Franchise>[] = useMemo(
     () => [
       {
@@ -64,16 +77,18 @@ const FranchisePage = () => {
       {
         header: "Chi nhánh",
         accessor: (item) => (
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3 max-w-[320px]">
             <img
               src={item.logo_url || "/images/default-store.png"}
               alt={item.name}
-              className="w-10 h-10 rounded-lg object-cover border"
+              className="w-10 h-10 rounded-lg object-cover border shrink-0"
             />
 
-            <div>
-              <div className="font-semibold">{item.name}</div>
-              <div className="text-xs text-gray-500">{item.address}</div>
+            <div className="min-w-0">
+              <div className="font-semibold truncate">{item.name}</div>
+              <div className="text-xs text-gray-500 break-words">
+                {item.address}
+              </div>
             </div>
           </div>
         ),
@@ -81,6 +96,12 @@ const FranchisePage = () => {
     ],
     [],
   );
+
+  // client pagination (vì API của bạn chưa hỗ trợ page)
+  const paginatedData = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  }, [items, page, pageSize]);
 
   if (loading) {
     return (
@@ -94,13 +115,21 @@ const FranchisePage = () => {
     <div className="p-6">
       <CRUDPageTemplate<Franchise>
         title="Quản lý Chi nhánh"
-        data={items}
+        data={paginatedData}
         columns={columns}
-        pageSize={5}
+        pageSize={pageSize}
+        totalItems={items.length}
+        currentPage={page}
+        onPageChange={(p) => setPage(p)}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+        tableMaxHeightClass="max-h-[60vh]"
         isTableLoading={loading}
         statusField="isActive"
         onStatusChange={(item, status) => {
-          if (item.isDeleted) return;
+          if ((item as any).is_deleted) return;
           changeStatus(item.id, status);
         }}
         onAdd={() => setCreateOpen(true)}
@@ -117,7 +146,10 @@ const FranchisePage = () => {
           setRestoreOpen(true);
         }}
         onSearch={handleSearch}
-        onRefresh={fetchAll}
+        onRefresh={() => {
+          setPage(1);
+          fetchFranchises();
+        }}
       />
 
       <CreateFranchiseModal
@@ -149,6 +181,7 @@ const FranchisePage = () => {
           if (!selected) return;
 
           await deleteFranchise(selected.id);
+          await fetchFranchises();
           setDeleteOpen(false);
         }}
       />
@@ -159,6 +192,7 @@ const FranchisePage = () => {
         onClose={() => setRestoreOpen(false)}
         onConfirm={async () => {
           if (!selected) return;
+
           await restore(selected.id);
           setRestoreOpen(false);
         }}

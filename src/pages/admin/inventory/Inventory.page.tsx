@@ -61,7 +61,7 @@ const InventoryPage = () => {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tableRows, setTableRows] = useState<InventoryRow[]>([]);
   const [logInventoryId, setLogInventoryId] = useState<string | null>(null);
-
+  const [selectedItem, setSelectedItem] = useState<InventoryRow | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
   const [apiLoading, setApiLoading] = useState(false);
 
@@ -457,6 +457,8 @@ const InventoryPage = () => {
         tableMaxHeightClass="max-h-[45vh]"
         isTableLoading={loading}
         onSearch={handleSearch}
+        selectedRowId={selectedItem?.id}
+        onRowClick={(item) => setSelectedItem(item)}
         onRefresh={async () => {
           setPage(1);
           setKeyword("");

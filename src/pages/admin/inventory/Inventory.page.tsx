@@ -102,6 +102,16 @@ const InventoryPage = () => {
     }, 400);
   };
 
+  useEffect(() => {
+    if (!excelErrors.length) return;
+
+    const timer = setTimeout(() => {
+      setExcelErrors([]);
+      setErrorRowIds([]);
+    }, 6000);
+
+    return () => clearTimeout(timer);
+  }, [excelErrors]);
   /* ===============================
      LOAD DATA
   =============================== */
@@ -360,7 +370,7 @@ const InventoryPage = () => {
   if (pageLoading || apiLoading) return <ClientLoading />;
 
   return (
-    <div className="p-6 space-y-4">
+    <>
       {/* BULK TOOLS */}
 
       <div className="flex items-center gap-3 flex-wrap">
@@ -454,7 +464,6 @@ const InventoryPage = () => {
         totalItems={tableRows.length}
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
-        tableMaxHeightClass="max-h-[45vh]"
         isTableLoading={loading}
         onSearch={handleSearch}
         selectedRowId={selectedItem?.id}
@@ -556,7 +565,7 @@ const InventoryPage = () => {
         inventoryId={logInventoryId}
         onClose={() => setLogInventoryId(null)}
       />
-    </div>
+    </>
   );
 };
 

@@ -88,6 +88,8 @@ export default function InventoryExcelTools({
   /* ================= IMPORT ================= */
 
   const handleImport = (file: File) => {
+    onErrorsChange?.([]);
+    onErrorRowIdsChange?.([]);
     if (file.size > 2 * 1024 * 1024) {
       onErrorsChange?.(["File quá lớn (>2MB)"]);
       return;
@@ -151,7 +153,8 @@ export default function InventoryExcelTools({
     }
 
     rowsExcel.forEach((row, index) => {
-      const rowIndex = index + 2;
+      const rowErrors: string[] = [];
+      const rowIndex = index + 1;
 
       const product = row.product_name?.trim();
       const franchise = row.franchise_name?.trim();
@@ -162,11 +165,10 @@ export default function InventoryExcelTools({
       const key = `${product}|${franchise}`.toLowerCase();
 
       if (seen.has(key)) {
-        errors.push(`Row ${rowIndex}: duplicate product`);
-        return;
+        rowErrors.push(`Row ${rowIndex}: duplicate product`);
+      } else {
+        seen.add(key);
       }
-
-      seen.add(key);
 
       const match = rows.find(
         (r) =>
@@ -175,19 +177,21 @@ export default function InventoryExcelTools({
       );
 
       if (!match) {
-        errors.push(`Row ${rowIndex}: product không tồn tại`);
-        return;
+        rowErrors.push(`Row ${rowIndex}: product không tồn tại`);
       }
 
       if (isNaN(quantity) || quantity < 0) {
-        errors.push(`Row ${rowIndex}: quantity không hợp lệ`);
-        errorRowIds.push(match.id);
-        return;
+        rowErrors.push(`Row ${rowIndex}: quantity không hợp lệ`);
+        if (match) errorRowIds.push(match.id);
       }
 
       if (isNaN(alert) || alert < 0) {
-        errors.push(`Row ${rowIndex}: alert_threshold không hợp lệ`);
-        errorRowIds.push(match.id);
+        rowErrors.push(`Row ${rowIndex}: alert_threshold không hợp lệ`);
+        if (match) errorRowIds.push(match.id);
+      }
+
+      if (rowErrors.length || !match) {
+        errors.push(...rowErrors);
         return;
       }
 

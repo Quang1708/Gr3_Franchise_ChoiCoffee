@@ -3,6 +3,8 @@ import { toast } from "react-toastify";
 import ToppingModal from "./Topping.Modal";
 import type { Product } from "./models/product.model";
 import { useNavigate } from "react-router-dom";
+import { useCustomerAuthStore } from "@/stores/customerAuth.store";
+
 
 type ProductCardProps = {
   item: Product;
@@ -12,28 +14,34 @@ const ProductCard = ({ item }: ProductCardProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
 
-  const handleAddToCart = (
-    product: Product,
-    selectedSize: any,
-    selectedToppings: any,
-    quantity: any
-  ) => {
-    console.log(
-      product,
-      selectedSize,
-      selectedToppings,
-      quantity
-    );
-    toast.success(
-      `${quantity} ${product.name} (${
-        selectedSize.size
-      }) đã được thêm vào giỏ hàng!`
-    );
-    setIsModalOpen(false);
-  };
+  const {customer} = useCustomerAuthStore();
+
+  // const handleAddToCart = (
+  //   product: Product,
+  //   selectedSize: any,
+  //   selectedToppings: any,
+  //   quantity: any
+  // ) => {
+  //   console.log(
+  //     product,
+  //     selectedSize,
+  //     selectedToppings,
+  //     quantity
+  //   );
+  //   toast.success(
+  //     `${quantity} ${product.name} (${
+  //       selectedSize.size
+  //     }) đã được thêm vào giỏ hàng!`
+  //   );
+  //   setIsModalOpen(false);
+  // };
 
   const handleCartButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!customer) {
+    toast.error("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!");
+    return;
+  }
     setIsModalOpen(true);
   };
 
@@ -102,7 +110,6 @@ const ProductCard = ({ item }: ProductCardProps) => {
       <ToppingModal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onConfirm={handleAddToCart}
         product={item}
       />
     </div>

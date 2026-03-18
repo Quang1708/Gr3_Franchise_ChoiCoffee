@@ -9,7 +9,9 @@ interface FormSelectProps {
   error?: FieldError;
   placeholder?: string;
   className?: string;
+  value?: string;
   onChange?: (value: string) => void;
+  name?: string; // Thêm prop name để hiển thị trong label "Xem tất cả {name}"
 }
 
 const FormSelect: React.FC<FormSelectProps> = ({
@@ -19,9 +21,10 @@ const FormSelect: React.FC<FormSelectProps> = ({
   error,
   placeholder = "Chọn...",
   onChange,
+  value,
   className,
+  name
 }) => {
-  const [value, setValue] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -34,7 +37,6 @@ const FormSelect: React.FC<FormSelectProps> = ({
         !containerRef.current.contains(e.target as Node)
       ) {
         setIsOpen(false);
-        setSearch("");
       }
     };
 
@@ -42,28 +44,30 @@ const FormSelect: React.FC<FormSelectProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  const allOptions = [
+  { label: `Xem tất cả ${name}`, value: "" },
+  ...options,
+];
+
+  const selectedOption = allOptions.find((opt) => opt.value === value);
 
   const handleSelect = (val: string) => {
-    setValue(val);
+  register.onChange({
+    target: {
+      name: register.name,
+      value: val,
+    },
+  });
 
-    register.onChange({
-      target: {
-        name: register.name,
-        value: val,
-      },
-    });
+  onChange?.(val);
 
-    
-    onChange?.(val);
+  setIsOpen(false);
+  setSearch("");
+};
 
-    setIsOpen(false);
-    setSearch("");
-  };
-
-  const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredOptions = allOptions.filter((opt) =>
+  opt.label.toLowerCase().includes(search.toLowerCase()),
+);
 
   return (
     <div
@@ -143,7 +147,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
           </div>
         </div>
       )}
-      <input type="hidden" {...register} value={value} />
+      <input type="hidden" {...register} value={value || ""} />
     </div>
   );
 };

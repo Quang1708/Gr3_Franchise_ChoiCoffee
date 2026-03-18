@@ -3,6 +3,10 @@ import type { Product } from "./models/product.model";
 import { getPublicProducts } from "./services/product.service";
 import { getToppingCategoryId } from "./utils/category.util";
 import ButtonSubmit from "../Button/ButtonSubmit";
+import { useCustomerAuthStore } from "@/stores/customerAuth.store";
+import { toast } from "react-toastify";
+import type { AddCartRequest } from "./models/addCart.model";
+import { addItemToCart } from "./services/cart02.service";
 
 const MAX_ITEMS = 10;
 
@@ -16,40 +20,36 @@ type Sizes = {
 type ProductModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (
-    product: Product,
-    selectedSize: Sizes,
-    selectedToppings: Record<string, number>, // Trả về object chứa id và số lượng topping
-    quantity: number, // Số lượng sản phẩm
-    totalPrice: number,
-  ) => void;
   product: Product;
 };
 
 const ToppingModal = ({
   isOpen,
   onClose,
-  onConfirm,
   product,
 }: ProductModalProps) => {
   const [toppings, setToppings] = useState<Product[] | null>([]);
-  const [selectedSize, setSelectedSize] = useState<Sizes | null>(null);
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [productQuantity, setProductQuantity] = useState<number>(1);
   const toppingId = getToppingCategoryId();
   const franchiseId = localStorage.getItem("selectedFranchise") || "";
+  const [sizeSelected, setSizeSelected] = useState<Sizes | null>(null);
+  const [quantitySelected, setQuantitySelected] = useState<number>(1);
+  const [toppingSelected, setToppingSelected] = useState<Record<string, number>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { customer } = useCustomerAuthStore();
+  const [note, setNote] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
 
-  useEffect (() => {
+  useEffect(() => {
     const fetchToppings = async () => {
-      try{
+      try {
         const response = await getPublicProducts(
           franchiseId,
           toppingId || ""
         );
-        if(response){
+        if (response) {
           setToppings(response);
         }
-      }catch(error) {
+      } catch (error) {
         console.error("Error fetching toppings:", error);
         setToppings([]);
       }
@@ -60,33 +60,78 @@ const ToppingModal = ({
   }, [toppingId, franchiseId]);
 
   useEffect(() => {
-    if (isOpen) {
-      setSelectedSize(product.sizes?.[0] || null);
-      setQuantities({});
-      setProductQuantity(1);
+  if (isOpen) {
+    setSizeSelected(product.sizes?.[0] || null); 
+    setQuantitySelected(1);                      
+    setToppingSelected({});                      
+    setNote("");
+    setMessage("");
+  }
+}, [isOpen, product]);
+
+  const formattedOptions = (toppings || [])
+  .filter((topping) => (toppingSelected[topping.product_id] || 0) > 0)
+  .map((topping) => ({
+    product_franchise_id: topping.sizes?.[0]?.product_franchise_id || "",
+    quantity: toppingSelected[topping.product_id],
+  }));
+  
+  const payload: AddCartRequest = {
+      franchise_id: franchiseId,
+      product_franchise_id: sizeSelected?.product_franchise_id || "", 
+      quantity: quantitySelected,
+      address: customer?.address || "",
+      phone: customer?.phone || "",
+      note: note || "", 
+      message: message || "",
+      options: formattedOptions,
+    };
+    console.log("OPTIONS:", formattedOptions);
+    console.log("PAYLOAD:", payload);
+
+  const handleConfirm = async() => {
+    if (!sizeSelected) return;
+    if (!franchiseId) {
+      toast.error("Vui lòng chọn cửa hàng!");
+      return;
     }
-  }, [isOpen, product]);
+
+    setIsSubmitting(true);
+
+    try{
+      const response = await addItemToCart(payload);
+      if(response){
+        toast.success("Sản phẩm đã được thêm vào giỏ hàng!");
+        onClose();
+      }
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi thêm sản phẩm vào giỏ hàng!");
+      console.error("Error adding item to cart:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (!isOpen) return null;
 
-  const totalSelectedCount = Object.values(quantities).reduce(
+  const totalSelectedCount = Object.values(toppingSelected).reduce(
     (sum, count) => sum + count,
     0,
   );
 
-  const sizePrice = selectedSize?.price || 0;
+  const sizePrice = sizeSelected?.price || 0;
 
   const toppingsPrice = (toppings || []).reduce((sum, topping) => {
-    const count = quantities[topping.product_id] || 0;
+    const count = toppingSelected[topping.product_id] || 0;
     return sum + count * (topping.sizes?.[0]?.price || 0);
   }, 0);
 
   const unitPrice = sizePrice + toppingsPrice;
-  const totalPrice = unitPrice * productQuantity;
+  const totalPrice = unitPrice * quantitySelected;
 
   const handleIncreaseTopping = (id: string) => {
     if (totalSelectedCount < MAX_ITEMS) {
-      setQuantities((prev) => ({
+      setToppingSelected((prev) => ({
         ...prev,
         [id]: (prev[id] || 0) + 1,
       }));
@@ -94,41 +139,46 @@ const ToppingModal = ({
   };
 
   const handleDecreaseTopping = (id: string) => {
-    if (quantities[id] && quantities[id] > 0) {
-      setQuantities((prev) => ({
+    if (toppingSelected[id] && toppingSelected[id] > 0) {
+      setToppingSelected((prev) => ({
         ...prev,
         [id]: prev[id] - 1,
       }));
     }
   };
-  const handleIncreaseProduct = () => setProductQuantity((prev) => prev + 1);
-  const handleDecreaseProduct = () => setProductQuantity((prev) => Math.max(1, prev - 1));
+  const handleIncreaseProduct = () => setQuantitySelected((prev) => prev + 1);
+  const handleDecreaseProduct = () => setQuantitySelected((prev) => Math.max(1, prev - 1));
 
   const handleClose = () => {
     onClose();
   };
 
-  const handleConfirm = () => {
-    if (!selectedSize) return; 
-    
-    const selectedToppings = Object.fromEntries(
-      Object.entries(quantities).filter(([, count]) => count > 0)
-    );
+  // const handleConfirm = () => {
+  //   if (!selectedSize) return;
 
-    onConfirm(product, selectedSize, selectedToppings, productQuantity, totalPrice);
-  };
+  //   const selectedToppings = Object.fromEntries(
+  //     Object.entries(quantities).filter(([, count]) => count > 0)
+  //   );
+
+  // };
 
   return (
-    <section className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <section className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6">
       <div
-        className="bg-linear-to-b from-white to-gray-50 dark:from-charcoal dark:to-background-dark rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+        className="bg-white dark:bg-charcoal rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] relative"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative shrink-0">
-          <div className="absolute inset-0 bg-linear-to-r from-amber-500/10 to-orange-500/10 dark:from-amber-900/20 dark:to-orange-900/20"></div>
-          
-          <div className="relative flex items-center gap-4 p-4 border-b border-gray-200 dark:border-white/10">
-            <div className="relative w-20 h-20 rounded-2xl overflow-hidden shadow-lg ring-4 ring-white dark:ring-charcoal shrink-0">
+        {/* --- HEADER TỔNG HỢP (Hình ảnh + Thông tin + Nút Tắt) --- */}
+        <div className="relative shrink-0 bg-linear-to-r from-amber-50/50 to-orange-50/50 dark:from-amber-900/10 dark:to-orange-900/10 border-b border-gray-100 dark:border-white/10 p-5">
+          <button
+            onClick={handleClose}
+            className="absolute top-4 right-4 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-white/80 hover:bg-white dark:bg-charcoal/80 dark:hover:bg-charcoal text-gray-600 dark:text-white/70 shadow-sm transition-all hover:rotate-90 duration-300 backdrop-blur-md"
+          >
+            <span className="material-symbols-outlined text-xl">close</span>
+          </button>
+
+          <div className="flex gap-4 items-center pr-8">
+            <div className="relative w-24 h-24 rounded-2xl overflow-hidden shadow-md ring-2 ring-white dark:ring-white/10 shrink-0 bg-white">
               <img
                 src={product.image_url}
                 alt={product.name}
@@ -136,80 +186,56 @@ const ToppingModal = ({
               />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-1 truncate">
+              <h3 className="font-bold text-2xl text-gray-900 dark:text-white mb-1.5 truncate">
                 {product.name}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
                 {product.description || "Tùy chỉnh sản phẩm theo ý thích của bạn"}
               </p>
             </div>
-
-            
-            <button
-              onClick={handleClose}
-              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-600 dark:text-white/70 transition-all hover:rotate-90 duration-300"
-            >
-              <span className="material-symbols-outlined text-2xl">close</span>
-            </button>
           </div>
         </div>
-        <div className="p-4 overflow-y-auto flex-1 custom-scroll">
+
+        {/* --- BODY CUỘN ĐƯỢC --- */}
+        <div className="p-5 overflow-y-auto flex-1 custom-scroll bg-gray-50/50 dark:bg-background-dark/30 space-y-6">
           
+          {/* Section: Size */}
           {product.sizes && product.sizes.length > 0 && (
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-3">
-                {/* <div className="w-7 h-7 rounded-lg bg-linear-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md">
-                  <span className="material-symbols-outlined text-white text-lg">local_cafe</span>
-                </div> */}
-                <div>
-                  <h4 className="font-bold text-base text-gray-900 dark:text-white">
-                    Chọn Size
-                  </h4>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Vui lòng chọn size phù hợp</p>
-                </div>
+            <div className="bg-white dark:bg-white/5 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-white/5">
+              <div className="mb-4">
+                <h4 className="font-bold text-lg text-gray-900 dark:text-white">
+                  Chọn Size <span className="text-red-500">*</span>
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Vui lòng chọn 1 kích cỡ</p>
               </div>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {product.sizes.map((size: Sizes) => (
                   <button
                     key={size.size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`group relative p-3 rounded-xl border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1
-                      ${
-                        selectedSize?.size === size.size
-                          ? "border-amber-500 bg-linear-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 shadow-md"
-                          : "border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-amber-300"
+                    onClick={() => setSizeSelected(size)}
+                    className={`group relative p-3 rounded-xl border-2 transition-all duration-300 hover:shadow-md hover:-translate-y-1
+                      ${sizeSelected?.size === size.size
+                        ? "border-amber-500 bg-amber-50/50 dark:bg-amber-900/20 shadow-sm"
+                        : "border-gray-200 dark:border-white/10 bg-white dark:bg-transparent hover:border-amber-300"
                       }
                     `}
                   >
-                    {selectedSize?.size === size.size && (
+                    {sizeSelected?.size === size.size && (
                       <div className="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center shadow-md">
                         <span className="material-symbols-outlined text-white text-sm">check</span>
                       </div>
                     )}
-                    
-                    {/* <div className="flex justify-center mb-1.5">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                        selectedSize?.size === size.size 
-                          ? 'bg-amber-100 dark:bg-amber-900/30' 
-                          : 'bg-gray-100 dark:bg-white/10 group-hover:bg-amber-50'
-                      }`}>
-                        <span className="material-symbols-outlined text-primary dark:text-primary">
-                          {size.size}
-                        </span>
-                      </div>
-                    </div> */}
-                    
                     <div className={`text-center font-bold text-base mb-1 ${
-                      selectedSize?.size === size.size 
-                        ? 'text-amber-700 dark:text-amber-400' 
+                      sizeSelected?.size === size.size
+                        ? 'text-amber-700 dark:text-amber-400'
                         : 'text-gray-700 dark:text-white'
                     }`}>
                       {size.size}
                     </div>
-                    <div className={`text-sm font-semibold ${
-                      selectedSize?.size === size.size 
-                        ? 'text-amber-600 dark:text-amber-500' 
+                    <div className={`text-sm font-semibold text-center ${
+                      sizeSelected?.size === size.size
+                        ? 'text-amber-600 dark:text-amber-500'
                         : 'text-gray-500 dark:text-gray-400'
                     }`}>
                       {size.price.toLocaleString()}đ
@@ -219,95 +245,77 @@ const ToppingModal = ({
               </div>
             </div>
           )}
+
+          {/* Section: Topping */}
           {product.is_have_topping && (
-            <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                {/* <div className="w-7 h-7 rounded-lg bg-linear-to-br from-pink-400 to-rose-500 flex items-center justify-center shadow-md">
-                  <span className="material-symbols-outlined text-white text-lg">cake</span>
-                </div> */}
+            <div className="bg-white dark:bg-white/5 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-white/5">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h4 className="font-bold text-base text-charcoal dark:text-white">
+                  <h4 className="font-bold text-lg text-gray-900 dark:text-white">
                     Thêm Topping
                   </h4>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Tối đa {MAX_ITEMS} topping</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Tối đa {MAX_ITEMS} món</p>
                 </div>
+                {totalSelectedCount > 0 && (
+                  <div className="px-3 py-1 rounded-full border border-amber-200 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-700/50 text-amber-700 dark:text-amber-400 text-sm font-bold shadow-sm">
+                    Đã chọn: {totalSelectedCount}/{MAX_ITEMS}
+                  </div>
+                )}
               </div>
-              
-              {totalSelectedCount > 0 && (
-                <div className="px-3 py-1 rounded-full border-amber-500 bg-linear-to-br from-amber-50 to-orange-50 text-primary text-sm font-bold shadow-md">
-                  {totalSelectedCount}/{MAX_ITEMS}
-                </div>
-              )}
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {(toppings || []).map((topping) => {
-                const currentCount = quantities[topping.product_id] || 0;
-                const isSelected = currentCount > 0;
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(toppings || []).map((topping) => {
+                  const currentCount = toppingSelected[topping.product_id] || 0;
+                  const isSelected = currentCount > 0;
 
-                return (
-                  <div
-                    key={topping.product_id}
-                    className={`group relative flex gap-3 p-3 rounded-2xl border-2 transition-all duration-300 ${
-                      isSelected
-                        ? "border-amber-500 bg-linear-to-br from-amber-50 to-orange-50 dark:from-pink-900/10 dark:to-rose-900/10 shadow-md"
-                        : "border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 hover:border-amber-300 hover:shadow-lg"
-                    }`}
-                  >
-                    {/* Selected indicator */}
-                    {isSelected && (
-                      <div className="absolute -top-2 -right-2 w-7 h-7 bg-linear-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center shadow-lg z-10">
-                        <span className="text-white text-xs font-bold">{currentCount}</span>
+                  return (
+                    <div
+                      key={topping.product_id}
+                      className={`group flex items-center gap-3 p-2.5 rounded-xl border-2 transition-all duration-300 ${
+                        isSelected
+                          ? "border-amber-500 bg-amber-50/30 dark:bg-amber-900/10 shadow-sm"
+                          : "border-gray-100 dark:border-white/10 bg-white dark:bg-transparent hover:border-amber-300 hover:shadow-md"
+                      }`}
+                    >
+                      {/* Topping Image */}
+                      <div className={`relative w-16 h-16 shrink-0 rounded-lg overflow-hidden ${
+                        isSelected ? 'ring-2 ring-amber-400' : 'ring-1 ring-gray-200 dark:ring-white/10'
+                      }`}>
+                        <img
+                          src={topping.image_url}
+                          alt={topping.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
                       </div>
-                    )}
 
-                    {/* Topping Image */}
-                    <div className={`relative w-16 h-16 shrink-0 rounded-xl overflow-hidden ${
-                      isSelected ? 'ring-2 ring-amber-400' : 'ring-1 ring-gray-200 dark:ring-white/10'
-                    }`}>
-                      <img
-                        src={topping.image_url}
-                        alt={topping.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
-                      {/* Price badge on image */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/70 to-transparent p-1.5">
-                        <span className="text-white text-xs font-bold">
-                          +{(topping.sizes?.[0]?.price || 0).toLocaleString()}đ
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col flex-1 justify-between">
-                      {/* Topping name */}
-                      <div>
-                        <h5 className={`font-bold text-sm leading-tight line-clamp-2 mb-1 ${
-                          isSelected 
-                            ? 'text-amber-700 dark:text-amber-400' 
+                      <div className="flex flex-col flex-1 min-w-0 py-0.5">
+                        <h5 className={`font-bold text-sm truncate mb-0.5 ${
+                          isSelected
+                            ? 'text-amber-700 dark:text-amber-400'
                             : 'text-gray-800 dark:text-white'
                         }`}>
                           {topping.name}
                         </h5>
-                      </div>
+                        <div className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                          +{(topping.sizes?.[0]?.price || 0).toLocaleString()}đ
+                        </div>
 
-                      {/* Quantity controls */}
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-white/10 rounded-lg p-0.5">
+                        {/* Quantity controls */}
+                        <div className="flex items-center gap-2 mt-auto">
                           <button
                             onClick={() => handleDecreaseTopping(topping.product_id)}
                             disabled={currentCount === 0}
-                            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${
+                            className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${
                               currentCount === 0
-                                ? "opacity-40 cursor-not-allowed"
-                                : "bg-white dark:bg-charcoal shadow-sm hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 active:scale-95"
+                                ? "opacity-30 cursor-not-allowed bg-gray-100 dark:bg-white/5"
+                                : "bg-gray-100 dark:bg-white/10 shadow-sm hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-amber-600 active:scale-95 text-gray-700 dark:text-white"
                             }`}
                           >
-                            <span className="material-symbols-outlined text-lg">remove</span>
+                            <span className="material-symbols-outlined text-base">remove</span>
                           </button>
 
-                          <div className={`w-10 text-center font-bold text-lg ${
-                            isSelected ? 'text-amber-600 dark:text-amber-400' : 'text-gray-700 dark:text-white'
+                          <div className={`w-6 text-center font-bold text-sm ${
+                            isSelected ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'
                           }`}>
                             {currentCount}
                           </div>
@@ -315,125 +323,119 @@ const ToppingModal = ({
                           <button
                             onClick={() => handleIncreaseTopping(topping.product_id)}
                             disabled={totalSelectedCount >= MAX_ITEMS}
-                            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${
+                            className={`w-7 h-7 flex items-center justify-center rounded-md transition-all ${
                               totalSelectedCount >= MAX_ITEMS
-                                ? "opacity-40 cursor-not-allowed"
-                                : "bg-white dark:bg-charcoal shadow-sm hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 active:scale-95"
+                                ? "opacity-30 cursor-not-allowed bg-gray-100 dark:bg-white/5"
+                                : "bg-amber-50 dark:bg-amber-900/20 shadow-sm hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-600 dark:text-amber-400 active:scale-95"
                             }`}
                           >
-                            <span className="material-symbols-outlined text-lg">add</span>
+                            <span className="material-symbols-outlined text-base">add</span>
                           </button>
                         </div>
-
-                        {currentCount > 0 && (
-                          <div className="text-right">
-                            <span className="text-xs text-gray-500 dark:text-gray-400 block">Tổng</span>
-                            <span className="text-sm font-bold text-amber-600 dark:text-amber-400">
-                              {(currentCount * (topping.sizes?.[0]?.price || 0)).toLocaleString()}đ
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div className="bg-white dark:bg-white/5 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-white/5">
+            <h4 className="font-bold text-lg text-gray-900 dark:text-white mb-4">
+              Thông tin bổ sung
+            </h4>
+            
+            <div className="space-y-4">
+              {/* Input Ghi chú */}
+              <div>
+                <label htmlFor="note" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Ghi chú cho quán (Tùy chọn)
+                </label>
+                <textarea
+                  id="note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="VD: Ít đá, nhiều đường..."
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all resize-none h-20 text-sm"
+                />
+              </div>
+
+              {/* Input Lời nhắn */}
+              <div>
+                <label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Lời nhắn (Tùy chọn)
+                </label>
+                <textarea
+                  id="message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="VD: Chúc shipper một ngày tốt lành..."
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all resize-none h-20 text-sm"
+                />
+              </div>
             </div>
           </div>
-          )}
-          
         </div>
-        <div className="shrink-0 border-t border-gray-200 dark:border-white/10 bg-white dark:bg-charcoal">
+
+        {/* --- FOOTER (Tổng kết & Action) --- */}
+        <div className="shrink-0 bg-white dark:bg-charcoal border-t border-gray-100 dark:border-white/10 p-4 sm:p-5 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-10">
           
-          <div className="p-4 space-y-2.5">
-            
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-white/5">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-gray-500 dark:text-gray-400">
-                  shopping_bag
-                </span>
-                <span className="font-semibold text-gray-700 dark:text-gray-300">
-                  Số lượng
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-2 bg-gray-100 dark:bg-white/10 rounded-xl p-1 shadow-inner">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            {/* Control Số lượng sản phẩm */}
+            <div className="flex items-center justify-between sm:justify-start gap-4">
+              <span className="font-semibold text-gray-700 dark:text-gray-300">
+                Số lượng
+              </span>
+              <div className="flex items-center gap-1 bg-gray-50 dark:bg-white/5 rounded-xl p-1 border border-gray-100 dark:border-white/10">
                 <button
                   onClick={handleDecreaseProduct}
-                  disabled={productQuantity <= 1}
-                  className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all ${
-                    productQuantity <= 1
-                      ? "opacity-40 cursor-not-allowed"
+                  disabled={quantitySelected <= 1}
+                  className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all ${
+                    quantitySelected <= 1
+                      ? "opacity-40 cursor-not-allowed text-gray-400"
                       : "bg-white dark:bg-charcoal shadow-sm hover:shadow-md hover:scale-105 active:scale-95 text-gray-700 dark:text-white"
                   }`}
                 >
                   <span className="material-symbols-outlined text-xl">remove</span>
                 </button>
                 
-                <div className="w-14 text-center">
+                <div className="w-12 text-center">
                   <span className="text-xl font-bold text-gray-900 dark:text-white">
-                    {productQuantity}
+                    {quantitySelected}
                   </span>
                 </div>
                 
                 <button
                   onClick={handleIncreaseProduct}
-                  className="w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-charcoal shadow-sm hover:shadow-md hover:scale-105 active:scale-95 text-gray-700 dark:text-white transition-all"
+                  className="w-10 h-10 flex items-center justify-center rounded-lg bg-white dark:bg-charcoal shadow-sm hover:shadow-md hover:scale-105 active:scale-95 text-gray-700 dark:text-white transition-all"
                 >
                   <span className="material-symbols-outlined text-xl">add</span>
                 </button>
               </div>
             </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                <span>Giá size ({selectedSize?.size})</span>
-                <span className="font-semibold">{sizePrice.toLocaleString()}đ</span>
-              </div>
-              {totalSelectedCount > 0 && (
-                <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                  <span>Topping ({totalSelectedCount} món)</span>
-                  <span className="font-semibold">+{toppingsPrice.toLocaleString()}đ</span>
-                </div>
-              )}
-              {productQuantity > 1 && (
-                <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                  <span>Số lượng</span>
-                  <span className="font-semibold">x{productQuantity}</span>
-                </div>
-              )}
-              <div className="border-t border-dashed border-gray-300 dark:border-white/10 pt-2"></div>
-              
-              {/* Total */}
-              <div className="flex justify-between items-center pt-1">
-                <span className="text-lg font-bold text-gray-900 dark:text-white">
-                  Tổng cộng
-                </span>
-                <div className="text-right">
-                  <span className="text-2xl font-bold bg-linear-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-                    {totalPrice.toLocaleString()}đ
-                  </span>
-                  {totalSelectedCount > 0 && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Đã bao gồm topping
-                    </p>
-                  )}
-                </div>
-              </div>
+
+            {/* Tổng tiền */}
+            <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center">
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400 sm:mb-1">Tổng tạm tính</span>
+              <span className="text-2xl sm:text-3xl font-bold bg-linear-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+                {totalPrice.toLocaleString()}đ
+              </span>
             </div>
           </div>
-          <div className="px-4 pb-4">
-            <div className="flex gap-3">
-              <button
-                onClick={handleClose}
-                className="flex-1 py-3.5 rounded-xl font-semibold border-2 border-gray-300 dark:border-white/20 text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-white/5 transition-all duration-200 active:scale-95"
-              >
-                Hủy
-              </button>
+
+          {/* Nút Action */}
+          <div className="flex gap-3 mt-2">
+            <button
+              onClick={handleClose}
+              className="w-1/3 sm:w-1/4 py-3.5 rounded-xl font-bold border-2 border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 hover:border-gray-300 transition-all duration-200 active:scale-95"
+            >
+              Hủy
+            </button>
+            <div className="flex-1">
               <ButtonSubmit
                 label="Thêm vào giỏ hàng"
                 onClick={handleConfirm}
-                disabled={!selectedSize}
-                className="flex-2 py-3.5 rounded-xl"
+                disabled={!sizeSelected || isSubmitting}
+                className="w-full h-full py-3.5 rounded-xl text-lg shadow-md"
               />
             </div>
           </div>

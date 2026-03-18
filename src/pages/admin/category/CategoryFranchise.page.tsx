@@ -21,12 +21,14 @@ import FormSelect from "@/components/Admin/Form/FormSelect";
 import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";
 import type { FieldError } from "node_modules/react-hook-form/dist/types/errors";
 import { useForm} from "react-hook-form";
+import type { CategorySelectItem } from "@/models/category.model";
+import { getCategorySelectUsecase } from "./usecases";
 
 
 const CategoryPage = () => {
   const user = useAuthStore((s) => s.user);
   const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId) || "";
-
+  const isAdmin = franchiseId === ""; // Nếu không chọn chi nhánh nào, tức là đang ở chế độ Admin 
   const canWrite = useMemo(
     () => can(user, PERM.CATEGORY_WRITE, franchiseId || undefined),
     [user, franchiseId],
@@ -45,7 +47,6 @@ const CategoryPage = () => {
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
-
   const [deletingCategory, setDeletingCategory] = useState<CategoryItem | null>(
     null,
   );
@@ -58,6 +59,8 @@ const CategoryPage = () => {
   const editRef = useRef<EditCategoryFranchiseRef>(null);
   const [franchises, setFranchises] = useState<any>();
   const franchiseIdSelected = watch("franchise_id");
+  const categoryIdSelected = watch("category_id");
+  const [categories, setCategories] = useState<CategorySelectItem[]>([]);
   // Extract fetch function để có thể gọi lại sau khi create và phân trang
   const fetchCategoryFranchise = useCallback(async (
     pageNum = 1,
@@ -78,8 +81,6 @@ const CategoryPage = () => {
           pageSize: size,
         },
       });
-      
-
       if (response) {   
         setCategoryFranchiseList(response.data || []);
         setTotalItems(response.pageInfo?.totalItems || 0);
@@ -94,6 +95,22 @@ const CategoryPage = () => {
       setIsTableLoading(false);
     }
   }, [franchiseId, pageSize]);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await getCategorySelectUsecase();
+      if (response) {
+        setCategories(response.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      toast.error("Có lỗi xảy ra khi tải danh mục");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   useEffect(() => {
       const loadFranchises = async () => {
@@ -118,7 +135,7 @@ const CategoryPage = () => {
       const response = await getCategoryFranchise({
         searchCondition: {
           franchise_id: franchiseId || franchiseIdSelected  || "",
-          category_id: searchTerm || "",
+          category_id: searchTerm || categoryIdSelected || "",
           is_active: filter?.is_active  === "true"
             ? true
             : filter?.is_active === "false"
@@ -252,10 +269,18 @@ const CategoryPage = () => {
     setIsViewOpen(true);
   };
 
-  const franchiseOptions = franchises?.map((f: any) => ({
-  label: f.name,
-  value: f.value,
-})) || [];
+  const franchiseOptions =
+    franchises?.map((f: any) => ({
+      label: f.name,
+      value: f.value,
+    })) || [];
+
+  const categoryOptions =
+    categories?.map((f: any) => ({
+      label: f.name,
+      value: f.value,
+    })) || [];
+
 
   if (isLoading || isTableLoading) {
     return (
@@ -323,21 +348,29 @@ const CategoryPage = () => {
         isTableLoading={isTableLoading}
         searchContent={
           <div className="flex gap-3 w-full">
-            <FormSelect
+            {isAdmin && (
+              <FormSelect
               label=""
-              options={franchiseOptions}
+              key="franchise_id"
+              name="chi nhánh"
+              options={franchiseOptions || []}
               register={register("franchise_id")}
               error={errors.franchise_id as FieldError}
+              value={franchiseIdSelected}
               placeholder="Chọn chi nhánh"
               // onChange={(val) => setSelectedFranchiseId(val)}
             />
-            {/* <FormSelect
+            )}         
+            <FormSelect
+              key="category_id"
               label=""
-              options={categoryOptions}
+              name="danh mục"
+              options={categoryOptions || []}
               register={register("category_id")}
               error={errors.category_id as FieldError}
+              value={categoryIdSelected}
               placeholder="Chọn danh mục"
-            /> */}
+            />
           </div>
         }
         filters={[

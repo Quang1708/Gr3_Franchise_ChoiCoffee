@@ -37,6 +37,7 @@ const ShiftPage = () => {
     const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
     const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
     const [franchises, setFranchises] = useState<any[]>([]);
+    
 
     const fetchShifts = useCallback(async (
         pageNum = 1,
@@ -50,6 +51,7 @@ const ShiftPage = () => {
         const response = await searchShift({
           searchCondition: {
             franchise_id: franchiseId || "",
+            is_deleted: false, // Only fetch non-deleted shifts for the main table view
           },
           pageInfo: {
             pageNum,
@@ -236,11 +238,11 @@ const ShiftPage = () => {
     const handleSearchShift = async (name: string, filters: any) => {
     try {
       setIsProcessing(true);
-
+      
       const res = await searchShift({
         searchCondition: {
-          name,
-          franchise_id: franchiseId || "",
+          name:  name || "",
+          franchise_id: franchiseId || filters?.franchise_id || "",
           is_active:
             filters?.is_active === "true"
               ? true
@@ -260,24 +262,31 @@ const ShiftPage = () => {
         }
       });
 
-      console.log(res);
+      console.log( "Franchise ID:", filters.franchise_id);
 
-      if (res.success) {
+      if (res.data) {
         setShifts(res.data);
         setTotalItems(res.pageInfo.totalItems);
         setPage(1);
       }
 
-    } catch {
+    } catch(error) {
+      console.error("Error searching shifts:", error);
       toast.error("Lỗi khi tìm kiếm");
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const franchiseOptions =
+    franchises?.map((f: any) => ({
+      label: f.name,
+      value: f.value,
+    })) || "";
+
   return (
     <>
-      {isLoading && <ClientLoading />}
+      {isLoading  && <ClientLoading />}
       
 
       <CRUDPageTemplate<Shift>
@@ -301,13 +310,24 @@ const ShiftPage = () => {
           setPageSize(newSize);
           fetchShifts(1, "table", newSize);
         }} 
-
+        // searchContent={(
+        //   <input
+        //     type="text"
+        //     placeholder="Tìm kiếm theo tên ca làm việc..."
+        //     className="border border-gray-300 rounded px-3 py-1 w-full md:w-64"
+        //     ></input>
+        // )}
         onSearch={handleSearchShift}
 
         filters={
           [
+            { key: "franchise_id",
+              label: "chi nhánh",       
+              options: franchiseOptions,
+
+            },
             { key: "is_active",
-              label: "Trạng thái hoạt động",
+              label: "trạng thái",
               options: [
                 { label: "Hoạt động", value: "true" },
                 { label: "Không hoạt động", value: "false" },
@@ -315,13 +335,14 @@ const ShiftPage = () => {
             },
 
             { key: "is_deleted",
-              label: "Trạng thái xóa",       
+              label: "trạng thái xóa",       
               options: [
                 { label: "Đã xóa", value: "true" },
                 { label: "Chưa xóa", value: "false" },
               ],
 
-            }
+            },
+            
           ]
         }
         isTableLoading={isProcessing || isTableLoading}

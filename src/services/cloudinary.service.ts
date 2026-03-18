@@ -10,9 +10,6 @@ import {
 
 /**
  * Upload ảnh lên Cloudinary
- * @param file - File ảnh cần upload
- * @param options - Các options bổ sung
- * @returns Promise với CloudinaryUploadResponse
  */
 export const uploadImageToCloudinary = async (
   file: File,
@@ -48,7 +45,6 @@ export const uploadImageToCloudinary = async (
     formData.append("file", file);
     formData.append("upload_preset", CLOUDINARY_CONFIG.uploadPreset);
 
-    // Thêm các options nếu có
     if (options?.folder) {
       formData.append("folder", options.folder);
     }
@@ -64,7 +60,7 @@ export const uploadImageToCloudinary = async (
     // Auto optimization
     if (autoOptimize) {
       formData.append("quality", quality.toString());
-      formData.append("fetch_format", "auto"); // Tự động chọn format tốt nhất (WebP nếu browser support)
+      formData.append("fetch_format", "auto");
     }
 
     if (options?.transformation) {
@@ -95,9 +91,6 @@ export const uploadImageToCloudinary = async (
 
 /**
  * Upload nhiều ảnh cùng lúc
- * @param files - Danh sách các file ảnh
- * @param options - Các options bổ sung
- * @returns Promise với mảng CloudinaryUploadResponse
  */
 export const uploadMultipleImages = async (
   files: File[],

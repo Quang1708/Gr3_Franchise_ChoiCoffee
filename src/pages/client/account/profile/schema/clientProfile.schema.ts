@@ -14,7 +14,10 @@ export const clientProfileSchema = z.object({
       "Số điện thoại phải là số Việt Nam hợp lệ (ví dụ: +84 123 456 789 hoặc 0123456789)",
     ),
 
-  email: z.string().email("Địa chỉ email không hợp lệ").readonly(),
+  email: z
+    .string()
+    .min(1, "Email không được để trống")
+    .email("Địa chỉ email không đúng định dạng"),
 
   address: z
     .string()
@@ -30,6 +33,7 @@ export type ClientProfileFormData = z.infer<typeof clientProfileSchema>;
 // Schema for editing profile (only editable fields)
 export const editProfileSchema = clientProfileSchema.pick({
   name: true,
+  email: true,
   phone: true,
   address: true,
 });

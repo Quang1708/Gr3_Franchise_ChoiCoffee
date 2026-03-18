@@ -5,6 +5,7 @@ export interface Inventory {
   quantity: number;
   alert_threshold: number;
   isActive: boolean;
+  is_deleted: boolean;
   createdAt: string;
   updatedAt: string;
 }

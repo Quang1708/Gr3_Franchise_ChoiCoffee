@@ -38,8 +38,14 @@ export const useAdminContextStore = create<AdminContextState>((set) => ({
       return;
     }
 
-    if (String(saved) === "ALL") {
+    const savedText = String(saved).trim().toLowerCase();
+    if (savedText === "all") {
       removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID);
+      set({ selectedFranchiseId: null });
+      return;
+    }
+
+    if (savedText === "null" || savedText === "undefined") {
       set({ selectedFranchiseId: null });
       return;
     }
@@ -54,7 +60,7 @@ export const useAdminContextStore = create<AdminContextState>((set) => ({
    */
   setSelectedFranchiseId: (id) => {
     if (id === null) {
-      removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID);
+      setItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID, "null");
       set({ selectedFranchiseId: null });
       return;
     }

@@ -8,7 +8,7 @@ import ROUTER_URL from "@/routes/router.const";
 import {
   AdminResetPasswordSchema,
   type AdminResetPasswordSchemaType,
-} from "./login/schema/AdminAuth.schema";
+} from "../schema/AdminAuth.schema";
 import { changePassword } from "@/pages/admin/auth/login/services/auth06.service";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 

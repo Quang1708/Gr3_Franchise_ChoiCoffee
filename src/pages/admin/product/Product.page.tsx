@@ -42,6 +42,9 @@ const ProductPage = () => {
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
 
+  // Loading state for modal operations
+  const [isModalLoading, setIsModalLoading] = useState(false);
+
   // Hàm Fetch ban đầu
   const fetchProducts = useCallback(
     async (pageNum = 1, size?: number) => {
@@ -187,15 +190,20 @@ const ProductPage = () => {
       throw new Error("Missing required fields");
     }
 
-    const result = await createProductUsecase(newData);
+    try {
+      setIsModalLoading(true);
+      const result = await createProductUsecase(newData);
 
-    if (!result.ok) {
-      toastError(result.message);
-      throw new Error(result.message);
+      if (!result.ok) {
+        toastError(result.message);
+        throw new Error(result.message);
+      }
+
+      setData((prev) => [toProductRow(result.product), ...prev]);
+      toastSuccess("Thêm sản phẩm thành công");
+    } finally {
+      setIsModalLoading(false);
     }
-
-    setData((prev) => [toProductRow(result.product), ...prev]);
-    toastSuccess("Thêm sản phẩm thành công");
   };
 
   // Edit
@@ -211,19 +219,24 @@ const ProductPage = () => {
       return;
     }
 
-    const result = await updateProductUsecase(editingProduct.id, updatedData);
+    try {
+      setIsModalLoading(true);
+      const result = await updateProductUsecase(editingProduct.id, updatedData);
 
-    if (!result.ok) {
-      toastError(result.message);
-      throw new Error(result.message);
+      if (!result.ok) {
+        toastError(result.message);
+        throw new Error(result.message);
+      }
+
+      setData((prev) =>
+        prev.map((p) =>
+          p.id === editingProduct.id ? toProductRow(result.product) : p,
+        ),
+      );
+      toastSuccess("Cập nhật sản phẩm thành công");
+    } finally {
+      setIsModalLoading(false);
     }
-
-    setData((prev) =>
-      prev.map((p) =>
-        p.id === editingProduct.id ? toProductRow(result.product) : p,
-      ),
-    );
-    toastSuccess("Cập nhật sản phẩm thành công");
   };
 
   // Delete
@@ -239,20 +252,25 @@ const ProductPage = () => {
       return;
     }
 
-    const result = await deleteProductUsecase(deletingProduct.id);
-    if (!result.ok) {
-      toastError(result.message);
-      return;
-    }
+    try {
+      setIsModalLoading(true);
+      const result = await deleteProductUsecase(deletingProduct.id);
+      if (!result.ok) {
+        toastError(result.message);
+        return;
+      }
 
-    setData((prev) =>
-      prev.map((p) =>
-        p.id === deletingProduct.id
-          ? { ...p, is_deleted: true }
-          : p,
-      ),
-    );
-    toastSuccess("Đã xóa sản phẩm");
+      setData((prev) =>
+        prev.map((p) =>
+          p.id === deletingProduct.id
+            ? { ...p, is_deleted: true }
+            : p,
+        ),
+      );
+      toastSuccess("Đã xóa sản phẩm");
+    } finally {
+      setIsModalLoading(false);
+    }
   };
 
   const handleRestore = async (item: Product) => {
@@ -261,53 +279,23 @@ const ProductPage = () => {
       return;
     }
 
-    const result = await restoreProductUsecase(item.id);
-    if (!result.ok) {
-      toastError(result.message);
-      return;
-    }
+    try {
+      setIsModalLoading(true);
+      const result = await restoreProductUsecase(item.id);
+      if (!result.ok) {
+        toastError(result.message);
+        return;
+      }
 
-    setData((prev) =>
-      prev.map((p) =>
-        p.id === item.id ? { ...p, is_deleted: false } : p,
-      ),
-    );
-    toastSuccess("Đã khôi phục sản phẩm");
-  };
-
-  const handleStatusChange = async (item: Product, newStatus: boolean) => {
-    if (item.id === "") {
-      toastError("ID sản phẩm không hợp lệ");
-      return;
-    }
-    const prevStatus = item.is_active;
-    const prevUpdatedAt = item.updated_at;
-    const nextUpdatedAt = new Date().toISOString();
-
-    setData((prev) =>
-      prev.map((p) =>
-        p.id === item.id
-          ? { ...p, is_active: newStatus, updated_at: nextUpdatedAt }
-          : p,
-      ),
-    );
-
-    const result = await updateProductUsecase(item.id, { isActive: newStatus });
-    if (!result.ok) {
       setData((prev) =>
         prev.map((p) =>
-          p.id === item.id
-            ? { ...p, is_active: prevStatus, updated_at: prevUpdatedAt }
-            : p,
+          p.id === item.id ? { ...p, is_deleted: false } : p,
         ),
       );
-      toastError(result.message);
-      return;
+      toastSuccess("Đã khôi phục sản phẩm");
+    } finally {
+      setIsModalLoading(false);
     }
-
-    toastSuccess(
-      `Đã cập nhật trạng thái: ${newStatus ? "Hoạt động" : "Ngưng hoạt động"}`,
-    );
   };
 
   // View Details
@@ -391,8 +379,8 @@ const ProductPage = () => {
   ];
 
   return (
-    <div className="h-[calc(100vh-4rem)] min-h-0 flex flex-col overflow-hidden transition-all animate-fade-in">
-      {isTableLoading && <ClientLoading />}
+    <>
+      {(isTableLoading || isModalLoading) && <ClientLoading />}
       <CRUDPageTemplate<ProductRow>
         title="Quản lý Sản phẩm"
         data={data}
@@ -406,8 +394,6 @@ const ProductPage = () => {
           fetchProducts(1, size);
         }}
         tableMaxHeightClass="max-h-[60vh]"
-        statusField="is_active"
-        onStatusChange={handleStatusChange}
         filters={[
           {
             key: "is_active",
@@ -471,7 +457,7 @@ const ProductPage = () => {
         }}
         product={viewingProduct}
       />
-    </div>
+      </>
   );
 };
 

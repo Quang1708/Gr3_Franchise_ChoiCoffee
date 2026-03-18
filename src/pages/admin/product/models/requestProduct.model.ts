@@ -6,7 +6,7 @@ export interface RequestProduct {
 	content?: string;
 	minPrice: number;
 	maxPrice: number;
-	isActive?: boolean;
+	isActive: boolean;
 }
 
 export type UpdateRequestProduct = Partial<RequestProduct>;

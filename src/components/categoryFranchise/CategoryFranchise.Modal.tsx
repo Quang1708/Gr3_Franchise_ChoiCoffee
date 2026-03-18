@@ -71,16 +71,17 @@ const CategoryFranchiseCreateModal = ({
       return;
     }
 
-    try {
-      const response = await getCategoryFranchise({
-        searchCondition: {
-          franchise_id: targetFranchiseId,
-        },
-        pageInfo: {
-          pageNum: 1,
-          pageSize: 1000,
-        },
-      });
+      try {
+        const response = await getCategoryFranchise({
+          searchCondition: {
+            franchise_id: targetFranchiseId,
+            
+          },
+          pageInfo: {
+            pageNum: 1,
+            pageSize: 1000,
+          },
+        });
 
       const ids = new Set<string>(
         (response?.data ?? [])

@@ -2,7 +2,6 @@ import { ENV } from "@/config";
 import type { ApiErrorResponse } from "@/models";
 import { useCustomerAuthStore } from "@/stores/customerAuth.store";
 import { useAuthStore } from "@/stores/auth.store";
-import ROUTER_URL from "@/routes/router.const";
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
 
@@ -17,7 +16,6 @@ export const axiosClient = axios.create({
   timeout: 300000,
   withCredentials: true,
 });
-
 
 // Track if we're currently refreshing token
 let isRefreshing = false;
@@ -46,23 +44,19 @@ axiosClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Check if error response contains CUSTOMER_ACCESS_TOKEN_EXPIRED message
     const errorData = error.response?.data as ApiErrorResponse | undefined;
-    const errorMessage = errorData?.message ?? (error as { message?: string }).message;
+    const errorMessage =
+      errorData?.message ?? (error as { message?: string }).message;
     const isAccessTokenExpired =
       errorMessage === MSG_CONSTANT.CUSTOMER_ACCESS_TOKEN_EXPIRED;
 
-    // If access token expired and we haven't retried yet
     if (isAccessTokenExpired && !originalRequest._retry) {
-      // Don't retry refresh token endpoint itself
       if (originalRequest.url?.includes("/refresh-token")) {
-        // Refresh token expired, clear customer info and redirect to login
         useCustomerAuthStore.getState().clearCustomer();
         return Promise.reject(error);
       }
 
       if (isRefreshing) {
-        // If already refreshing, queue this request
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -74,17 +68,13 @@ axiosClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Call refresh token API
         await axiosClient.get("/api/customer-auth/refresh-token");
 
-        // Token refreshed successfully, process queued requests
         processQueue();
         isRefreshing = false;
 
-        // Retry original request
         return axiosClient(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, clear auth (component will handle navigation)
         processQueue(refreshError as AxiosError);
         isRefreshing = false;
         useCustomerAuthStore.getState().clearCustomer();
@@ -103,11 +93,7 @@ export const axiosAdminClient = axios.create({
   withCredentials: true,
 });
 
-const redirectToAdminLogin = () => {
-  if (window.location.pathname !== ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN) {
-    window.location.href = ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN;
-  }
-};
+
 
 axiosAdminClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
@@ -146,19 +132,20 @@ axiosAdminClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Check if error response contains ACCESS_TOKEN_EXPIRED message
+    // Check if error response contains ACCESS_TOKEN_EXPIRED message or HTTP 401
     const errorData = error.response?.data as ApiErrorResponse | undefined;
-    const errorMessage = errorData?.message ?? (error as { message?: string }).message;
+    const errorMessage =
+      errorData?.message ?? (error as { message?: string }).message;
     const isAccessTokenExpired =
       errorMessage === MSG_CONSTANT.ADMIN_ACCESS_TOKEN_EXPIRED;
+    const is401 = error.response?.status === 401;
 
-    // If access token expired and we haven't retried yet
-    if (isAccessTokenExpired && !originalRequest._retry) {
+    // If access token expired (by message or 401 status) and we haven't retried yet
+    if ((isAccessTokenExpired || is401) && !originalRequest._retry) {
       // Don't retry refresh token endpoint itself
       if (originalRequest.url?.includes("/refresh-token")) {
         // Refresh token expired, clear admin info and redirect to login
         useAuthStore.getState().logout();
-        redirectToAdminLogin();
         return Promise.reject(error);
       }
 
@@ -189,7 +176,6 @@ axiosAdminClient.interceptors.response.use(
         processAdminQueue(refreshError as AxiosError);
         isRefreshingAdmin = false;
         useAuthStore.getState().logout();
-        redirectToAdminLogin();
         return Promise.reject(refreshError);
       }
     }

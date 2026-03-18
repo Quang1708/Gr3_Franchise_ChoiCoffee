@@ -36,6 +36,20 @@ const getRoleLabel = (role: AdminRoleLike) => {
   return `FRANCHISE ${role.franchise_id}`;
 };
 
+const resolveRoleFranchiseId = (role: AdminRoleLike) => {
+  if (role.scope === "GLOBAL") return null;
+  const rawId =
+    role.franchise_id ??
+    (role as { franchiseId?: string | number } | undefined)?.franchiseId ??
+    null;
+  if (rawId == null) return null;
+  const normalized = String(rawId).trim().toLowerCase();
+  if (!normalized || normalized === "null" || normalized === "undefined") {
+    return null;
+  }
+  return String(rawId);
+};
+
 const AdminSelectContextPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -71,11 +85,8 @@ const AdminSelectContextPage: React.FC = () => {
 
     if (roles.length <= 1) {
       const role = roles[0];
-      if (role?.franchise_id != null) {
-        setSelectedFranchiseId(String(role.franchise_id));
-      } else {
-        setSelectedFranchiseId(null);
-      }
+      const roleFranchiseId = role ? resolveRoleFranchiseId(role) : null;
+      setSelectedFranchiseId(roleFranchiseId);
       removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
       navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
     }
@@ -105,10 +116,7 @@ const AdminSelectContextPage: React.FC = () => {
     const selected = roles[selectedRoleIndex];
     if (!selected) return;
 
-    const roleFranchiseId =
-      selected.franchise_id ??
-      (selected as { franchiseId?: string | number } | undefined)?.franchiseId ??
-      null;
+    const roleFranchiseId = resolveRoleFranchiseId(selected);
 
     setContextLoading(true);
     setContextError(null);
@@ -116,7 +124,7 @@ const AdminSelectContextPage: React.FC = () => {
     // Note: switch-context expects franchise_id as string or null per spec.
     try {
       const response = await switchAdminContext({
-        franchise_id: roleFranchiseId != null ? String(roleFranchiseId) : null,
+        franchise_id: roleFranchiseId,
       });
 
       if (!response?.success) {
@@ -163,11 +171,7 @@ const AdminSelectContextPage: React.FC = () => {
         }
       }
 
-      if (roleFranchiseId != null) {
-        setSelectedFranchiseId(String(roleFranchiseId));
-      } else {
-        setSelectedFranchiseId(null);
-      }
+      setSelectedFranchiseId(roleFranchiseId);
 
       removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
 

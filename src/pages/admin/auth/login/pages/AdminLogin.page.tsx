@@ -8,18 +8,18 @@ import logo from "@/assets/Logo/Logo.png";
 import {
   AdminAuthSchema,
   type AdminAuthSchemaType,
-} from "./schema/adminLogin.schema";
+} from "../schema/adminLogin.schema";
 import { useAuthStore } from "@/stores/auth.store";
 import { LOCAL_STORAGE } from "@/consts/localstorage.const";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 import { useAdminContextStore } from "@/stores/adminContext.store";
-import type { AdminLoginUserProfile } from "./models/api.model";
+import type { AdminLoginUserProfile } from "../models/api.model";
 import {
   getItemInLocalStorage,
   removeItemInLocalStorage,
   setItemInLocalStorage,
 } from "@/utils/localStorage.util";
-import { runAdminLogin } from "./usecases/login.usecase";
+import { runAdminLogin } from "../usecases/login.usecase";
 import ClientLoading from "@/components/Client/Client.Loading";
 
 const AdminLoginPage: React.FC = () => {

@@ -39,7 +39,8 @@ export interface CRUDPageTemplateProps<T> {
   title: string;
   data: T[];
   columns: Column<T>[];
-
+  selectedRowId?: string | number;
+  onRowClick?: (item: T) => void;
   pageSize?: number;
 
   totalItems?: number;
@@ -117,6 +118,9 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
   onDelete,
   onRestore,
 
+  onRowClick,
+  selectedRowId,
+
   onStatusChange,
   statusField,
 
@@ -132,7 +136,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
   const page = currentPage ?? 1;
   const [pageSizeState, setPageSizeState] = useState(pageSize ?? 10);
   const [pageInput, setPageInput] = useState(page);
-
+  const [focusedIndex, setFocusedIndex] = useState<number>(0);
   const [inputValue, setInputValue] = useState("");
 
   const [filterInput, setFilterInput] = useState<
@@ -283,7 +287,49 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
   };
 
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
+  const handleKeyNavigation = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!currentData.length) return;
 
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setFocusedIndex((prev) => Math.min(prev + 1, currentData.length - 1));
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setFocusedIndex((prev) => Math.max(prev - 1, 0));
+    }
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const item = currentData[focusedIndex];
+      if (item && onRowClick) {
+        onRowClick(item);
+      }
+    }
+
+    if (e.key === " " || e.code === "Space") {
+      e.preventDefault();
+
+      const row = tableContainerRef.current?.querySelectorAll(
+        "tbody input[type='checkbox']",
+      )[focusedIndex] as HTMLInputElement | undefined;
+
+      row?.click();
+    }
+  };
+  useEffect(() => {
+    const rows = tableContainerRef.current?.querySelectorAll("tbody tr");
+
+    const row = rows?.[focusedIndex] as HTMLElement | undefined;
+
+    if (row) {
+      row.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+    }
+  }, [focusedIndex]);
   return (
     <div className="w-full h-full flex flex-col justify-between bg-white overflow-hidden font-sans">
       {/* Header */}
@@ -353,7 +399,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                 }))
               }
               options={[
-                { value: "all", label: `Tất cả ${filter.label}` },
+                { value: "", label: `Tất cả ${filter.label}` },
                 ...filter.options,
               ]}
               icon={<Filter className="w-4 h-4" />}
@@ -393,7 +439,9 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
       {/* Table */}
       <div
         ref={tableContainerRef}
-        className={`px-3 md:px-6 lg:px-8 py-3 flex-1 overflow-auto ${tableMaxHeightClass || ""}`}
+        tabIndex={0}
+        onKeyDown={handleKeyNavigation}
+        className={`outline-none focus:outline-none px-3 md:px-6 lg:px-8 py-3 flex-1 overflow-auto ${tableMaxHeightClass || ""}`}
       >
         <div className="relative w-full rounded-lg border border-gray-200 overflow-auto">
           {isTableLoading && (
@@ -455,12 +503,34 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                   return (
                     <tr
                       key={item.id ?? index}
-                      className={`transition-colors
-                        ${
-                          isDeleted
-                            ? "bg-gray-50 text-gray-400"
-                            : "bg-white hover:bg-primary/5"
-                        }`}
+                      onClick={(e) => {
+                        const target = e.target as HTMLElement;
+
+                        if (target.closest("button") || target.closest("a")) {
+                          return;
+                        }
+
+                        // nếu click không phải checkbox thì tick checkbox
+                        if (!target.closest("input[type='checkbox']")) {
+                          const checkbox = e.currentTarget.querySelector(
+                            "input[type='checkbox']",
+                          ) as HTMLInputElement | null;
+
+                          checkbox?.click();
+                        }
+
+                        onRowClick?.(item);
+                      }}
+                      className={`transition-colors cursor-pointer
+${
+  focusedIndex === index
+    ? "bg-primary/10"
+    : item.id === selectedRowId
+      ? "bg-primary/5"
+      : isDeleted
+        ? "bg-gray-50 text-gray-400"
+        : "bg-white hover:bg-primary/5"
+}`}
                     >
                       <td className="px-4 py-3 text-center text-gray-500">
                         {(page - 1) * pageSizeState + index + 1}

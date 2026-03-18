@@ -185,6 +185,7 @@ const CustomerPage = () => {
   // Xử lý đổi trạng thái nhanh (Active/Inactive)
   const handleStatusChange = async (customer: Customer, newStatus: boolean) => {
     try {
+      setIsProcessing(true);
       const res = await updateCustomerStatusUsecase(customer.id, newStatus);
       if (res?.success || res?.status === 200) {
         setCustomers((prev) =>
@@ -194,6 +195,8 @@ const CustomerPage = () => {
       }
     } catch {
       toast.error("Lỗi cập nhật trạng thái");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -270,7 +273,7 @@ const CustomerPage = () => {
     <>
       {isLoading && <ClientLoading />}
       {isProcessing && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center">
           <ClientLoading />
         </div>
       )}

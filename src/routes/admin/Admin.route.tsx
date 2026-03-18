@@ -24,11 +24,17 @@ const FranchiseDetailPage = React.lazy(
 const InventoryPage = React.lazy(
   () => import("../../pages/admin/inventory/Inventory.page"),
 );
+const ShiftAssignmentPage = React.lazy(
+  () => import("../../pages/admin/shift_assignment"),
+);
 const LoyaltyPage = React.lazy(() => import("../../pages/admin/loyalty"));
 const OrderPage = React.lazy(() => import("../../pages/admin/order"));
 const PaymentPage = React.lazy(() => import("../../pages/admin/payment"));
 const VoucherPage = React.lazy(
   () => import("../../pages/admin/voucher/Voucher.page"),
+);
+const PromotionPage = React.lazy(
+  () => import("../../pages/admin/promotion/Promotion.page"),
 );
 const ProductPage = React.lazy(() => import("../../pages/admin/product"));
 const ProductCategoryFranchisePage = React.lazy(
@@ -103,6 +109,12 @@ const AdminRoutes = (
           <Route path="inventory" element={<InventoryPage />} />
         </Route>
 
+        <Route
+          element={<RequirePermission perm={PERM.SHIFT_ASSIGNMENT_READ} />}
+        >
+          <Route path="shift-assignment" element={<ShiftAssignmentPage />} />
+        </Route>
+
         <Route element={<RequirePermission perm={PERM.LOYALTY_READ} />}>
           <Route path="loyalty" element={<LoyaltyPage />} />
         </Route>
@@ -124,6 +136,8 @@ const AdminRoutes = (
         <Route element={<RequirePermission perm={PERM.VOUCHER_READ} />}>
           <Route path="voucher" element={<VoucherPage />} />
         </Route>
+
+        <Route path="promotion" element={<PromotionPage />} />
 
         <Route element={<RequirePermission perm={PERM.USER_MANAGE} />}>
           <Route path="user" element={<UserPage />} />

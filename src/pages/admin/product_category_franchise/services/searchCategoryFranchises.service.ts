@@ -23,7 +23,7 @@ export const searchCategoryFranchisesService = async (franchiseId = "") => {
         is_active: "",
         is_deleted: false,
       },
-      pageInfo: { pageNum: 1, pageSize: 20 },
+      pageInfo: { pageNum: 1, pageSize: 10000 },
     },
   );
   return res.data;

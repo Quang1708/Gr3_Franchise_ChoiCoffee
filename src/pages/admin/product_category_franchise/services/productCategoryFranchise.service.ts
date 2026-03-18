@@ -27,17 +27,9 @@ export interface ProductCategoryFranchiseReorderResponse {
 export const searchProductCategoryFranchisesService = async (
   payload: ProductCategoryFranchiseSearchInput,
 ) => {
-  const { pageNum, pageSize, ...searchCondition } = payload;
-
   const res = await axiosAdminClient.post<ProductCategoryFranchiseSearchResponse>(
     "/api/product-category-franchises/search",
-    {
-      searchCondition,
-      pageInfo: {
-        pageNum,
-        pageSize,
-      },
-    },
+    payload,
   );
 
   return res.data;

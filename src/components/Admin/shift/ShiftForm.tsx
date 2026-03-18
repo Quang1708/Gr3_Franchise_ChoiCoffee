@@ -1,4 +1,4 @@
-import { FormInput } from "@/components/Admin/Form/FormInput";
+import { FormInput } from "@/components/Admin/form/FormInput";
 import { useForm } from "react-hook-form";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
@@ -77,20 +77,17 @@ const ShiftForm = ({
   const [loadingFranchises, setLoadingFranchises] = useState(false);
 
   // Check if user is ADMIN (GLOBAL)
-  
 
-  const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId) ;
+  const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
   const isAdmin = franchiseId === null;
-
 
   // Get current franchise name for non-admin users
   const currentFranchiseName = useMemo(() => {
     if (!franchiseId || franchiseId === "") return "";
     const franchise = franchiseOptions.find(
       (f) => f.value === franchiseId || f.code === franchiseId,
-      
     );
-    return franchise?.name ;
+    return franchise?.name;
   }, [franchiseId, franchiseOptions]);
 
   const {
@@ -144,7 +141,7 @@ const ShiftForm = ({
     }
 
     // Load franchise options for admin in create mode only
-    if (mode === "create" ) {
+    if (mode === "create") {
       loadFranchiseOptions();
     }
   }, [
@@ -291,7 +288,7 @@ const ShiftForm = ({
                 Chi nhánh
               </label>
 
-              {isAdmin===true ? (
+              {isAdmin === true ? (
                 // ADMIN CREATE → CHO CHỌN
                 <select
                   {...register("franchise_id", {
@@ -313,7 +310,7 @@ const ShiftForm = ({
                 // NON ADMIN CREATE → KHÔNG CHO CHỌN
                 <input
                   type="text"
-                  value={currentFranchiseName }
+                  value={currentFranchiseName}
                   disabled
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50"
                 />

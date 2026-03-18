@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   CRUDPageTemplate,
   type Column,
 } from "@/components/Admin/template/CRUDPage.template";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import ClientLoading from "@/components/Client/Client.Loading";
+import { Modal } from "@/components/UI/Modal";
 import { useAuthStore } from "@/stores/auth.store";
 import { toastError, toastSuccess } from "@/utils/toast.util";
-import { ArrowDown, ArrowUp } from "lucide-react";
 
 import type { ProductCategoryFranchise } from "@/models/product_category_franchise.model";
 import {
@@ -20,20 +20,45 @@ import { restoreProductCategoryFranchiseUsecase } from "./usecases/restore.useca
 import { updateProductCategoryFranchiseStatusUsecase } from "./usecases/updateStatus.usecase";
 import {
   ProductCategoryFranchiseForm,
+  type ExistingProductCategoryMapping,
   type ProductCategoryFranchiseFormValues,
 } from "./components/ProductCategoryFranchiseForm";
 
 import type { ProductCategoryFranchiseSearchInput } from "./schema/productCategoryFranchise.schema";
-import FormSelect from "@/components/Admin/Form/FormSelect";
+import FormSelect from "@/components/Admin/form/FormSelect";
 import { useForm, type FieldError } from "react-hook-form";
 
 type ProductCategoryFranchiseRow = ProductCategoryFranchise & {
   franchiseName: string;
   categoryName: string;
   productName: string;
+  franchise_id?: string;
+  category_id?: string;
+  product_id?: string;
   category_franchise_id?: string;
   product_franchise_id?: string;
   is_deleted?: boolean;
+};
+
+type SearchFormValues = {
+  franchise_id: string;
+  category_id: string;
+};
+
+const DEFAULT_PAGE_SIZE = 100;
+
+const DEFAULT_SEARCH_PAYLOAD: ProductCategoryFranchiseSearchInput = {
+  searchCondition: {
+    franchise_id: "",
+    category_id: "",
+    product_id: "",
+    is_active: "",
+    is_deleted: false,
+  },
+  pageInfo: {
+    pageNum: 1,
+    pageSize: DEFAULT_PAGE_SIZE,
+  },
 };
 
 type ApiErrorLike = {
@@ -51,13 +76,17 @@ const ProductCategoryFranchisePage = () => {
   const isAdmin = role === "ADMIN";
 
   const [rows, setRows] = useState<ProductCategoryFranchiseRow[]>([]);
-  const [filteredRows, setFilteredRows] = useState<
-    ProductCategoryFranchiseRow[]
-  >([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTableLoading, setIsTableLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [totalItems, setTotalItems] = useState(0);
+  const [existingMappings, setExistingMappings] = useState<
+    ExistingProductCategoryMapping[]
+  >([]);
+  const [searchPayload, setSearchPayload] =
+    useState<ProductCategoryFranchiseSearchInput>(DEFAULT_SEARCH_PAYLOAD);
 
   const [formState, setFormState] = useState<{
     isOpen: boolean;
@@ -75,132 +104,267 @@ const ProductCategoryFranchisePage = () => {
     item: null,
   });
 
+  const [reorderForm, setReorderForm] = useState<{
+    isOpen: boolean;
+    item: ProductCategoryFranchiseRow | null;
+    maxPosition: number;
+    positionInput: string;
+  }>({
+    isOpen: false,
+    item: null,
+    maxPosition: 0,
+    positionInput: "",
+  });
+
   const {
     register,
+    getValues,
+    setValue,
     formState: { errors },
-  } = useForm();
+  } = useForm<SearchFormValues>({
+    defaultValues: {
+      franchise_id: "",
+      category_id: "",
+    },
+  });
+
+  const fetchData = useCallback(
+    async (
+      payload: ProductCategoryFranchiseSearchInput,
+      type: "full" | "table" = "table",
+    ) => {
+      try {
+        if (type === "full") {
+          setIsLoading(true);
+        } else {
+          setIsTableLoading(true);
+        }
+
+        const response = await searchProductCategoryFranchisesService(payload);
+
+        if (response?.success && response?.data) {
+          const rawData = Array.isArray(response.data)
+            ? response.data
+            : [response.data];
+
+          const mappedData: ProductCategoryFranchiseRow[] = (
+            rawData as (ProductCategoryFranchise & Record<string, unknown>)[]
+          ).map((item) => ({
+            ...item,
+
+            // map name fallback nếu API không trả
+            franchiseName: (item.franchiseName ??
+              item.franchise_name ??
+              item.franchise_id ??
+              "N/A") as string,
+            categoryName: (item.categoryName ??
+              item.category_name ??
+              item.category_id ??
+              "N/A") as string,
+            productName: (item.productName ??
+              item.product_name ??
+              item.product_id ??
+              "N/A") as string,
+            franchise_id: (item.franchise_id ??
+              item.franchiseId ??
+              "") as string,
+            category_id: (item.category_id ?? item.categoryId ?? "") as string,
+            product_id: (item.product_id ?? item.productId ?? "") as string,
+            category_franchise_id: (item.category_franchise_id ??
+              item.categoryFranchiseId ??
+              "") as string,
+            product_franchise_id: (item.product_franchise_id ??
+              item.productFranchiseId ??
+              "") as string,
+
+            displayOrder: (item.display_order ??
+              item.displayOrder ??
+              0) as number,
+            isActive: (item.is_active ?? item.isActive ?? false) as boolean,
+            is_deleted: (item.is_deleted ?? item.isDeleted ?? false) as boolean,
+          }));
+
+          setRows(mappedData);
+          setPage(response.pageInfo?.pageNum ?? payload.pageInfo.pageNum);
+          setPageSize(response.pageInfo?.pageSize ?? payload.pageInfo.pageSize);
+          setTotalItems(response.pageInfo?.totalItems ?? mappedData.length);
+          setSearchPayload(payload);
+        } else {
+          setRows([]);
+          setTotalItems(0);
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy dữ liệu:", error);
+        setRows([]);
+        setTotalItems(0);
+      } finally {
+        setIsLoading(false);
+        setIsTableLoading(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
-    fetchData();
+    fetchData(DEFAULT_SEARCH_PAYLOAD, "full");
+  }, [fetchData]);
+
+  const loadExistingMappings = useCallback(async () => {
+    try {
+      const response = await searchProductCategoryFranchisesService({
+        searchCondition: {
+          franchise_id: "",
+          category_id: "",
+          product_id: "",
+          is_active: "",
+          is_deleted: false,
+        },
+        pageInfo: {
+          pageNum: 1,
+          pageSize: 10000,
+        },
+      });
+
+      if (!response?.success || !Array.isArray(response.data)) {
+        setExistingMappings([]);
+        return;
+      }
+
+      const mapped = response.data.map((item) => ({
+        category_franchise_id: String(
+          (item as ProductCategoryFranchise & Record<string, unknown>)
+            .category_franchise_id ??
+            item.categoryFranchiseId ??
+            "",
+        ),
+        product_franchise_id: String(
+          (item as ProductCategoryFranchise & Record<string, unknown>)
+            .product_franchise_id ??
+            item.productFranchiseId ??
+            "",
+        ),
+      }));
+
+      setExistingMappings(mapped);
+    } catch (error) {
+      console.error("Lỗi khi tải mapping đã tồn tại:", error);
+      setExistingMappings([]);
+    }
   }, []);
 
   useEffect(() => {
-    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
-
-    const nextRows = rows.filter((row) => {
-      const matchesSearch =
-        normalizedSearchTerm.length === 0 ||
-        [row.franchiseName, row.categoryName, row.productName].some((value) =>
-          String(value).toLowerCase().includes(normalizedSearchTerm),
-        );
-
-      if (!matchesSearch) {
-        return false;
-      }
-
-      if (statusFilter === "all") {
-        return true;
-      }
-
-      return String(row.isActive) === statusFilter;
-    });
-
-    setFilteredRows(nextRows);
-  }, [rows, searchTerm, statusFilter]);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-
-      const payload: ProductCategoryFranchiseSearchInput = {
-        franchise_id: "",
-        category_id: "",
-        product_id: "",
-        is_active: "",
-        is_deleted: false,
-        pageNum: 1,
-        pageSize: 10000,
-      };
-
-      const response = await searchProductCategoryFranchisesService(payload);
-
-      console.log("API response:", response);
-
-      if (response?.success && response?.data) {
-        const rawData = Array.isArray(response.data)
-          ? response.data
-          : [response.data];
-
-        const mappedData: ProductCategoryFranchiseRow[] = (
-          rawData as (ProductCategoryFranchise & Record<string, unknown>)[]
-        ).map((item) => ({
-          ...item,
-
-          // map name fallback nếu API không trả
-          franchiseName: (item.franchiseName ??
-            item.franchise_name ??
-            item.franchise_id ??
-            "N/A") as string,
-          categoryName: (item.categoryName ??
-            item.category_name ??
-            item.category_id ??
-            "N/A") as string,
-          productName: (item.productName ??
-            item.product_name ??
-            item.product_id ??
-            "N/A") as string,
-          category_franchise_id: (item.category_franchise_id ??
-            item.categoryFranchiseId ??
-            "") as string,
-          product_franchise_id: (item.product_franchise_id ??
-            item.productFranchiseId ??
-            "") as string,
-
-          displayOrder: (item.display_order ??
-            item.displayOrder ??
-            0) as number,
-          isActive: (item.is_active ?? item.isActive ?? false) as boolean,
-          is_deleted: (item.is_deleted ?? item.isDeleted ?? false) as boolean,
-        }));
-
-        setRows(mappedData);
-        setFilteredRows(mappedData);
-      }
-    } catch (error) {
-      console.error("Lỗi khi lấy dữ liệu:", error);
-      setRows([]);
-      setFilteredRows([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    loadExistingMappings();
+  }, [loadExistingMappings]);
 
   const handleSearch = (
-    term: string,
+    _term: string,
     filters?: Partial<Record<keyof ProductCategoryFranchiseRow, string>>,
   ) => {
-    setSearchTerm(term);
-    setStatusFilter(String(filters?.isActive ?? "all"));
+    const nextPayload: ProductCategoryFranchiseSearchInput = {
+      searchCondition: {
+        franchise_id: getValues("franchise_id") || "",
+        category_id: getValues("category_id") || "",
+        product_id: "",
+        is_active:
+          filters?.isActive === "true"
+            ? true
+            : filters?.isActive === "false"
+              ? false
+              : "",
+        is_deleted:
+          filters?.is_deleted === "true"
+            ? true
+            : filters?.is_deleted === "false"
+              ? false
+              : false,
+      },
+      pageInfo: {
+        pageNum: 1,
+        pageSize,
+      },
+    };
+
+    fetchData(nextPayload, "table");
   };
 
-  const franchiseOptions = Array.from(
-    new Set(rows.map((r) => r.franchiseName)),
-  ).map((name) => ({
-    label: name,
-    value: name,
-  }));
+  const handleRefresh = () => {
+    setValue("franchise_id", "");
+    setValue("category_id", "");
 
-  const categoryOptions = Array.from(
-    new Set(rows.map((r) => r.categoryName)),
-  ).map((name) => ({
-    label: name,
-    value: name,
-  }));
+    const resetPayload: ProductCategoryFranchiseSearchInput = {
+      searchCondition: {
+        ...DEFAULT_SEARCH_PAYLOAD.searchCondition,
+      },
+      pageInfo: {
+        pageNum: 1,
+        pageSize,
+      },
+    };
+
+    fetchData(resetPayload, "table");
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    fetchData(
+      {
+        ...searchPayload,
+        pageInfo: {
+          pageNum: nextPage,
+          pageSize,
+        },
+      },
+      "table",
+    );
+  };
+
+  const handlePageSizeChange = (nextPageSize: number) => {
+    fetchData(
+      {
+        ...searchPayload,
+        pageInfo: {
+          pageNum: 1,
+          pageSize: nextPageSize,
+        },
+      },
+      "table",
+    );
+  };
+
+  const franchiseOptions = [
+    { label: "Tất cả chi nhánh", value: "" },
+    ...Array.from(
+      new Map(
+        rows
+          .filter((row) => row.franchise_id)
+          .map((row) => [String(row.franchise_id), row.franchiseName]),
+      ).entries(),
+    ).map(([value, label]) => ({
+      label,
+      value,
+    })),
+  ];
+
+  const categoryOptions = [
+    { label: "Tất cả danh mục", value: "" },
+    ...Array.from(
+      new Map(
+        rows
+          .filter((row) => row.category_id)
+          .map((row) => [String(row.category_id), row.categoryName]),
+      ).entries(),
+    ).map(([value, label]) => ({
+      label,
+      value,
+    })),
+  ];
 
   const handleOpenForm = (
     mode: "create" | "edit" | "view",
     item: ProductCategoryFranchiseRow | null = null,
   ) => {
+    if (mode === "create") {
+      loadExistingMappings();
+    }
     setFormState({ isOpen: true, mode, item });
   };
 
@@ -208,13 +372,10 @@ const ProductCategoryFranchisePage = () => {
     categoryFranchiseId: string,
     productFranchiseId: string,
   ) =>
-    rows.some(
-      (row) =>
-        !row.is_deleted &&
-        String(row.category_franchise_id ?? row.categoryFranchiseId ?? "") ===
-          categoryFranchiseId &&
-        String(row.product_franchise_id ?? row.productFranchiseId ?? "") ===
-          productFranchiseId,
+    existingMappings.some(
+      (mapping) =>
+        mapping.category_franchise_id === categoryFranchiseId &&
+        mapping.product_franchise_id === productFranchiseId,
     );
 
   const getCreateErrorMessage = (error: unknown) => {
@@ -260,15 +421,39 @@ const ProductCategoryFranchisePage = () => {
       }
 
       setIsProcessing(true);
+
+      const rawDisplayOrder = String(data.display_order ?? "").trim();
+      const displayOrder = rawDisplayOrder
+        ? Number.parseInt(rawDisplayOrder, 10)
+        : undefined;
+
+      if (
+        displayOrder !== undefined &&
+        (!Number.isFinite(displayOrder) || displayOrder < 1)
+      ) {
+        toastError("Thứ tự hiển thị phải là số nguyên >= 1");
+        return;
+      }
+
       const res = await createProductCategoryFranchiseUsecase({
         category_franchise_id: data.category_franchise_id,
         product_franchise_id: data.product_franchise_id,
-        display_order: Number(data.display_order),
+        ...(displayOrder !== undefined ? { display_order: displayOrder } : {}),
       });
       if (res.success) {
         toastSuccess("Thêm mới sản phẩm vào danh mục thành công");
         setFormState((prev) => ({ ...prev, isOpen: false }));
-        await fetchData();
+        // Sau khi thêm mới, load lại toàn bộ với loading full page
+        await Promise.all([
+          fetchData(
+            {
+              ...searchPayload,
+              pageInfo: { pageNum: 1, pageSize },
+            },
+            "full",
+          ),
+          loadExistingMappings(),
+        ]);
       } else {
         toastError("Thêm mới sản phẩm vào danh mục thất bại");
       }
@@ -298,9 +483,17 @@ const ProductCategoryFranchisePage = () => {
               : row,
           ),
         );
+        toastSuccess(
+          newStatus
+            ? "Bật trạng thái hoạt động thành công"
+            : "Tắt trạng thái hoạt động thành công",
+        );
+      } else {
+        toastError("Cập nhật trạng thái thất bại");
       }
     } catch (error) {
       console.error("Lỗi cập nhật trạng thái:", error);
+      toastError("Cập nhật trạng thái thất bại");
     } finally {
       setIsProcessing(false);
     }
@@ -334,6 +527,7 @@ const ProductCategoryFranchisePage = () => {
           ),
         );
         setModalConfig((prev) => ({ ...prev, isOpen: false }));
+        await loadExistingMappings();
       }
     } catch (error) {
       console.error("Lỗi thực hiện hành động:", error);
@@ -354,39 +548,56 @@ const ProductCategoryFranchisePage = () => {
       )
       .sort((first, second) => first.displayOrder - second.displayOrder);
 
-  const canMoveItem = (
-    item: ProductCategoryFranchiseRow,
-    direction: "up" | "down",
+  const applyLocalReorder = (
+    itemId: string,
+    categoryFranchiseId: string,
+    nextPosition: number,
   ) => {
-    const groupRows = getGroupRows(item);
-    const currentIndex = groupRows.findIndex(
-      (row) => String(row.id) === String(item.id),
-    );
+    setRows((prevRows) => {
+      const groupRows = prevRows
+        .filter(
+          (row) =>
+            getCategoryFranchiseId(row) === categoryFranchiseId &&
+            !row.is_deleted,
+        )
+        .sort((first, second) => first.displayOrder - second.displayOrder);
 
-    if (currentIndex < 0) return false;
-    return direction === "up"
-      ? currentIndex > 0
-      : currentIndex < groupRows.length - 1;
+      const fromIndex = groupRows.findIndex((row) => String(row.id) === itemId);
+      const toIndex = Math.min(
+        Math.max(nextPosition - 1, 0),
+        Math.max(groupRows.length - 1, 0),
+      );
+
+      if (fromIndex < 0 || fromIndex === toIndex) {
+        return prevRows;
+      }
+
+      const reorderedGroup = [...groupRows];
+      const [movedRow] = reorderedGroup.splice(fromIndex, 1);
+      reorderedGroup.splice(toIndex, 0, movedRow);
+
+      const displayOrderMap = new Map<string, number>();
+      reorderedGroup.forEach((row, index) => {
+        displayOrderMap.set(String(row.id), index + 1);
+      });
+
+      const nextRows = prevRows.map((row) => {
+        const order = displayOrderMap.get(String(row.id));
+        if (!order) return row;
+        return {
+          ...row,
+          displayOrder: order,
+        };
+      });
+
+      return nextRows;
+    });
   };
 
-  const handleReorder = async (
+  const reorderToPosition = async (
     item: ProductCategoryFranchiseRow,
-    direction: "up" | "down",
+    nextPosition: number,
   ) => {
-    const groupRows = getGroupRows(item);
-    const currentIndex = groupRows.findIndex(
-      (row) => String(row.id) === String(item.id),
-    );
-
-    if (currentIndex < 0) return;
-
-    const targetIndex =
-      direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    const targetItem = groupRows[targetIndex];
-    if (!targetItem) return;
-
-    const nextPosition = targetIndex + 1;
-
     try {
       setIsProcessing(true);
 
@@ -397,7 +608,11 @@ const ProductCategoryFranchisePage = () => {
       });
 
       if (res?.success) {
-        await fetchData();
+        applyLocalReorder(
+          String(item.id),
+          getCategoryFranchiseId(item),
+          nextPosition,
+        );
         toastSuccess("Cập nhật thứ tự hiển thị thành công");
       } else {
         toastError("Cập nhật thứ tự hiển thị thất bại");
@@ -408,6 +623,57 @@ const ProductCategoryFranchisePage = () => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const openManualReorderForm = (item: ProductCategoryFranchiseRow) => {
+    const groupRows = getGroupRows(item);
+    const maxPosition = groupRows.length;
+    if (!maxPosition) return;
+
+    setReorderForm({
+      isOpen: true,
+      item,
+      maxPosition,
+      positionInput: String(item.displayOrder),
+    });
+  };
+
+  const closeManualReorderForm = () => {
+    setReorderForm({
+      isOpen: false,
+      item: null,
+      maxPosition: 0,
+      positionInput: "",
+    });
+  };
+
+  const submitManualReorderForm = async () => {
+    const item = reorderForm.item;
+    if (!item) return;
+
+    const maxPosition = reorderForm.maxPosition;
+    if (!maxPosition) return;
+
+    const rawValue = reorderForm.positionInput;
+    const nextPosition = Number.parseInt(rawValue.trim(), 10);
+
+    if (!Number.isInteger(nextPosition)) {
+      toastError("Vị trí phải là số nguyên");
+      return;
+    }
+
+    if (nextPosition < 1 || nextPosition > maxPosition) {
+      toastError(`Vị trí phải nằm trong khoảng 1 đến ${maxPosition}`);
+      return;
+    }
+
+    if (nextPosition === item.displayOrder) {
+      closeManualReorderForm();
+      return;
+    }
+
+    await reorderToPosition(item, nextPosition);
+    closeManualReorderForm();
   };
 
   const columns: Column<ProductCategoryFranchiseRow>[] = [
@@ -439,19 +705,11 @@ const ProductCategoryFranchisePage = () => {
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => handleReorder(item, "up")}
-                disabled={isProcessing || !canMoveItem(item, "up")}
-                className="p-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => openManualReorderForm(item)}
+                disabled={isProcessing}
+                className="px-2 h-6 rounded border border-gray-200 text-[11px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <ArrowUp className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleReorder(item, "down")}
-                disabled={isProcessing || !canMoveItem(item, "down")}
-                className="p-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ArrowDown className="w-3.5 h-3.5" />
+                Thay đổi vị trí
               </button>
             </div>
           )}
@@ -468,11 +726,16 @@ const ProductCategoryFranchisePage = () => {
     <>
       <CRUDPageTemplate<ProductCategoryFranchiseRow>
         title="Quản lý Menu theo chi nhánh"
-        data={filteredRows}
+        data={rows}
         columns={columns}
-        pageSize={10}
+        pageSize={pageSize}
+        totalItems={totalItems}
+        currentPage={page}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
         statusField="isActive"
         searchKeys={["franchiseName", "categoryName", "productName"]}
+        isTableLoading={isTableLoading}
         searchContent={
           <div className="flex gap-3 w-full">
             <FormSelect
@@ -513,7 +776,7 @@ const ProductCategoryFranchisePage = () => {
         onStatusChange={isAdmin ? handleStatusChange : undefined}
         onDelete={isAdmin ? handleDeleteClick : undefined}
         onRestore={isAdmin ? handleRestoreClick : undefined}
-        onRefresh={fetchData}
+        onRefresh={handleRefresh}
         onSearch={handleSearch}
         onAdd={isAdmin ? () => handleOpenForm("create") : undefined}
         onView={(item) => handleOpenForm("view", item)}
@@ -536,10 +799,66 @@ const ProductCategoryFranchisePage = () => {
         isOpen={formState.isOpen}
         mode={formState.mode}
         initialData={formState.item ?? undefined}
+        existingMappings={existingMappings}
         isLoading={isProcessing}
         onClose={() => setFormState((prev) => ({ ...prev, isOpen: false }))}
         onSubmit={handleSubmitForm}
       />
+
+      <Modal
+        isOpen={reorderForm.isOpen}
+        onClose={closeManualReorderForm}
+        title="Cập nhật thứ tự hiển thị"
+      >
+        <form
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (isProcessing) return;
+            await submitManualReorderForm();
+          }}
+          className="space-y-4"
+        >
+          <p className="text-sm text-gray-600">
+            Nhập vị trí mới từ 1 đến {reorderForm.maxPosition}.
+          </p>
+
+          <input
+            type="number"
+            min={1}
+            max={reorderForm.maxPosition || undefined}
+            step={1}
+            value={reorderForm.positionInput}
+            onChange={(event) =>
+              setReorderForm((prev) => ({
+                ...prev,
+                positionInput: event.target.value,
+              }))
+            }
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="Nhập vị trí"
+            autoFocus
+            disabled={isProcessing}
+          />
+
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={closeManualReorderForm}
+              disabled={isProcessing}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={isProcessing}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white hover:bg-primary/90 disabled:opacity-50"
+            >
+              Xác nhận
+            </button>
+          </div>
+        </form>
+      </Modal>
     </>
   );
 };

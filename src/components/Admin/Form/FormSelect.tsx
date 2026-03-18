@@ -23,10 +23,11 @@ const FormSelect: React.FC<FormSelectProps> = ({
   onChange,
   value,
   className,
-  name
+  name,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [internalValue, setInternalValue] = useState<string>(value ?? "");
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -44,30 +45,32 @@ const FormSelect: React.FC<FormSelectProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const allOptions = [
-  { label: `Xem tất cả ${name}`, value: "" },
-  ...options,
-];
+  const allOptions = options;
 
-  const selectedOption = allOptions.find((opt) => opt.value === value);
+  const currentValue = value ?? internalValue;
+  const selectedOption = allOptions.find((opt) => opt.value === currentValue);
 
   const handleSelect = (val: string) => {
-  register.onChange({
-    target: {
-      name: register.name,
-      value: val,
-    },
-  });
+    register.onChange({
+      target: {
+        name: register.name,
+        value: val,
+      },
+    });
 
-  onChange?.(val);
+    if (onChange) {
+      onChange(val);
+    } else {
+      setInternalValue(val);
+    }
 
-  setIsOpen(false);
-  setSearch("");
-};
+    setIsOpen(false);
+    setSearch("");
+  };
 
   const filteredOptions = allOptions.filter((opt) =>
-  opt.label.toLowerCase().includes(search.toLowerCase()),
-);
+    opt.label.toLowerCase().includes(search.toLowerCase()),
+  );
 
   return (
     <div
@@ -127,14 +130,14 @@ const FormSelect: React.FC<FormSelectProps> = ({
                   onClick={() => handleSelect(opt.value)}
                   className={`flex items-center justify-between px-3 py-2 text-sm rounded-md cursor-pointer transition-colors
                     ${
-                      opt.value === value
+                      opt.value === currentValue
                         ? "bg-primary/10 text-primary font-medium"
                         : "text-gray-700 hover:bg-gray-50"
                     }`}
                 >
                   <span className="truncate">{opt.label}</span>
 
-                  {opt.value === value && (
+                  {opt.value === currentValue && (
                     <Check className="w-3.5 h-3.5 flex-shrink-0" />
                   )}
                 </div>
@@ -147,7 +150,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
           </div>
         </div>
       )}
-      <input type="hidden" {...register} value={value || ""} />
+      <input type="hidden" {...register} value={currentValue} />
     </div>
   );
 };

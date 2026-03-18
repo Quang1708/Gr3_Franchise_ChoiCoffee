@@ -17,7 +17,7 @@ import { updateStatusCategoryFranchsie } from "./services/categoryFranchise06.se
 import { restoreCategoryFranchise } from "./services/categoryFranchise05.service";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import { deleteCategoryFranchise } from "./services/categoryFranchise04.service";
-import FormSelect from "@/components/Admin/Form/FormSelect";
+import FormSelect from "@/components/Admin/form/FormSelect";
 import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";
 import type { FieldError } from "node_modules/react-hook-form/dist/types/errors";
 import { useForm} from "react-hook-form";

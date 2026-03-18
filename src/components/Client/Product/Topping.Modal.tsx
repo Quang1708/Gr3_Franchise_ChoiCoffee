@@ -7,6 +7,7 @@ import { useCustomerAuthStore } from "@/stores/customerAuth.store";
 import { toast } from "react-toastify";
 import type { AddCartRequest } from "./models/addCart.model";
 import { addItemToCart } from "./services/cart02.service";
+import type { ProductDetail } from "@/pages/client/product/models/product.models";
 
 const MAX_ITEMS = 10;
 
@@ -20,7 +21,7 @@ type Sizes = {
 type ProductModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  product: Product;
+  product: Product | ProductDetail;
 };
 
 const ToppingModal = ({
@@ -86,8 +87,6 @@ const ToppingModal = ({
       message: message || "",
       options: formattedOptions,
     };
-    console.log("OPTIONS:", formattedOptions);
-    console.log("PAYLOAD:", payload);
 
   const handleConfirm = async() => {
     if (!sizeSelected) return;
@@ -102,6 +101,7 @@ const ToppingModal = ({
       const response = await addItemToCart(payload);
       if(response){
         toast.success("Sản phẩm đã được thêm vào giỏ hàng!");
+        window.dispatchEvent(new Event("cartUpdated"));
         onClose();
       }
     } catch (error) {

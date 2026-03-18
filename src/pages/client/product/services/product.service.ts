@@ -1,9 +1,8 @@
 import { httpClient } from "@/api";
-import type { Product } from "@/models/product.model";
-import type { ProductDetail, PublicProductRequest } from "../models/product.models";
+import type { ProductDetail, PublicProductRequest, Product } from "../models/product.models";
 
-export const getPublicProducts=(params: PublicProductRequest ): Promise<Product[] | null> => {
-  return httpClient.get<Product[], PublicProductRequest>({
+export const getPublicProducts=async (params: PublicProductRequest ): Promise<Product[] | null> => {
+  return await httpClient.get<Product[], PublicProductRequest>({
     url: "/api/clients/products",
     params,
   });

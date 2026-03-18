@@ -46,7 +46,7 @@ export interface CustomerProfileResponse {
  * Customer Authentication Profile (simplified for auth and UI)
  */
 export interface CustomerAuthProfile {
-  id: number | string;
+  id: string;
   email?: string;
   phone: string;
   name: string;

@@ -19,8 +19,8 @@ import { toast } from "react-toastify";
 
 const ShiftPage = () => {
     const user = useAuthStore((s) => s.user);
-      const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId) || "";
-    
+    const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId) || ""; 
+    const isAdmin = franchiseId === "";
       const canWrite = useMemo(
         () => can(user, PERM.CATEGORY_WRITE, franchiseId || undefined),
         [user, franchiseId],
@@ -278,19 +278,22 @@ const ShiftPage = () => {
     }
   };
 
-  const franchiseOptions =
-    franchises?.map((f: any) => ({
+  const franchiseOptions = isAdmin
+  ? franchises?.map((f: any) => ({
       label: f.name,
       value: f.value,
-    })) || "";
-
+    })) || []
+  : franchises
+      ?.filter((f: any) => f.value === franchiseId) 
+      .map((f: any) => ({
+        label: f.name,
+        value: f.value,
+      })) || [];
   return (
     <>
-      {isLoading  && <ClientLoading />}
-      
+      {isLoading && <ClientLoading />}
 
       <CRUDPageTemplate<Shift>
-
         statusField="is_active"
         title="Ca làm việc"
         columns={column}
@@ -303,13 +306,15 @@ const ShiftPage = () => {
         onEdit={canWrite ? (item) => handleOpenForm("edit", item) : undefined}
         onDelete={(item) => handleDeleteShift(item)}
         onRefresh={() => fetchShifts(1, "full")}
-        onStatusChange={(item, isActive) => handleChangeShiftStatus(item, isActive)}
+        onStatusChange={(item, isActive) =>
+          handleChangeShiftStatus(item, isActive)
+        }
         onRestore={(item) => handleRestoreShift(item.id)}
         onPageChange={(newPage) => fetchShifts(newPage, "table")}
         onPageSizeChange={(newSize) => {
           setPageSize(newSize);
           fetchShifts(1, "table", newSize);
-        }} 
+        }}
         // searchContent={(
         //   <input
         //     type="text"
@@ -318,33 +323,31 @@ const ShiftPage = () => {
         //     ></input>
         // )}
         onSearch={handleSearchShift}
+        filters={[
+          {
+            key: "franchise_id",
+            label: "chi nhánh",
+            options: franchiseOptions,
+          },
 
-        filters={
-          [
-            { key: "franchise_id",
-              label: "chi nhánh",       
-              options: franchiseOptions,
+          {
+            key: "is_active",
+            label: "trạng thái",
+            options: [
+              { label: "Hoạt động", value: "true" },
+              { label: "Không hoạt động", value: "false" },
+            ],
+          },
 
-            },
-            { key: "is_active",
-              label: "trạng thái",
-              options: [
-                { label: "Hoạt động", value: "true" },
-                { label: "Không hoạt động", value: "false" },
-              ],
-            },
-
-            { key: "is_deleted",
-              label: "trạng thái xóa",       
-              options: [
-                { label: "Đã xóa", value: "true" },
-                { label: "Chưa xóa", value: "false" },
-              ],
-
-            },
-            
-          ]
-        }
+          {
+            key: "is_deleted",
+            label: "trạng thái xóa",
+            options: [
+              { label: "Đã xóa", value: "true" },
+              { label: "Chưa xóa", value: "false" },
+            ],
+          },
+        ]}
         isTableLoading={isProcessing || isTableLoading}
       />
 

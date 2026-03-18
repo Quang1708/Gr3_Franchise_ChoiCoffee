@@ -2,7 +2,7 @@ import { ENV } from "@/config";
 import type { ApiErrorResponse } from "@/models";
 import { useCustomerAuthStore } from "@/stores/customerAuth.store";
 import { useAuthStore } from "@/stores/auth.store";
-import ROUTER_URL from "@/routes/router.const";
+// import ROUTER_URL from "@/routes/router.const";
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
 
@@ -94,11 +94,11 @@ export const axiosAdminClient = axios.create({
   withCredentials: true,
 });
 
-const redirectToAdminLogin = () => {
-  if (window.location.pathname !== ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN) {
-    window.location.href = ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN;
-  }
-};
+// const redirectToAdminLogin = () => {
+//   if (window.location.pathname !== ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN) {
+//     window.location.href = ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN;
+//   }
+// };
 
 axiosAdminClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
@@ -151,7 +151,7 @@ axiosAdminClient.interceptors.response.use(
       if (originalRequest.url?.includes("/refresh-token")) {
         // Refresh token expired, clear admin info and redirect to login
         useAuthStore.getState().logout();
-        redirectToAdminLogin();
+        // redirectToAdminLogin();
         return Promise.reject(error);
       }
 
@@ -182,7 +182,7 @@ axiosAdminClient.interceptors.response.use(
         processAdminQueue(refreshError as AxiosError);
         isRefreshingAdmin = false;
         useAuthStore.getState().logout();
-        redirectToAdminLogin();
+        // redirectToAdminLogin();
         return Promise.reject(refreshError);
       }
     }

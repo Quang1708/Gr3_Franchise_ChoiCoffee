@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
-  CRUDTable,
+  CRUDPageTemplate,
   type Column,
-} from "@/components/Admin/template/CRUD.template";
+} from "../../../components/Admin/template/CRUDPage.template";
 
 import { useInventoryStore } from "../inventory/stores/useInventoryStore";
 
@@ -19,6 +19,9 @@ import { useAdminContextStore } from "@/stores/adminContext.store";
 import { Save } from "lucide-react";
 import InventoryExcelTools from "./InventoryExcelTools";
 import { inventoryTableSchema } from "./schemas/inventory.schema";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { InventoryTableForm } from "./schemas/inventory.schema";
 
 type InventoryRow = {
   id: string;
@@ -55,14 +58,50 @@ const InventoryPage = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [lowOnly, setLowOnly] = useState(false);
   const [keyword, setKeyword] = useState("");
-
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tableRows, setTableRows] = useState<InventoryRow[]>([]);
   const [logInventoryId, setLogInventoryId] = useState<string | null>(null);
+
   const [pageLoading, setPageLoading] = useState(true);
+  const [apiLoading, setApiLoading] = useState(false);
+
   const [excelErrors, setExcelErrors] = useState<string[]>([]);
   const [errorRowIds, setErrorRowIds] = useState<string[]>([]);
 
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const hasSelection = selectedIds.length > 0;
+
+  const { register, setValue, watch, reset } = useForm<InventoryTableForm>({
+    resolver: zodResolver(inventoryTableSchema),
+    defaultValues: {
+      rows: [],
+    },
+  });
+
+  const handleSearch = async (term: string) => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    searchTimeout.current = setTimeout(async () => {
+      setApiLoading(true);
+
+      setKeyword(term);
+
+      if (!term.trim()) {
+        await fetchAll();
+      } else {
+        await searchInventory(term);
+      }
+
+      setPage(1);
+
+      setApiLoading(false);
+    }, 400);
+  };
+
   /* ===============================
      LOAD DATA
   =============================== */
@@ -75,7 +114,7 @@ const InventoryPage = () => {
     };
 
     load();
-  }, [fetchAll, selectedFranchiseId]);
+  }, [selectedFranchiseId]);
 
   /* ===============================
      VIEW MODEL
@@ -106,16 +145,34 @@ const InventoryPage = () => {
 
   useEffect(() => {
     setTableRows(rows);
-  }, [rows]);
+
+    reset({
+      rows: rows.map((r) => ({
+        ...r,
+      })),
+    });
+  }, [rows, reset]);
+
+  /* ===============================
+     PAGINATION
+  =============================== */
+
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return tableRows.slice(start, end);
+  }, [tableRows, page, pageSize]);
 
   /* ===============================
      UPDATE SELECTED
   =============================== */
 
   const updateSelected = async () => {
-    const parse = inventoryTableSchema.safeParse({
-      rows: tableRows,
-    });
+    setApiLoading(true);
+
+    const formValues = watch();
+
+    const parse = inventoryTableSchema.safeParse(formValues);
 
     if (!parse.success) {
       const issues = parse.error.issues;
@@ -135,6 +192,7 @@ const InventoryPage = () => {
       setErrorRowIds(errorIds);
       setExcelErrors(messages);
 
+      setApiLoading(false);
       return;
     }
 
@@ -160,12 +218,17 @@ const InventoryPage = () => {
       })
       .filter(Boolean);
 
-    if (itemsPayload.length === 0) return;
+    if (itemsPayload.length === 0) {
+      setApiLoading(false);
+      return;
+    }
 
     await adjustBulk({ items: itemsPayload });
 
     await fetchAll();
     setSelectedIds([]);
+
+    setApiLoading(false);
   };
 
   /* ===============================
@@ -175,12 +238,12 @@ const InventoryPage = () => {
   const columns: Column<InventoryRow>[] = [
     {
       header: "",
+      accessor: "id",
       render: (r) => (
         <input
           type="checkbox"
           className="w-4 h-4 cursor-pointer accent-primary"
           checked={selectedIds.includes(r.id)}
-          onClick={(e) => e.stopPropagation()}
           onChange={(e) => {
             if (e.target.checked) {
               setSelectedIds((prev) => [...prev, r.id]);
@@ -194,21 +257,15 @@ const InventoryPage = () => {
 
     {
       header: "Sản phẩm",
+      accessor: "productName",
       render: (r) => (
         <div
-          onClick={() => {
-            setSelectedIds((prev) =>
-              prev.includes(r.id)
-                ? prev.filter((id) => id !== r.id)
-                : [...prev, r.id],
-            );
-          }}
-          className={`p-2 rounded-md transition cursor-pointer
-      ${selectedIds.includes(r.id) ? "bg-primary/10 border border-primary/30" : ""}
-      ${r.lowStock ? "bg-red-50 border border-red-200" : ""}
-      ${errorRowIds.includes(r.id) ? "bg-orange-50 border border-orange-300" : ""}
-      ${r.isDeleted ? "opacity-40 line-through" : ""}
-    `}
+          className={`p-2 rounded-md transition
+          ${selectedIds.includes(r.id) ? "bg-primary/10 border border-primary/30" : ""}
+          ${r.lowStock ? "bg-red-50 border border-red-200" : ""}
+          ${errorRowIds.includes(r.id) ? "bg-orange-50 border border-orange-300" : ""}
+          ${r.isDeleted ? "opacity-40 line-through" : ""}
+        `}
         >
           <div className="font-medium flex items-center gap-2">
             {r.productName}
@@ -233,191 +290,225 @@ const InventoryPage = () => {
 
     {
       header: "Số lượng",
-      render: (row) => (
-        <input
-          type="number"
-          value={row.quantity}
-          disabled={row.isDeleted}
-          onChange={(e) => {
-            const val = Number(e.target.value);
+      accessor: "quantity",
+      render: (row) => {
+        const index = tableRows.findIndex((r) => r.id === row.id);
 
-            setTableRows((prev) =>
-              prev.map((r) => (r.id === row.id ? { ...r, quantity: val } : r)),
-            );
+        return (
+          <input
+            type="number"
+            disabled={row.isDeleted}
+            {...register(`rows.${index}.quantity`, { valueAsNumber: true })}
+            defaultValue={row.quantity}
+            onChange={(e) => {
+              const val = Number(e.target.value);
 
-            if (!selectedIds.includes(row.id)) {
-              setSelectedIds((prev) => [...prev, row.id]);
-            }
-          }}
-          className="border border-gray-200 px-2 py-1 w-20 rounded-md disabled:bg-gray-100"
-        />
-      ),
+              setTableRows((prev) =>
+                prev.map((r) =>
+                  r.id === row.id ? { ...r, quantity: val } : r,
+                ),
+              );
+
+              setValue(`rows.${index}.quantity`, val);
+
+              if (!selectedIds.includes(row.id)) {
+                setSelectedIds((prev) => [...prev, row.id]);
+              }
+            }}
+            className="border border-gray-200 px-2 py-1 w-20 rounded-md"
+          />
+        );
+      },
     },
 
     {
       header: "Ngưỡng cảnh báo",
-      render: (row) => (
-        <input
-          type="number"
-          value={row.alertThreshold}
-          disabled={row.isDeleted}
-          onChange={(e) => {
-            const val = Number(e.target.value);
+      accessor: "alertThreshold",
+      render: (row) => {
+        const index = tableRows.findIndex((r) => r.id === row.id);
 
-            setTableRows((prev) =>
-              prev.map((r) =>
-                r.id === row.id ? { ...r, alertThreshold: val } : r,
-              ),
-            );
+        return (
+          <input
+            type="number"
+            disabled={row.isDeleted}
+            {...register(`rows.${index}.alertThreshold`, {
+              valueAsNumber: true,
+            })}
+            defaultValue={row.alertThreshold}
+            onChange={(e) => {
+              const val = Number(e.target.value);
 
-            if (!selectedIds.includes(row.id)) {
-              setSelectedIds((prev) => [...prev, row.id]);
-            }
-          }}
-          className="border border-gray-200 px-2 py-1 w-20 rounded-md disabled:bg-gray-100"
-        />
-      ),
+              setTableRows((prev) =>
+                prev.map((r) =>
+                  r.id === row.id ? { ...r, alertThreshold: val } : r,
+                ),
+              );
+
+              setValue(`rows.${index}.alertThreshold`, val);
+
+              if (!selectedIds.includes(row.id)) {
+                setSelectedIds((prev) => [...prev, row.id]);
+              }
+            }}
+            className="border border-gray-200 px-2 py-1 w-20 rounded-md"
+          />
+        );
+      },
     },
   ];
 
-  if (pageLoading || loading) return <ClientLoading />;
+  if (pageLoading || apiLoading) return <ClientLoading />;
 
   return (
     <div className="p-6 space-y-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b flex justify-between items-center flex-wrap gap-4">
-          <h2 className="text-xl font-bold text-gray-800 uppercase">
-            Quản lý tồn kho
-          </h2>
+      {/* BULK TOOLS */}
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <InventoryExcelTools
-              rows={tableRows}
-              selectedIds={selectedIds}
-              setSelectedIds={setSelectedIds}
-              onErrorsChange={setExcelErrors}
-              onErrorRowIdsChange={setErrorRowIds}
-              onImportApply={(excelRows: any[]) => {
-                setTableRows((prev) =>
-                  prev.map((row) => {
-                    const excel = excelRows.find(
-                      (e: any) =>
-                        e.product_name?.toLowerCase().trim() ===
-                          row.productName.toLowerCase().trim() &&
-                        e.franchise_name?.toLowerCase().trim() ===
-                          row.franchiseName.toLowerCase().trim(),
-                    );
-
-                    if (!excel) return row;
-
-                    return {
-                      ...row,
-                      quantity: Number(excel.quantity),
-                      alertThreshold: Number(excel.alert_threshold),
-                    };
-                  }),
+      <div className="flex items-center gap-3 flex-wrap">
+        <InventoryExcelTools
+          rows={tableRows}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
+          onErrorsChange={setExcelErrors}
+          onErrorRowIdsChange={setErrorRowIds}
+          onImportApply={(excelRows: any[]) => {
+            setTableRows((prev) =>
+              prev.map((row) => {
+                const excel = excelRows.find(
+                  (e: any) =>
+                    e.product_name?.toLowerCase().trim() ===
+                      row.productName.toLowerCase().trim() &&
+                    e.franchise_name?.toLowerCase().trim() ===
+                      row.franchiseName.toLowerCase().trim(),
                 );
-              }}
-            />
 
-            <button
-              onClick={updateSelected}
-              disabled={!hasSelection}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm
-              ${
-                hasSelection
-                  ? "bg-primary text-white hover:bg-primary/90"
-                  : "bg-gray-200 text-gray-400"
-              }`}
-            >
-              <Save size={16} />
-              Update Selected {hasSelection && `(${selectedIds.length})`}
-            </button>
-          </div>
-        </div>
-        {excelErrors.length > 0 && (
-          <div className="px-6 py-4 border-b bg-orange-50 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="font-semibold text-orange-700">
-                ⚠ Import Errors ({excelErrors.length})
-              </div>
+                if (!excel) return row;
 
-              <button
-                onClick={() => {
-                  setExcelErrors([]);
-                  setErrorRowIds([]);
-                }}
-                className="text-sm text-orange-600 hover:underline"
-              >
-                Clear
-              </button>
-            </div>
+                const quantity = Number(excel.quantity);
+                const alert = Number(excel.alert_threshold);
 
-            <div className="space-y-1 max-h-40 overflow-auto">
-              {excelErrors.map((err, i) => (
-                <div
-                  key={i}
-                  className="text-sm bg-orange-100 text-orange-800 px-3 py-2 rounded-md border border-orange-200"
-                >
-                  {err}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        <CRUDTable
-          title=""
-          data={tableRows}
-          columns={columns}
-          pageSize={5}
-          searchKeys={[]}
-          deferToolsApply
-          onSearch={async (value) => {
-            setKeyword(value);
-            await searchInventory(value);
+                const index = prev.findIndex((r) => r.id === row.id);
+
+                setValue(`rows.${index}.quantity`, quantity);
+                setValue(`rows.${index}.alertThreshold`, alert);
+
+                return {
+                  ...row,
+                  quantity,
+                  alertThreshold: alert,
+                };
+              }),
+            );
           }}
-          onRestore={async (row) => {
-            await restore(row.id);
-            await fetchAll();
-          }}
-          onAdd={() => setCreateOpen(true)}
-          onEdit={(row) => {
-            setAdjustItem({
-              id: row.id,
-              product_franchise_id: row.product_franchise_id,
-              quantity: row.quantity,
-              alert_threshold: row.alertThreshold,
-            });
-          }}
-          onDelete={(row) => setDeleteItem(row)}
-          onView={(row) => {
-            setLogInventoryId(row.id);
-          }}
-          searchRight={
-            <button
-              onClick={() => setLowOnly((v) => !v)}
-              className={`px-3 py-2 border rounded-lg text-sm font-medium
-              ${
-                lowOnly
-                  ? "bg-red-50 border-red-300 text-red-600"
-                  : "bg-white border-gray-200 hover:bg-gray-50"
-              }`}
-            >
-              {lowOnly ? "Đang lọc sắp hết" : "Lọc sắp hết"}
-            </button>
-          }
-          applyButtonLabel="Search"
         />
+
+        <button
+          onClick={updateSelected}
+          disabled={!hasSelection}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer
+          ${hasSelection ? "bg-primary text-white" : "bg-gray-200 text-gray-400"}`}
+        >
+          <Save size={16} />
+          Update Selected {hasSelection && `(${selectedIds.length})`}
+        </button>
       </div>
+      {excelErrors.length > 0 && (
+        <div className="px-6 py-4 border-b bg-orange-50 space-y-2">
+          {" "}
+          <div className="flex items-center justify-between">
+            {" "}
+            <div className="font-semibold text-orange-700">
+              {" "}
+              ⚠ Import Errors ({excelErrors.length}){" "}
+            </div>{" "}
+            <button
+              onClick={() => {
+                setExcelErrors([]);
+                setErrorRowIds([]);
+              }}
+              className="text-sm text-orange-600 hover:underline"
+            >
+              {" "}
+              Clear{" "}
+            </button>{" "}
+          </div>{" "}
+          <div className="space-y-1 max-h-40 overflow-auto">
+            {" "}
+            {excelErrors.map((err, i) => (
+              <div
+                key={i}
+                className="text-sm bg-orange-100 text-orange-800 px-3 py-2 rounded-md border border-orange-200"
+              >
+                {" "}
+                {err}{" "}
+              </div>
+            ))}{" "}
+          </div>{" "}
+        </div>
+      )}
+      <CRUDPageTemplate
+        title="Quản lý tồn kho"
+        data={paginatedRows}
+        columns={columns}
+        currentPage={page}
+        pageSize={pageSize}
+        totalItems={tableRows.length}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        tableMaxHeightClass="max-h-[45vh]"
+        isTableLoading={loading}
+        onSearch={handleSearch}
+        onRefresh={async () => {
+          setPage(1);
+          setKeyword("");
+          await fetchAll();
+        }}
+        onAdd={() => setCreateOpen(true)}
+        onEdit={(row) =>
+          setAdjustItem({
+            id: row.id,
+            product_franchise_id: row.product_franchise_id,
+            quantity: row.quantity,
+            alert_threshold: row.alertThreshold,
+          })
+        }
+        onDelete={(row) => setDeleteItem(row)}
+        onView={(row) => setLogInventoryId(row.id)}
+        onRestore={async (row) => {
+          setApiLoading(true);
+
+          await restore(row.id);
+          await fetchAll();
+
+          setApiLoading(false);
+        }}
+        searchRight={
+          <button
+            onClick={() => setLowOnly((v) => !v)}
+            className={`px-3 py-2 border rounded-lg text-sm
+            ${
+              lowOnly
+                ? "bg-red-50 border-red-300 text-red-600"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            {lowOnly ? "Đang lọc sắp hết" : "Lọc sắp hết"}
+          </button>
+        }
+      />
 
       <AdjustInventoryModal
         isOpen={!!adjustItem}
         inventory={adjustItem}
         onClose={() => setAdjustItem(null)}
         onSubmit={async (data) => {
+          setApiLoading(true);
+
           await adjust(data);
           await fetchAll();
+
           setAdjustItem(null);
+
+          setApiLoading(false);
         }}
       />
 
@@ -425,18 +516,21 @@ const InventoryPage = () => {
         isOpen={!!deleteItem}
         inventory={
           deleteItem
-            ? {
-                id: deleteItem.id,
-                ingredientName: deleteItem.productName,
-              }
+            ? { id: deleteItem.id, ingredientName: deleteItem.productName }
             : null
         }
         onClose={() => setDeleteItem(null)}
         onConfirm={async () => {
           if (!deleteItem) return;
+
+          setApiLoading(true);
+
           await deleteInventory(deleteItem.id);
           await fetchAll();
+
           setDeleteItem(null);
+
+          setApiLoading(false);
         }}
       />
 
@@ -444,9 +538,14 @@ const InventoryPage = () => {
         isOpen={createOpen}
         onClose={() => setCreateOpen(false)}
         onSubmit={async (data) => {
+          setApiLoading(true);
+
           await create(data);
           await fetchAll();
+
           setCreateOpen(false);
+
+          setApiLoading(false);
         }}
       />
 

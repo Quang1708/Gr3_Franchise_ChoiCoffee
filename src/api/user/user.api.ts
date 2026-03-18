@@ -6,7 +6,7 @@ type UserSearchApiPayload = {
   searchCondition: {
     keyword: string;
     is_active: boolean | "";
-    is_deleted: boolean;
+    is_deleted: boolean | "";
   };
   pageInfo: {
     pageNum: number;
@@ -18,7 +18,7 @@ const DEFAULT_SEARCH_PAYLOAD: UserSearchApiPayload = {
   searchCondition: {
     keyword: "",
     is_active: "",
-    is_deleted: false,
+    is_deleted: "",
   },
   pageInfo: {
     pageNum: 1,
@@ -58,7 +58,7 @@ const buildSearchPayload = (
           ? payload.is_active
           : DEFAULT_SEARCH_PAYLOAD.searchCondition.is_active,
       is_deleted:
-        typeof payload.is_deleted === "boolean"
+        typeof payload.is_deleted === "boolean" || payload.is_deleted === ""
           ? payload.is_deleted
           : DEFAULT_SEARCH_PAYLOAD.searchCondition.is_deleted,
     },
@@ -84,7 +84,7 @@ export const userApi = {
   async search(payload: {
     keyword?: string;
     is_active?: boolean | "";
-    is_deleted?: boolean;
+    is_deleted?: boolean | "";
     pageNum?: number;
     pageSize?: number;
   } = {}) {

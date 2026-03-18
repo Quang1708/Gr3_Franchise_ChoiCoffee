@@ -40,7 +40,6 @@ export const inventoryRowSchema = z.object({
   lowStock: z.boolean().optional(),
   isDeleted: z.boolean().optional(),
 })
-
 export const inventoryTableSchema = z.object({
   rows: z.array(inventoryRowSchema),
 })

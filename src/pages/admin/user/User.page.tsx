@@ -53,9 +53,9 @@ const UserPage = () => {
       name: item.name,
       phone: item.phone,
       avatar_url: item.avatar_url,
+      roleCode: item.roleCode || item.role_code || "",
       is_active: item.is_active,
       is_deleted: item.is_deleted,
-      is_verified: item.is_verified,
       created_at: item.created_at,
       updated_at: item.updated_at,
     } as User;
@@ -71,7 +71,7 @@ const UserPage = () => {
           searchCondition: {
             keyword: "",
             is_active: "",
-            is_deleted: false,
+            is_deleted: "false",
           },
           pageInfo: {
             pageNum,

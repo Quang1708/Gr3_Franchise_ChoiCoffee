@@ -28,7 +28,8 @@ export const productCategoryFranchiseCreateSchema = z.object({
   display_order: z
     .number()
     .int("Thứ tự hiển thị phải là số nguyên")
-    .min(1, "Thứ tự hiển thị tối thiểu là 1"),
+    .min(1, "Thứ tự hiển thị tối thiểu là 1")
+    .optional(),
 });
 
 export type ProductCategoryFranchiseSearchInput = z.infer<

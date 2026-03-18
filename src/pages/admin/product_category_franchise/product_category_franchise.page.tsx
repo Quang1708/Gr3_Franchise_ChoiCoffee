@@ -45,7 +45,7 @@ type SearchFormValues = {
   category_id: string;
 };
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 100;
 
 const DEFAULT_SEARCH_PAYLOAD: ProductCategoryFranchiseSearchInput = {
   searchCondition: {
@@ -410,6 +410,16 @@ const ProductCategoryFranchisePage = () => {
 
   const handleSubmitForm = async (data: ProductCategoryFranchiseFormValues) => {
     try {
+      if (
+        isDuplicateMapping(
+          data.category_franchise_id,
+          data.product_franchise_id,
+        )
+      ) {
+        toastError("Sản phẩm này đã tồn tại trong danh mục chi nhánh đã chọn");
+        return;
+      }
+
       setIsProcessing(true);
 
       const rawDisplayOrder = String(data.display_order ?? "").trim();
@@ -417,7 +427,10 @@ const ProductCategoryFranchisePage = () => {
         ? Number.parseInt(rawDisplayOrder, 10)
         : undefined;
 
-      if (displayOrder !== undefined && (!Number.isFinite(displayOrder) || displayOrder < 1)) {
+      if (
+        displayOrder !== undefined &&
+        (!Number.isFinite(displayOrder) || displayOrder < 1)
+      ) {
         toastError("Thứ tự hiển thị phải là số nguyên >= 1");
         return;
       }

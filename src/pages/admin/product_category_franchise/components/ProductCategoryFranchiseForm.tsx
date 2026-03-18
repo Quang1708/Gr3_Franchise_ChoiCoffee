@@ -87,8 +87,30 @@ export const ProductCategoryFranchiseForm = ({
   const { user } = useAuthStore();
   const { selectedFranchiseId: ctxFranchiseId } = useAdminContextStore();
 
+  const roleManagedFranchiseId = useMemo(() => {
+    const franchiseRole = user?.roles?.find((r) => {
+      const roleFranchiseId =
+        r.franchise_id ??
+        (r as { franchiseId?: string | number } | undefined)?.franchiseId;
+      return r.scope === "FRANCHISE" && roleFranchiseId != null;
+    });
+
+    const resolvedFranchiseId =
+      franchiseRole?.franchise_id ??
+      (franchiseRole as { franchiseId?: string | number } | undefined)
+        ?.franchiseId;
+
+    return resolvedFranchiseId != null ? String(resolvedFranchiseId) : "";
+  }, [user]);
+
+  const contextFranchiseId = useMemo(() => {
+    if (!ctxFranchiseId || ctxFranchiseId === "ALL") return "";
+    return String(ctxFranchiseId);
+  }, [ctxFranchiseId]);
+
   const formFranchiseId = watch("franchise_id");
-  const activeFranchiseId = formFranchiseId || ctxFranchiseId;
+  const formProductFranchiseId = watch("product_franchise_id");
+  const formDisplayOrder = watch("display_order");
 
   const isGlobalAdmin = useMemo(() => {
     return (
@@ -99,6 +121,13 @@ export const ProductCategoryFranchiseForm = ({
       ) ?? false
     );
   }, [user]);
+
+  const managedFranchiseId =
+    contextFranchiseId || (!isGlobalAdmin ? roleManagedFranchiseId : "");
+
+  const activeFranchiseId = formFranchiseId || managedFranchiseId;
+
+  const createDefaultFranchiseId = managedFranchiseId;
 
   // Get franchise name for display
   const currentFranchiseName = useMemo(() => {
@@ -131,7 +160,10 @@ export const ProductCategoryFranchiseForm = ({
     const map = new Map<string, string>();
     (res.data ?? []).forEach((item) => {
       if (!item.franchise_id) return;
-      map.set(String(item.franchise_id), String(item.franchise_name ?? item.franchise_id));
+      map.set(
+        String(item.franchise_id),
+        String(item.franchise_name ?? item.franchise_id),
+      );
     });
     setFranchiseOptions(
       Array.from(map.entries())
@@ -148,8 +180,8 @@ export const ProductCategoryFranchiseForm = ({
         searchProductFranchisesService(franchiseId),
       ]);
 
-      setCategoryOptions(catRes.success ? catRes.data ?? [] : []);
-      setProductOptions(prodRes.success ? prodRes.data ?? [] : []);
+      setCategoryOptions(catRes.success ? (catRes.data ?? []) : []);
+      setProductOptions(prodRes.success ? (prodRes.data ?? []) : []);
     } catch (e) {
       console.error("Không thể tải danh sách:", e);
       setCategoryOptions([]);
@@ -171,17 +203,19 @@ export const ProductCategoryFranchiseForm = ({
 
     const franchiseIdToLoad = isGlobalAdmin
       ? String(formFranchiseId || "")
-      : String(ctxFranchiseId || "");
+      : managedFranchiseId;
 
-    if (!franchiseIdToLoad) {
-      setCategoryOptions([]);
-      setProductOptions([]);
-      return;
-    }
-
+    // Nếu không có franchiseId cụ thể, vẫn load tất cả để user chọn được
     loadOptionsForFranchise(franchiseIdToLoad);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, isGlobalAdmin, ctxFranchiseId]);
+  }, [isOpen, isGlobalAdmin, managedFranchiseId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (mode !== "create") return;
+
+    setValue("franchise_id", createDefaultFranchiseId);
+  }, [isOpen, mode, createDefaultFranchiseId, setValue]);
 
   useEffect(() => {
     if (mode === "view") return;
@@ -193,13 +227,9 @@ export const ProductCategoryFranchiseForm = ({
     setValue("product_franchise_id", "");
     setValue("display_order", "");
 
-    if (!formFranchiseId) {
-      setCategoryOptions([]);
-      setProductOptions([]);
-      return;
-    }
-
-    loadOptionsForFranchise(String(formFranchiseId));
+    // Nếu GLOBAL admin chưa chọn chi nhánh, vẫn cho phép load tất cả
+    const franchiseIdToLoad = String(formFranchiseId || "");
+    loadOptionsForFranchise(franchiseIdToLoad);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formFranchiseId, isOpen, isGlobalAdmin, mode, setValue]);
 
@@ -256,7 +286,10 @@ export const ProductCategoryFranchiseForm = ({
     const run = async () => {
       if (mode === "view") return;
       if (!isOpen) return;
-      if (!selectedCategoryOption?.franchise_id || !selectedCategoryOption?.category_id) {
+      if (
+        !selectedCategoryOption?.franchise_id ||
+        !selectedCategoryOption?.category_id
+      ) {
         setUsedDisplayOrders(new Set());
         setDisplayOrderOptions([]);
         return;
@@ -276,7 +309,9 @@ export const ProductCategoryFranchiseForm = ({
 
         const used = new Set<number>();
         (res.data ?? []).forEach((item) => {
-          const value = Number((item as unknown as Record<string, unknown>).display_order ?? 0);
+          const value = Number(
+            (item as unknown as Record<string, unknown>).display_order ?? 0,
+          );
           if (Number.isFinite(value) && value > 0) used.add(value);
         });
 
@@ -289,7 +324,9 @@ export const ProductCategoryFranchiseForm = ({
           ) ?? nextMax;
 
         setUsedDisplayOrders(used);
-        setDisplayOrderOptions(Array.from({ length: nextMax }, (_, i) => i + 1));
+        setDisplayOrderOptions(
+          Array.from({ length: nextMax }, (_, i) => i + 1),
+        );
         setValue("display_order", String(firstFree));
       } catch (error) {
         console.error("Không thể tải display_order:", error);
@@ -315,14 +352,14 @@ export const ProductCategoryFranchiseForm = ({
 
     if (mode === "create") {
       reset({
-        franchise_id: String(activeFranchiseId ?? ""),
+        franchise_id: createDefaultFranchiseId,
         category_franchise_id: "",
         product_franchise_id: "",
         display_order: "",
       });
     } else {
       reset({
-        franchise_id: String(activeFranchiseId ?? ""),
+        franchise_id: managedFranchiseId,
         category_franchise_id: String(initialData?.categoryFranchiseId ?? ""),
         product_franchise_id: String(initialData?.productFranchiseId ?? ""),
         display_order: String(initialData?.displayOrder ?? ""),
@@ -333,7 +370,7 @@ export const ProductCategoryFranchiseForm = ({
     if (mode !== "view") {
       // options are loaded by effects (server-side cascade)
     }
-  }, [isOpen, initialData, mode, reset, activeFranchiseId]);
+  }, [isOpen, initialData, mode, reset, managedFranchiseId]);
 
   // loadOptions removed: now loadOptionsForFranchise + loadFranchiseOptions are used.
 
@@ -434,6 +471,7 @@ export const ProductCategoryFranchiseForm = ({
                     })),
                   ]}
                   register={register("franchise_id")}
+                  value={String(formFranchiseId || "")}
                   error={errors.franchise_id}
                   placeholder="Chọn chi nhánh"
                 />
@@ -463,6 +501,7 @@ export const ProductCategoryFranchiseForm = ({
                 register={register("category_franchise_id", {
                   required: "Không được để trống",
                 })}
+                value={String(selectedCategoryFranchiseId || "")}
                 error={errors.category_franchise_id}
                 placeholder="Chọn danh mục"
               />
@@ -487,6 +526,7 @@ export const ProductCategoryFranchiseForm = ({
                 register={register("product_franchise_id", {
                   required: "Không được để trống",
                 })}
+                value={String(formProductFranchiseId || "")}
                 error={errors.product_franchise_id}
                 placeholder="Chọn sản phẩm"
               />
@@ -509,6 +549,7 @@ export const ProductCategoryFranchiseForm = ({
                   })),
                 ]}
                 register={register("display_order")}
+                value={String(formDisplayOrder || "")}
                 placeholder="Chọn vị trí"
               />
               <p className="text-xs text-gray-500">

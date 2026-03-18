@@ -17,7 +17,6 @@ const ClientHeader = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Get customer from Zustand store
   const customer = useCustomerAuthStore((state) => state.customer);
   const clearCustomer = useCustomerAuthStore((state) => state.clearCustomer);
   const setLoggingOut = useCustomerAuthStore((state) => state.setLoggingOut);
@@ -67,10 +66,10 @@ const ClientHeader = () => {
   ];
 
   const fetchFranchise = async () => {
-    try{
+    try {
       setIsLoading(true);
       const response = await getAllFranchise();
-      if(response){
+      if (response) {
         setIsLoading(false);
         setFranchises(response);
         console.log("franchise", response);
@@ -78,11 +77,14 @@ const ClientHeader = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setIsLoading(false);
-      toast.error("Không thể tải danh sách chi nhánh. Vui lòng thử lại!", error);
-    }finally{
+      toast.error(
+        "Không thể tải danh sách chi nhánh. Vui lòng thử lại!",
+        error,
+      );
+    } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     fetchFranchise();
@@ -132,8 +134,6 @@ const ClientHeader = () => {
     };
   }, [isFranchiseDropdownOpen, isProfileOpen, isMobileMenuOpen]);
 
-
-
   const handleFranchiseSelect = (franchiseId: string) => {
     setIsLoading(true);
     setIsFranchiseDropdownOpen(false);
@@ -158,6 +158,7 @@ const ClientHeader = () => {
     try {
       // Set logging out flag first
       setLoggingOut(true);
+      setIsProfileOpen(false);
 
       await customerLogout();
 
@@ -165,14 +166,17 @@ const ClientHeader = () => {
       clearCustomer();
 
       toastSuccess("Đăng xuất thành công!");
-      navigate(ROUTER_URL.HOME);
-      setIsProfileOpen(false);
+
+      // Reset logging out flag
+      setLoggingOut(false);
+
+      // Navigate to home
+      navigate(ROUTER_URL.HOME, { replace: true });
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toastError(
         err?.response?.data?.message || "Đăng xuất thất bại. Vui lòng thử lại!",
       );
-      // Reset flag on error
       setLoggingOut(false);
     }
   };
@@ -241,8 +245,9 @@ const ClientHeader = () => {
               <span className="material-symbols-outlined text-lg sm:text-xl">
                 shopping_cart
               </span>
-              <span className="absolute top-1 right-1 w-2 h-2 text-primary">2</span>
-
+              <span className="absolute top-1 right-1 w-2 h-2 text-primary">
+                2
+              </span>
             </button>
             <button className="hidden sm:flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold min-w-0 px-2.5 relative">
               <span className="material-symbols-outlined text-xl">

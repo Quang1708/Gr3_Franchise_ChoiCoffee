@@ -73,7 +73,8 @@ searchInventory: async (keyword = "") => {
 
     const res = await inventoryService.search({
       searchCondition: {
-        ...(keyword && { keyword }),
+        is_deleted: false,
+        ...(keyword ? { keyword } : {}),
         ...(franchiseId ? { franchise_id: franchiseId } : {}),
       },
       pageInfo: {

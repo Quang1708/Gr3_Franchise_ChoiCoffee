@@ -10,9 +10,9 @@ export const searchUsersApi = async (payload: SearchUserRequest) => {
         isActive = payload.searchCondition.is_active;
     }
     
-    let isDeleted: boolean = false;
+    let isDeleted: boolean | "" = "";
     if (typeof payload.searchCondition.is_deleted === "string") {
-        isDeleted = payload.searchCondition.is_deleted === "" ? false : (eval(payload.searchCondition.is_deleted) as boolean);
+        isDeleted = payload.searchCondition.is_deleted === "" ? "" : (eval(payload.searchCondition.is_deleted) as boolean);
     } else if (typeof payload.searchCondition.is_deleted === "boolean") {
         isDeleted = payload.searchCondition.is_deleted;
     }

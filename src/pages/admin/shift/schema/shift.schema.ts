@@ -15,24 +15,21 @@ export const getShiftSchema = (mode: "create" | "edit" | "view") => {
         start_time: z.string().min(1, "Thời gian bắt đầu là bắt buộc"),
         end_time: z.string().min(1, "Thời gian kết thúc là bắt buộc"),
         franchise_id: z.string().min(1, "Chi nhánh là bắt buộc"),
-    }).refine((data) => {
-        if (mode === "create") {
-            data.start_time = data.start_time + ":00"; // Thêm giây mặc định
-            data.end_time = data.end_time + ":00"; // Thêm giây mặc định
-            return data.start_time < data.end_time; // Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc
+    }).superRefine((data, ctx) => {
+       if (mode === "view") return;
+
+      if (data.start_time && data.end_time) {
+        const start = data.start_time + ":00";
+        const end = data.end_time + ":00";
+
+        if (start >= end) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Thời gian kết thúc phải lớn hơn thời gian bắt đầu",
+            path: ["end_time"],
+          });
         }
-        if (mode === "edit") {
-            if (data.start_time && data.end_time) {
-                data.start_time = data.start_time + ":00";
-                data.end_time = data.end_time + ":00";
-                return data.start_time < data.end_time;
-            }
-            return true; // Nếu không cập nhật thời gian, bỏ qua validation này
-        }
-        return true; // Ở chế độ view, bỏ qua validation này
-        }, {
-            message: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc",
-            path: ["start_time", "end_time"],
+      }
     });
 }
 

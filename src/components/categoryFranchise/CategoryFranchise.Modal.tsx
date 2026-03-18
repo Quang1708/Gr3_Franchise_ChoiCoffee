@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { getAllCategory } from "./services/category07.service";
 import type { Category } from "./models/category.model";
 import { CRUDModalTemplate } from "../Admin/template/CRUDModal.template";
-import { FormInput } from "../Admin/Form/FormInput";
+import { FormInput } from "../Admin/form/FormInput";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 import { postCategoryFranchise } from "./services/categoryFranchise01.service";
 import { getAllFranchises } from "./services/franchise08.service";

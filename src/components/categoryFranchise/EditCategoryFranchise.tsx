@@ -4,7 +4,7 @@ import type { GetCategoryByIdResponse } from "./models/category03.model";
 import type { CategoryItem } from "@/pages/admin/category/models/categoryFranchise02.model";
 import { getCategoryFranchiseById } from "./services/categoryFranchise03.service";
 import { getCategoryById } from "./services/category03.service";
-import { FormInput } from "../Admin/Form/FormInput";
+import { FormInput } from "../Admin/form/FormInput";
 import { Loader2 } from "lucide-react";
 import { getFranchiseName } from "./services/client06.service";
 import { useForm } from "react-hook-form";

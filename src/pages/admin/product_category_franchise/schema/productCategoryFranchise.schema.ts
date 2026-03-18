@@ -1,14 +1,20 @@
 import { z } from "zod";
 
 // Schema dùng cho form lọc / tìm kiếm
-export const productCategoryFranchiseSearchSchema = z.object({
+export const productCategoryFranchiseSearchConditionSchema = z.object({
   franchise_id: z.string().optional(),
   category_id: z.string().optional(),
   product_id: z.string().optional(),
   is_active: z.union([z.boolean(), z.string()]).optional(),
   is_deleted: z.union([z.boolean(), z.string()]).optional(),
-  pageNum: z.number().min(1),
-  pageSize: z.number().min(1),
+});
+
+export const productCategoryFranchiseSearchSchema = z.object({
+  searchCondition: productCategoryFranchiseSearchConditionSchema,
+  pageInfo: z.object({
+    pageNum: z.number().min(1),
+    pageSize: z.number().min(1),
+  }),
 });
 
 // Schema dùng cho form tạo mapping mới

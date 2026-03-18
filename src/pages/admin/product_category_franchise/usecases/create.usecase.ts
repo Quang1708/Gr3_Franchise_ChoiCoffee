@@ -4,11 +4,5 @@ import { createProductCategoryFranchiseService } from "../services/productCatego
 export const createProductCategoryFranchiseUsecase = async (
   payload: ProductCategoryFranchiseCreateInput,
 ) => {
-  try {
-    const res = await createProductCategoryFranchiseService(payload);
-    return res;
-  } catch (error) {
-    console.error("Create ProductCategoryFranchise Usecase Error:", error);
-    return { success: false, data: null };
-  }
+  return await createProductCategoryFranchiseService(payload);
 };

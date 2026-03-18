@@ -3,16 +3,16 @@ import { Route } from "react-router-dom";
 import ROUTER_URL from "../router.const";
 
 const AdminLoginPage = React.lazy(
-  () => import("../../pages/admin/auth/login/AdminLogin.page"),
+  () => import("../../pages/admin/auth/login/pages/AdminLogin.page"),
 );
 const ForgotPasswordPage = React.lazy(
-  () => import("../../pages/admin/auth/ForgotPassword.page"),
+  () => import("../../pages/admin/auth/login/pages/ForgotPassword.page"),
 );
 const ResetPasswordPage = React.lazy(
-  () => import("../../pages/admin/auth/ResetPassword.page"),
+  () => import("../../pages/admin/auth/login/pages/ResetPassword.page"),
 );
 const AdminVerifyTokenPage = React.lazy(
-  () => import("../../pages/admin/auth/AdminVerifyTokenPage"),
+  () => import("../../pages/admin/auth/login/pages/AdminVerifyTokenPage"),
 );
 
 const AdminAuthRoutes = (
@@ -30,7 +30,11 @@ const AdminAuthRoutes = (
       element={<AdminVerifyTokenPage />}
     />
     <Route
-      path={ROUTER_URL.ADMIN_ROUTER.RESET_PASSWORD}
+      path={ROUTER_URL.ADMIN_ROUTER.VERIFY_EMAIL}
+      element={<AdminVerifyTokenPage />}
+    />
+    <Route
+      path={ROUTER_URL.ADMIN_ROUTER.CHANGE_PASSWORD}
       element={<ResetPasswordPage />}
     />
   </>

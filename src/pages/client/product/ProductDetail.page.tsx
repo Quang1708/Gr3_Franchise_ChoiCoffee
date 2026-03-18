@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import type { ProductDetail } from "./models/product.models";
 import { getPublicDetailProduct } from "./services/product.service";
 import ClientLoading from "@/components/Client/Client.Loading";
+import { toast } from "react-toastify";
+import { useCustomerAuthStore } from "@/stores/customerAuth.store";
+import ToppingModal from "@/components/Client/Product/Topping.Modal";
 // import ProductCard from "../../../components/Client/Product/ProductCard";
 
 const ProductDetailPage = () => {
@@ -11,11 +14,11 @@ const ProductDetailPage = () => {
     const franchiseId = localStorage.getItem("selectedFranchise");
     const [isLoading, setIsLoading] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string>("");
-    const [quantity, setQuantity] = useState(1);
     const allImages = [product?.image_url, ...(product?.images_url || [])].filter(url => url);
     const VISIBLE_COUNT = 4;
     const [startIndex, setStartIndex] = useState(0);
-
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const {customer} = useCustomerAuthStore();
 
     useEffect(() => {
       const fetchDetailProduct = async () => {
@@ -39,13 +42,6 @@ const ProductDetailPage = () => {
       fetchDetailProduct();
     }, [franchiseId, productId]);
 
-    const handleQuantityChange = (action: 'increment' | 'decrement') => {
-      if (action === 'increment') {
-        setQuantity(prev => prev + 1);
-      } else if (action === 'decrement' && quantity > 1) {
-        setQuantity(prev => prev - 1);
-      }
-    };
 
   const handleUp = () => {
   setStartIndex(prev => Math.max(0, prev - 1));
@@ -54,6 +50,15 @@ const ProductDetailPage = () => {
   const handleDown = () => {
   setStartIndex(prev => Math.min(allImages.length - VISIBLE_COUNT, prev + 1));
 };
+
+  const handleCartButtonClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!customer) {
+      toast.error("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!");
+      return;
+    }
+      setIsModalOpen(true);
+    };
 
   if (isLoading) {
     return (
@@ -146,7 +151,7 @@ const ProductDetailPage = () => {
             </div>
           )} */}
           <div className="flex items-end mt-auto gap-4">
-            <div className="flex flex-col gap-2">
+            {/* <div className="flex flex-col gap-2">
               <span className="text-sm font-semibold">
                 Số lượng 
               </span>
@@ -164,8 +169,11 @@ const ProductDetailPage = () => {
                   <span className="material-symbols-outlined">add</span>
                 </button>
               </div>
-            </div>
-            <button className="cursor-pointer flex-1 h-14 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-all flex items-center justify-center gap-2 text-lg shadow-lg shadow-primary/20">
+            </div> */}
+            <button 
+              className="cursor-pointer flex-1 h-14 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-all flex items-center justify-center gap-2 text-lg shadow-lg shadow-primary/20"
+              onClick={handleCartButtonClick}
+            >
               <span className="material-symbols-outlined">shopping_cart</span>
               Thêm vào giỏ hàng
             </button>
@@ -195,6 +203,11 @@ const ProductDetailPage = () => {
             ))} */}
         </div>
       </section>
+      <ToppingModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        product={product as ProductDetail}
+      />
     </div>
   );
 }

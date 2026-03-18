@@ -17,12 +17,18 @@ import { updateStatusCategoryFranchsie } from "./services/categoryFranchise06.se
 import { restoreCategoryFranchise } from "./services/categoryFranchise05.service";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import { deleteCategoryFranchise } from "./services/categoryFranchise04.service";
+import FormSelect from "@/components/Admin/Form/FormSelect";
+import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";
+import type { FieldError } from "node_modules/react-hook-form/dist/types/errors";
+import { useForm} from "react-hook-form";
+import type { CategorySelectItem } from "@/models/category.model";
+import { getCategorySelectUsecase } from "./usecases";
 
 
 const CategoryPage = () => {
   const user = useAuthStore((s) => s.user);
   const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId) || "";
-
+  const isAdmin = franchiseId === ""; // Nếu không chọn chi nhánh nào, tức là đang ở chế độ Admin 
   const canWrite = useMemo(
     () => can(user, PERM.CATEGORY_WRITE, franchiseId || undefined),
     [user, franchiseId],
@@ -41,7 +47,6 @@ const CategoryPage = () => {
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
-
   const [deletingCategory, setDeletingCategory] = useState<CategoryItem | null>(
     null,
   );
@@ -49,8 +54,13 @@ const CategoryPage = () => {
   const [restoringCategory, setRestoringCategory] = useState<CategoryItem | null>(
     null,
   );
+   const {register, watch, formState: { errors }, } = useForm();
   const [isRestoreOpen, setIsRestoreOpen] = useState(false);
   const editRef = useRef<EditCategoryFranchiseRef>(null);
+  const [franchises, setFranchises] = useState<any>();
+  const franchiseIdSelected = watch("franchise_id");
+  const categoryIdSelected = watch("category_id");
+  const [categories, setCategories] = useState<CategorySelectItem[]>([]);
   // Extract fetch function để có thể gọi lại sau khi create và phân trang
   const fetchCategoryFranchise = useCallback(async (
     pageNum = 1,
@@ -63,15 +73,14 @@ const CategoryPage = () => {
 
       const response = await getCategoryFranchise({
         searchCondition: {
-          franchise_id: franchiseId || "",
+          franchise_id: franchiseId || franchiseIdSelected  || "",
+          is_deleted: false // Mặc định chỉ lấy những mục chưa bị xóa, trừ khi filter có is_deleted
         },
         pageInfo: {
           pageNum,
           pageSize: size,
         },
       });
-      
-
       if (response) {   
         setCategoryFranchiseList(response.data || []);
         setTotalItems(response.pageInfo?.totalItems || 0);
@@ -86,20 +95,47 @@ const CategoryPage = () => {
       setIsTableLoading(false);
     }
   }, [franchiseId, pageSize]);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await getCategorySelectUsecase();
+      if (response) {
+        setCategories(response.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      toast.error("Có lỗi xảy ra khi tải danh mục");
+    }
+  }, []);
+
   useEffect(() => {
-    fetchCategoryFranchise(1, "full");
-  
-  }, [fetchCategoryFranchise]);
+    fetchCategories();
+  }, [fetchCategories]);
+
+  useEffect(() => {
+      const loadFranchises = async () => {
+        try{
+            setIsLoading(true);
+           const data = await getAllFranchises();
+        if (data) setFranchises(data);
+        }catch(error) {
+          console.error("Error fetching franchises:", error);
+        }
+      };
+
+      void loadFranchises();
+    }, []);
+
+   
 
   // Search
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSearchCategoryFranchise = async (searchTerm: string, filter: any) => {
     try{
       setIsTableLoading(true);
       const response = await getCategoryFranchise({
         searchCondition: {
-          franchise_id: franchiseId || "",
-          category_id: searchTerm || "",
+          franchise_id: franchiseId || franchiseIdSelected  || "",
+          category_id: searchTerm || categoryIdSelected || "",
           is_active: filter?.is_active  === "true"
             ? true
             : filter?.is_active === "false"
@@ -233,7 +269,20 @@ const CategoryPage = () => {
     setIsViewOpen(true);
   };
 
-  if (isLoading) {
+  const franchiseOptions =
+    franchises?.map((f: any) => ({
+      label: f.name,
+      value: f.value,
+    })) || [];
+
+  const categoryOptions =
+    categories?.map((f: any) => ({
+      label: f.name,
+      value: f.value,
+    })) || [];
+
+
+  if (isLoading || isTableLoading) {
     return (
         <ClientLoading/>
     );
@@ -263,9 +312,13 @@ const CategoryPage = () => {
     }
   };
 
+    
+
+
   return (
     < >       
       <CRUDPageTemplate<CategoryItem>
+        
         title="Quản lý Danh mục"
         data={categoryFranchiseList}
         columns={columns}
@@ -293,6 +346,33 @@ const CategoryPage = () => {
         onRefresh={() => fetchCategoryFranchise(1, "full")}
         onRestore={canWrite ? handleRestore : undefined}
         isTableLoading={isTableLoading}
+        searchContent={
+          <div className="flex gap-3 w-full">
+            {isAdmin && (
+              <FormSelect
+              label=""
+              key="franchise_id"
+              name="chi nhánh"
+              options={franchiseOptions || []}
+              register={register("franchise_id")}
+              error={errors.franchise_id as FieldError}
+              value={franchiseIdSelected}
+              placeholder="Chọn chi nhánh"
+              // onChange={(val) => setSelectedFranchiseId(val)}
+            />
+            )}         
+            <FormSelect
+              key="category_id"
+              label=""
+              name="danh mục"
+              options={categoryOptions || []}
+              register={register("category_id")}
+              error={errors.category_id as FieldError}
+              value={categoryIdSelected}
+              placeholder="Chọn danh mục"
+            />
+          </div>
+        }
         filters={[
           {
             key: "is_active",

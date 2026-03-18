@@ -11,6 +11,8 @@ import { getAllFranchise } from "./services/franchise.service";
 import type { Franchise } from "./models/franchise.model";
 import { toast } from "react-toastify";
 import { useCustomerAuthStore } from "@/stores";
+import { getCartByCustomerId } from "./usecases/getCartItem.usecase";
+import { countItemInCart } from "./usecases/countCartItem.usecase";
 const ClientHeader = () => {
   const [franchises, setFranchises] = useState<Franchise[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
@@ -25,12 +27,14 @@ const ClientHeader = () => {
   const navigate = useNavigate();
   const [selectedFranchise, setSelectedFranchise] = useState<string>(() => {
     const saved = localStorage.getItem("selectedFranchise");
-    return saved ? saved : "1";
+    return saved ? saved : franchises[0]?.id || ""; 
   });
   const [isFranchiseDropdownOpen, setIsFranchiseDropdownOpen] = useState(false);
   const franchiseDropdownRef = useRef<HTMLDivElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const [cartId, setCartId] = useState<string | null>(null);
+  const [countItem, setCountItem] = useState<number>(0);
 
   const MenuItem = [
     {
@@ -65,6 +69,7 @@ const ClientHeader = () => {
     },
   ];
 
+
   const fetchFranchise = async () => {
     try {
       setIsLoading(true);
@@ -89,6 +94,19 @@ const ClientHeader = () => {
   useEffect(() => {
     fetchFranchise();
   }, []);
+
+  useEffect(() => {
+    const savedFranchise = localStorage.getItem("selectedFranchise");
+    if (!savedFranchise && franchises.length > 0) {
+      const firstFranchiseId = franchises[0].id;
+      setSelectedFranchise(firstFranchiseId);
+      window.dispatchEvent(
+        new CustomEvent("franchiseChanged", {
+          detail: { franchiseId: firstFranchiseId },
+        }),
+      );
+    }
+  }, [franchises]);
 
   const handleClickOutside = (event: MouseEvent) => {
     if (
@@ -168,6 +186,43 @@ const ClientHeader = () => {
     }
   };
 
+  useEffect(() => {
+    const fetchCartId = async () => {
+      try {
+        const response = await getCartByCustomerId(customer?.id || "");
+        if(response){
+          
+          setCartId(response[0]?._id || null);
+        }
+      } catch (error) {
+        console.error("Error fetching cart ID:", error);
+      }
+    }
+    fetchCartId();
+  }, [customer?.id]);
+
+  useEffect(() => {
+    const fetchCountItem = async () => {
+      if(!cartId) return;
+      try{
+        const response = await countItemInCart(cartId);
+        if(response){
+          setCountItem(response.count);
+        }
+      }catch(error){
+        console.error("Error fetching count item in cart:", error);
+      }
+    };
+    fetchCountItem();
+    window.addEventListener("cartUpdated", fetchCountItem);
+
+    return () => {
+      window.removeEventListener("cartUpdated", fetchCountItem);
+    };
+  }, [cartId]);
+
+
+
   return (
     <>
       {isLoading && <ClientLoading />}
@@ -227,13 +282,13 @@ const ClientHeader = () => {
             </div>
             <button
               onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.CART)}
-              className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-8 w-8 sm:h-10 sm:w-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold relative"
+              className="hidden sm:flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-8 w-8 sm:h-10 sm:w-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold min-w-0 relative"
             >
               <span className="material-symbols-outlined text-lg sm:text-xl">
                 shopping_cart
               </span>
               <span className="absolute top-1 right-1 w-2 h-2 text-primary">
-                2
+                {countItem > 0 ? countItem : ""}
               </span>
             </button>
             <button className="hidden sm:flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 bg-charcoal/5 dark:bg-white/5 text-charcoal dark:text-white gap-2 text-sm font-bold min-w-0 px-2.5 relative">

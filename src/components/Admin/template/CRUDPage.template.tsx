@@ -353,7 +353,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                 }))
               }
               options={[
-                { value: "all", label: `Tất cả ${filter.label}` },
+                { value: "", label: `Tất cả ${filter.label}` },
                 ...filter.options,
               ]}
               icon={<Filter className="w-4 h-4" />}

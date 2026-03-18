@@ -8,8 +8,8 @@ export type SearchCondition = {
     franchise_id?: string;
     start_time?: string;
     end_time?: string;
-    is_active?: boolean | "";
-    is_deleted?: boolean| "";
+    is_active?: boolean | string;
+    is_deleted?: boolean| string;
 }
 
 export type PageInfo = {

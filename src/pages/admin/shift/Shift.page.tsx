@@ -19,8 +19,8 @@ import { toast } from "react-toastify";
 
 const ShiftPage = () => {
     const user = useAuthStore((s) => s.user);
-      const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId) || "";
-    
+    const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId) || ""; 
+    const isAdmin = franchiseId === "";
       const canWrite = useMemo(
         () => can(user, PERM.CATEGORY_WRITE, franchiseId || undefined),
         [user, franchiseId],
@@ -37,6 +37,7 @@ const ShiftPage = () => {
     const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
     const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
     const [franchises, setFranchises] = useState<any[]>([]);
+    
 
     const fetchShifts = useCallback(async (
         pageNum = 1,
@@ -50,6 +51,7 @@ const ShiftPage = () => {
         const response = await searchShift({
           searchCondition: {
             franchise_id: franchiseId || "",
+            is_deleted: false, // Only fetch non-deleted shifts for the main table view
           },
           pageInfo: {
             pageNum,
@@ -72,23 +74,23 @@ const ShiftPage = () => {
     }, [franchiseId, pageSize]);
 
     useEffect(() => {
-  const loadFranchises = async () => {
-    const data = await getAllFranchises();
-    if (data) setFranchises(data);
-  };
+      const loadFranchises = async () => {
+        const data = await getAllFranchises();
+        if (data) setFranchises(data);
+      };
 
-  void loadFranchises();
-}, []);
+      void loadFranchises();
+    }, []);
 
-const franchiseMap = useMemo(() => {
-  const map: Record<string, string> = {};
+    const franchiseMap = useMemo(() => {
+      const map: Record<string, string> = {};
 
-  franchises.forEach((f) => {
-    map[f.value] = f.name;
-  });
+      franchises.forEach((f) => {
+        map[f.value] = f.name;
+      });
 
-  return map;
-}, [franchises]);
+      return map;
+    }, [franchises]);
 
     useEffect(() => {
         void fetchShifts();
@@ -236,11 +238,11 @@ const franchiseMap = useMemo(() => {
     const handleSearchShift = async (name: string, filters: any) => {
     try {
       setIsProcessing(true);
-
+      
       const res = await searchShift({
         searchCondition: {
-          name,
-          franchise_id: franchiseId || "",
+          name:  name || "",
+          franchise_id: franchiseId || filters?.franchise_id || "",
           is_active:
             filters?.is_active === "true"
               ? true
@@ -260,28 +262,38 @@ const franchiseMap = useMemo(() => {
         }
       });
 
-      console.log(res);
+      console.log( "Franchise ID:", filters.franchise_id);
 
-      if (res.success) {
+      if (res.data) {
         setShifts(res.data);
         setTotalItems(res.pageInfo.totalItems);
         setPage(1);
       }
 
-    } catch {
+    } catch(error) {
+      console.error("Error searching shifts:", error);
       toast.error("Lỗi khi tìm kiếm");
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const franchiseOptions = isAdmin
+  ? franchises?.map((f: any) => ({
+      label: f.name,
+      value: f.value,
+    })) || []
+  : franchises
+      ?.filter((f: any) => f.value === franchiseId) 
+      .map((f: any) => ({
+        label: f.name,
+        value: f.value,
+      })) || [];
   return (
     <>
       {isLoading && <ClientLoading />}
-      
 
       <CRUDPageTemplate<Shift>
-
         statusField="is_active"
         title="Ca làm việc"
         columns={column}
@@ -294,36 +306,48 @@ const franchiseMap = useMemo(() => {
         onEdit={canWrite ? (item) => handleOpenForm("edit", item) : undefined}
         onDelete={(item) => handleDeleteShift(item)}
         onRefresh={() => fetchShifts(1, "full")}
-        onStatusChange={(item, isActive) => handleChangeShiftStatus(item, isActive)}
+        onStatusChange={(item, isActive) =>
+          handleChangeShiftStatus(item, isActive)
+        }
         onRestore={(item) => handleRestoreShift(item.id)}
         onPageChange={(newPage) => fetchShifts(newPage, "table")}
         onPageSizeChange={(newSize) => {
           setPageSize(newSize);
           fetchShifts(1, "table", newSize);
-        }} 
-
+        }}
+        // searchContent={(
+        //   <input
+        //     type="text"
+        //     placeholder="Tìm kiếm theo tên ca làm việc..."
+        //     className="border border-gray-300 rounded px-3 py-1 w-full md:w-64"
+        //     ></input>
+        // )}
         onSearch={handleSearchShift}
+        filters={[
+          {
+            key: "franchise_id",
+            label: "chi nhánh",
+            options: franchiseOptions,
+          },
 
-        filters={
-          [
-            { key: "is_active",
-              label: "Trạng thái hoạt động",
-              options: [
-                { label: "Hoạt động", value: "true" },
-                { label: "Không hoạt động", value: "false" },
-              ],
-            },
+          {
+            key: "is_active",
+            label: "trạng thái",
+            options: [
+              { label: "Hoạt động", value: "true" },
+              { label: "Không hoạt động", value: "false" },
+            ],
+          },
 
-            { key: "is_deleted",
-              label: "Trạng thái xóa",       
-              options: [
-                { label: "Đã xóa", value: "true" },
-                { label: "Chưa xóa", value: "false" },
-              ],
-
-            }
-          ]
-        }
+          {
+            key: "is_deleted",
+            label: "trạng thái xóa",
+            options: [
+              { label: "Đã xóa", value: "true" },
+              { label: "Chưa xóa", value: "false" },
+            ],
+          },
+        ]}
         isTableLoading={isProcessing || isTableLoading}
       />
 

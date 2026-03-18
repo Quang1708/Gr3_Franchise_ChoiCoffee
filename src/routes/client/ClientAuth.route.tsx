@@ -1,6 +1,7 @@
 import React from "react";
 import { Route } from "react-router-dom";
 import ClientLayout from "../../layouts/client/Client.layout";
+import ClientGuard from "../guard/ClientGuard.route";
 import OrderPage from "../../pages/client/order";
 import OrderDetailPage from "../../pages/client/order/OrderDetail.index";
 import ROUTER_URL from "../router.const";
@@ -58,29 +59,32 @@ const ClientAuthRoutes = (
       path={ROUTER_URL.CLIENT_ROUTER.PAYMENT_STATUS}
       element={<PaymentStatusPage />}
     />
-    <Route element={<ClientLayout />}>
-      <Route path={`${ROUTER_URL.CLIENT}/order`} element={<OrderPage />} />
-      <Route
-        path={ROUTER_URL.CLIENT_ROUTER.HISTORY}
-        element={<ClientHistoryPage />}
-      />
-      <Route path={ROUTER_URL.CLIENT_ROUTER.CART} element={<CartPage />} />
-      <Route
-        path={ROUTER_URL.CLIENT_ROUTER.CHECKOUT}
-        element={<CheckoutPage />}
-      />
-      <Route
-        path={ROUTER_URL.CLIENT_ROUTER.LOYALTY}
-        element={<LoyaltyPage />}
-      />
-      <Route
-        path={ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER_DETAIL}
-        element={<OrderDetailPage />}
-      />
-      <Route
-        path={ROUTER_URL.CLIENT_ROUTER.PROFILE}
-        element={<ClientProfilePage />}
-      />
+    {/* Protected Routes - Require Authentication */}
+    <Route element={<ClientGuard />}>
+      <Route element={<ClientLayout />}>
+        <Route path={`${ROUTER_URL.CLIENT}/order`} element={<OrderPage />} />
+        <Route
+          path={ROUTER_URL.CLIENT_ROUTER.HISTORY}
+          element={<ClientHistoryPage />}
+        />
+        <Route path={ROUTER_URL.CLIENT_ROUTER.CART} element={<CartPage />} />
+        <Route
+          path={ROUTER_URL.CLIENT_ROUTER.CHECKOUT}
+          element={<CheckoutPage />}
+        />
+        <Route
+          path={ROUTER_URL.CLIENT_ROUTER.LOYALTY}
+          element={<LoyaltyPage />}
+        />
+        <Route
+          path={ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER_DETAIL}
+          element={<OrderDetailPage />}
+        />
+        <Route
+          path={ROUTER_URL.CLIENT_ROUTER.PROFILE}
+          element={<ClientProfilePage />}
+        />
+      </Route>
     </Route>
   </>
 );

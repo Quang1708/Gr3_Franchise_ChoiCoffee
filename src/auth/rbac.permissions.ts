@@ -35,6 +35,10 @@ export const PERM = {
   INVENTORY_UPDATE: "inventory.update",
   INVENTORY_ALERT: "inventory.alert",
 
+  // Shift Assignment
+  SHIFT_ASSIGNMENT_READ: "shift_assignment.read",
+  SHIFT_ASSIGNMENT_WRITE: "shift_assignment.write",
+
   // Loyalty
   LOYALTY_READ: "loyalty.read",
   LOYALTY_WRITE: "loyalty.write",

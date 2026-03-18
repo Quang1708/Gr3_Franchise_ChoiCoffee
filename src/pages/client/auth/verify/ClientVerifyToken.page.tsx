@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import ROUTER_URL from "@/routes/router.const";
 import { toastSuccess } from "@utils/toast.util";
 import { verifyToken, resendToken } from "../services";
-import type { VerifyTokenRequest, ResendTokenRequest } from "../models";
 import {
   ClientResendTokenSchema,
   type ClientResendTokenSchemaType,
@@ -229,7 +228,7 @@ const ClientVerifyTokenPage: React.FC = () => {
                         setResendStatus(null);
                         setResendMessage("");
                       }}
-                      className="text-primary font-medium text-sm hover:underline"
+                      className="text-primary font-medium text-sm hover:underline cursor-pointer"
                     >
                       Gửi lại email khác
                     </button>
@@ -268,7 +267,7 @@ const ClientVerifyTokenPage: React.FC = () => {
                         <button
                           type="submit"
                           disabled={!canResend}
-                          className="text-primary font-bold text-sm hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="text-primary font-bold text-sm hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Gửi lại
                         </button>

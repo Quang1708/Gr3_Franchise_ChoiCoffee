@@ -18,7 +18,6 @@ export const axiosClient = axios.create({
   withCredentials: true,
 });
 
-
 // Track if we're currently refreshing token
 let isRefreshing = false;
 // Queue of requests waiting for token refresh
@@ -46,23 +45,19 @@ axiosClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Check if error response contains CUSTOMER_ACCESS_TOKEN_EXPIRED message
     const errorData = error.response?.data as ApiErrorResponse | undefined;
-    const errorMessage = errorData?.message ?? (error as { message?: string }).message;
+    const errorMessage =
+      errorData?.message ?? (error as { message?: string }).message;
     const isAccessTokenExpired =
       errorMessage === MSG_CONSTANT.CUSTOMER_ACCESS_TOKEN_EXPIRED;
 
-    // If access token expired and we haven't retried yet
     if (isAccessTokenExpired && !originalRequest._retry) {
-      // Don't retry refresh token endpoint itself
       if (originalRequest.url?.includes("/refresh-token")) {
-        // Refresh token expired, clear customer info and redirect to login
         useCustomerAuthStore.getState().clearCustomer();
         return Promise.reject(error);
       }
 
       if (isRefreshing) {
-        // If already refreshing, queue this request
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -74,17 +69,13 @@ axiosClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Call refresh token API
         await axiosClient.get("/api/customer-auth/refresh-token");
 
-        // Token refreshed successfully, process queued requests
         processQueue();
         isRefreshing = false;
 
-        // Retry original request
         return axiosClient(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, clear auth (component will handle navigation)
         processQueue(refreshError as AxiosError);
         isRefreshing = false;
         useCustomerAuthStore.getState().clearCustomer();
@@ -146,14 +137,16 @@ axiosAdminClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Check if error response contains ACCESS_TOKEN_EXPIRED message
+    // Check if error response contains ACCESS_TOKEN_EXPIRED message or HTTP 401
     const errorData = error.response?.data as ApiErrorResponse | undefined;
-    const errorMessage = errorData?.message ?? (error as { message?: string }).message;
+    const errorMessage =
+      errorData?.message ?? (error as { message?: string }).message;
     const isAccessTokenExpired =
       errorMessage === MSG_CONSTANT.ADMIN_ACCESS_TOKEN_EXPIRED;
+    const is401 = error.response?.status === 401;
 
-    // If access token expired and we haven't retried yet
-    if (isAccessTokenExpired && !originalRequest._retry) {
+    // If access token expired (by message or 401 status) and we haven't retried yet
+    if ((isAccessTokenExpired || is401) && !originalRequest._retry) {
       // Don't retry refresh token endpoint itself
       if (originalRequest.url?.includes("/refresh-token")) {
         // Refresh token expired, clear admin info and redirect to login

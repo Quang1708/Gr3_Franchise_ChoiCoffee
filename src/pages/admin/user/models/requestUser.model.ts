@@ -5,4 +5,5 @@ export interface RequestUser {
     phone: string;
     roleCode: string;
     avatar_url?: string;
+    is_verified?: boolean;
 }

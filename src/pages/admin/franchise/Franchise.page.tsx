@@ -112,7 +112,7 @@ const FranchisePage = () => {
   }
 
   return (
-    <div className="p-6">
+    <>
       <CRUDPageTemplate<Franchise>
         title="Quản lý Chi nhánh"
         data={paginatedData}
@@ -197,7 +197,7 @@ const FranchisePage = () => {
           setRestoreOpen(false);
         }}
       />
-    </div>
+    </>
   );
 };
 

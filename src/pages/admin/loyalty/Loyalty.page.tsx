@@ -15,7 +15,7 @@ import { updateLoyaltyUsecase } from "@/pages/admin/loyalty/usecases/updateLoyal
 import FormSelect from "@/components/Admin/form/FormSelect";
 import { FormInput } from "@/components/Admin/form/FormInput";
 import { LoyaltyForm } from "@/pages/admin/loyalty/components/LoyaltyForm";
-import type { SearchLoyaltyRequest } from "@/pages/admin/loyalty/models/searchLoyalty.model";
+import type { SearchLoyaltyRequest } from "@/pages/admin/loyalty/models/searchLoyaltyRequest.model";
 
 const LoyaltyPage = () => {
   // --- Kiểm tra quyền Admin & franchise được chọn ---
@@ -86,7 +86,7 @@ const LoyaltyPage = () => {
           // --- Tạo danh sách franchise chỉ 1 lần ---
           if (franchises.length === 0) {
             const franchiseMap = new Map<string, string>();
-            res.data.forEach((rule) => {
+            res.data.forEach((rule: any) => {
               if (rule.franchise_id != null) {
                 const key = String(rule.franchise_id);
                 if (!franchiseMap.has(key)) {
@@ -99,8 +99,8 @@ const LoyaltyPage = () => {
 
           // --- Tạo danh sách tier động ---
           const tierSet = new Map<string, string>();
-          res.data.forEach((rule) => {
-            rule.tier_rules?.forEach((t) => {
+          res.data.forEach((rule: any) => {
+            rule.tier_rules?.forEach((t: any) => {
               if (!tierSet.has(t.tier)) tierSet.set(t.tier, t.tier);
             });
           });
@@ -118,7 +118,8 @@ const LoyaltyPage = () => {
 
   useEffect(() => {
     fetchLoyaltyRules(1, "full");
-  }, [fetchLoyaltyRules]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // --- Xử lý mở Modal ---
   const handleOpenForm = async (mode: "create" | "edit" | "view", rule?: LoyaltyRule) => {
@@ -152,8 +153,17 @@ const LoyaltyPage = () => {
       }
       setIsFormOpen(false);
       fetchLoyaltyRules(page, "table");
-    } catch {
-      toast.error("Thao tác thất bại");
+    } catch (error: any) {
+      const errorData = error?.response?.data || error;
+      if (errorData?.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+        errorData.errors.forEach((e: any) => toast.error(e.message || "Lỗi không xác định"));
+      }
+      else if (errorData?.message) {
+        toast.error(errorData.message);
+      }
+      else {
+        toast.error("Thao tác thất bại");
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -204,12 +214,12 @@ const LoyaltyPage = () => {
           },
         ]
         : []),
-      {
-        header: "Mô tả quy tắc",
-        accessor: "description",
-        className: "text-[14px] font-medium text-blue-600 max-w-[250px] truncate",
-        sortable: true,
-      },
+      // {
+      //   header: "Mô tả quy tắc",
+      //   accessor: "description",
+      //   className: "text-[14px] font-medium text-blue-600 max-w-[250px] truncate",
+      //   sortable: true,
+      // },
       {
         header: "Tỷ lệ đổi điểm",
         accessor: "earn_amount_per_point",
@@ -301,7 +311,7 @@ const LoyaltyPage = () => {
               <FormInput
                 label=""
                 type="number"
-                placeholder="Tiền tích / điểm"
+                placeholder="Tiền chi tiêu / 1 điểm"
                 register={register("earn_amount_per_point")}
               />
             </div>
@@ -309,7 +319,7 @@ const LoyaltyPage = () => {
               <FormInput
                 label=""
                 type="number"
-                placeholder="Giá trị / điểm"
+                placeholder="Giá trị / 1 điểm"
                 register={register("redeem_value_per_point")}
               />
             </div>
@@ -335,6 +345,11 @@ const LoyaltyPage = () => {
         onClose={() => setIsFormOpen(false)}
         onSave={handleSubmitLoyalty}
         isLoading={isProcessing}
+        isAdmin={isAdmin}
+        selectedFranchiseId={selectedFranchiseId || undefined}
+        existingFranchiseIds={rules
+          .map(r => r.franchise_id)
+          .filter((id): id is string => typeof id === "string")}
       />
     </>
   );

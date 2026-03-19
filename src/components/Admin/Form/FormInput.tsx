@@ -86,7 +86,7 @@ export const FormInput = ({
                     <div className="text-center">
                         <label
                             htmlFor={inputId}
-                            className={`w-[120px] h-[120px] flex flex-col items-center justify-center border border-dashed border-gray-300 rounded-lg transition bg-gray-50 ${
+                            className={`w-30 h-30 flex flex-col items-center justify-center border border-dashed border-gray-300 rounded-lg transition bg-gray-50 ${
                                 isUploading || isDisabled 
                                 ? "cursor-not-allowed opacity-50" 
                                 : "cursor-pointer hover:border-primary"
@@ -114,7 +114,7 @@ export const FormInput = ({
                     <img
                         src={String(previewUrl || defaultValue || DEFAULT_AVATAR)}
                         alt="avatar"
-                        className={`w-[120px] h-[120px] object-cover rounded-lg shadow border-2 border-white transition-all ${
+                        className={`w-30 h-30 object-cover rounded-lg shadow border-2 border-white transition-all ${
                             isUploading ? "brightness-50" : ""
                         }`}
                     />
@@ -138,13 +138,13 @@ export const FormInput = ({
     // Render cho các loại Text/Password/Email
     return (
       <div className={`flex flex-col ${className}`}>
-        <label className="text-xs font-bold text-gray-500 uppercase">
+        <label className="text-sm font-medium text-gray-500">
           {label}
         </label>
         <div className="relative">
           {isView ? (
-            <div className="py-2 border-b border-gray-300 min-h-[38px]">
-              <span className="text-sm font-semibold text-gray-700">
+            <div className="py-2 min-h-9.5">
+              <span className="text-base font-semibold text-gray-700">
                 {type === "password" ? "••••••••" : defaultValue || "Không có"}
               </span>
             </div>

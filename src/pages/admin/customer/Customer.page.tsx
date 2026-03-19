@@ -83,6 +83,7 @@ const CustomerPage = () => {
 
   useEffect(() => {
     fetchCustomers(1, "full");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearchCustomers = async (keyword: string, filters: any) => {
@@ -248,7 +249,7 @@ const CustomerPage = () => {
           <img
             src={item.avatar_url || DEFAULT_AVATAR}
             alt={item.name}
-            className="w-10 h-10 rounded-full object-cover border border-black/10 flex-shrink-0"
+            className="w-10 h-10 rounded-full object-cover border border-black/10 shrink-0"
           />
           <div className="flex flex-col min-w-0">
             <span className="font-medium text-gray-800 truncate">{item.name}</span>
@@ -275,7 +276,7 @@ const CustomerPage = () => {
     <>
       {isLoading && <ClientLoading />}
       {isProcessing && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center">
+        <div className="fixed inset-0 z-200 flex items-center justify-center">
           <ClientLoading />
         </div>
       )}

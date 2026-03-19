@@ -19,10 +19,11 @@ interface FormInputProps {
     isDisabled?: boolean;
     setIsExternalLoading?: (loading: boolean) => void;
     uploadFolder?: string;
+    step?: string | number;
 }
 
 export const FormInput = ({
-    label, type = "text", register, error, defaultValue, placeholder, isView, className, onUploadSuccess, isDisabled, setIsExternalLoading, uploadFolder = "customers"
+    label, type = "text", register, error, defaultValue, placeholder, isView, className, onUploadSuccess, isDisabled, setIsExternalLoading, uploadFolder = "customers", step
 }: FormInputProps) => {
     const [showPassword, setShowPassword] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(defaultValue);
@@ -49,7 +50,7 @@ export const FormInput = ({
 
     if (type === "time") {
       return (
-        <div className={`flex flex-col gap-1 ${className}`}>
+        <div className={`flex flex-col ${className}`}>
           <label className="text-xs font-bold text-gray-500 uppercase">
             {label}
           </label>
@@ -136,7 +137,7 @@ export const FormInput = ({
 
     // Render cho các loại Text/Password/Email
     return (
-      <div className={`flex flex-col gap-1 ${className}`}>
+      <div className={`flex flex-col ${className}`}>
         <label className="text-xs font-bold text-gray-500 uppercase">
           {label}
         </label>
@@ -155,7 +156,8 @@ export const FormInput = ({
                 placeholder={placeholder}
                 {...register}
                 disabled={isDisabled}
-                className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm transition-all outline-none focus:ring-2 focus:ring-primary/20 
+                step={step}
+                className={`w-full px-4 py-2 bg-gray-50 border rounded-xl text-sm transition-all outline-none focus:ring-2 focus:ring-primary/20 
                                 ${error ? "border-primary" : "border-gray-200 focus:border-primary"} 
                                 ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
               />

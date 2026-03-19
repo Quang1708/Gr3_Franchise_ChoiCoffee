@@ -217,7 +217,9 @@ const CustomerPage = () => {
         );
         toast.success(type === "delete" ? "Đã xóa khách hàng" : "Đã khôi phục khách hàng");
         setModalConfig((prev) => ({ ...prev, isOpen: false }));
+        await fetchCustomers(page, 'table');
       }
+
     } catch {
       toast.error("Thao tác thất bại");
     } finally {

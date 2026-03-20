@@ -136,7 +136,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
   const page = currentPage ?? 1;
   const [pageSizeState, setPageSizeState] = useState(pageSize ?? 10);
   const [pageInput, setPageInput] = useState(page);
-  const [focusedIndex, setFocusedIndex] = useState<number>(0);
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const [inputValue, setInputValue] = useState("");
 
   const [filterInput, setFilterInput] = useState<
@@ -147,7 +147,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
       if (f.key === "is_deleted") {
         initial[f.key] = "false";
       } else {
-        initial[f.key] = "all";
+        initial[f.key] = "";
       }
     });
     return initial;
@@ -243,7 +243,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
       if (f.key === "is_deleted") {
         resetFilters[f.key] = "false";
       } else {
-        resetFilters[f.key] = "all";
+        resetFilters[f.key] = "";
       }
     });
     setFilterInput(resetFilters);

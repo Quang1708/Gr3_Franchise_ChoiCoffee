@@ -41,6 +41,9 @@ const ProductCategoryFranchisePage = React.lazy(
   () => import("../../pages/admin/product_category_franchise"),
 );
 const UserPage = React.lazy(() => import("../../pages/admin/user"));
+const UserFranchiseRolePage = React.lazy(
+  () => import("../../pages/admin/user-franchise-role/UserFranchiseRole.page"),
+);
 const SettingsPage = React.lazy(() => import("../../pages/admin/settings"));
 const LogoutPage = React.lazy(() => import("../../pages/admin/logout"));
 const ProfilePage = React.lazy(() => import("../../pages/admin/profile"));
@@ -141,6 +144,10 @@ const AdminRoutes = (
 
         <Route element={<RequirePermission perm={PERM.USER_MANAGE} />}>
           <Route path="user" element={<UserPage />} />
+          <Route
+            path="user-franchise-role"
+            element={<UserFranchiseRolePage />}
+          />
         </Route>
 
         {/* PUBLIC IN ADMIN */}

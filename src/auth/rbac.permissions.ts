@@ -10,6 +10,7 @@ export const PERM = {
   PRODUCT_WRITE: "product.write",
 
   PRODUCT_CATEGORY_READ: "product_category.read",
+  PRODUCT_CATEGORY_WRITE: "product_category.read",
 
   CATEGORY_READ: "category.read",
   CATEGORY_WRITE: "category.write",

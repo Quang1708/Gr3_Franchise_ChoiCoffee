@@ -15,7 +15,7 @@ import { updateLoyaltyUsecase } from "@/pages/admin/loyalty/usecases/updateLoyal
 import FormSelect from "@/components/Admin/form/FormSelect";
 import { FormInput } from "@/components/Admin/form/FormInput";
 import { LoyaltyForm } from "@/pages/admin/loyalty/components/LoyaltyForm";
-import type { SearchLoyaltyRequest } from "@/pages/admin/loyalty/models/searchLoyaltyRequest.model";
+import type { SearchLoyaltyRequest } from "@/pages/admin/loyalty/models/searchLoyalty.model";
 
 const LoyaltyPage = () => {
   // --- Kiểm tra quyền Admin & franchise được chọn ---

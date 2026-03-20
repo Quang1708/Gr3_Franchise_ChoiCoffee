@@ -3,7 +3,7 @@ export interface RequestUser {
     password?: string;
     name: string;
     phone: string;
-    roleCode: string;
+    roleCode?: string;
     avatar_url?: string;
     is_verified?: boolean;
 }

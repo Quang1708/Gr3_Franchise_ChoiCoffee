@@ -38,6 +38,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERM.CATEGORY_FRANCHISE_WRITE,
     PERM.SHIFT_READ,
     PERM.SHIFT_WRITE,
+    PERM.CART_READ,
+    PERM.CART_WRITE,
   ],
 
   MANAGER: [
@@ -65,6 +67,9 @@ export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERM.CATEGORY_FRANCHISE_WRITE,
     PERM.SHIFT_READ,
     PERM.SHIFT_WRITE,
+    PERM.CART_READ,
+    PERM.CART_WRITE,
+
   ],
 
   STAFF: [
@@ -77,5 +82,6 @@ export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERM.VOUCHER_READ,
     PERM.INVENTORY_READ,
     PERM.LOYALTY_READ,
+    
   ],
 };

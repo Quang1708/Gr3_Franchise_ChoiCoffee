@@ -8,7 +8,7 @@ import type { InternalAxiosRequestConfig } from "axios";
 // Message constants for token expiration
 export const MSG_CONSTANT = {
   CUSTOMER_ACCESS_TOKEN_EXPIRED: "CUSTOMER_ACCESS_TOKEN_EXPIRED",
-  ADMIN_ACCESS_TOKEN_EXPIRED: "ACCESS_TOKEN_EXPIRED",
+  ADMIN_ACCESS_TOKEN_EXPIRED: "Access token has expired",
 };
 
 export const axiosClient = axios.create({

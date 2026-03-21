@@ -57,6 +57,8 @@ export interface CRUDTableProps<T> {
 
   searchKeys?: (keyof T)[];
   onSearch?: (keyword: string) => void | Promise<void>;
+  /** Debounce ms for onSearch when typing (default 400) */
+  searchDebounceMs?: number;
   onRowClick?: (item: T) => void;
   filters?: FilterConfig<T>[];
 
@@ -228,6 +230,7 @@ export function CRUDTable<T extends { id?: string | number }>({
   deferToolsApply = false,
   applyButtonLabel = "Tìm kiếm",
   onSearch,
+  searchDebounceMs = 400,
 }: CRUDTableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(pageSize);
@@ -243,6 +246,27 @@ export function CRUDTable<T extends { id?: string | number }>({
   const [pendingFilters, setPendingFilters] = useState<
     Partial<Record<keyof T, string>>
   >({});
+
+  // Keep stable reference to onSearch to avoid re-trigger loops
+  const onSearchRef = React.useRef(onSearch);
+  React.useEffect(() => {
+    onSearchRef.current = onSearch;
+  }, [onSearch]);
+
+  // Auto-search when typing (if onSearch provided & not using defer apply)
+  React.useEffect(() => {
+    if (!onSearchRef.current) return;
+    if (deferToolsApply) return;
+
+    const handle = window.setTimeout(() => {
+      setSearchTerm(searchInput);
+      void onSearchRef.current?.(searchInput);
+    }, searchDebounceMs);
+
+    return () => {
+      window.clearTimeout(handle);
+    };
+  }, [searchInput, deferToolsApply, searchDebounceMs]);
 
   const handleApplyTools = () => {
     if (!deferToolsApply) return;

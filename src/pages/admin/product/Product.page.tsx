@@ -298,6 +298,46 @@ const ProductPage = () => {
     }
   };
 
+  const handleStatusChange = async (item: Product, newStatus: boolean) => {
+    if (item.id === "") {
+      toastError("ID sản phẩm không hợp lệ");
+      return;
+    }
+    const prevStatus = item.is_active;
+    const prevUpdatedAt = item.updated_at;
+    const nextUpdatedAt = new Date().toISOString();
+
+    setData((prev) =>
+      prev.map((p) =>
+        p.id === item.id
+          ? { ...p, is_active: newStatus, updated_at: nextUpdatedAt }
+          : p,
+      ),
+    );
+
+    try {
+      setIsModalLoading(true);
+      const result = await updateProductUsecase(item.id, { isActive: newStatus });
+      if (!result.ok) {
+        setData((prev) =>
+          prev.map((p) =>
+            p.id === item.id
+              ? { ...p, is_active: prevStatus, updated_at: prevUpdatedAt }
+              : p,
+          ),
+        );
+        toastError(result.message);
+        return;
+      }
+
+      toastSuccess(
+        `Đã cập nhật trạng thái: ${newStatus ? "Hoạt động" : "Ngưng hoạt động"}`,
+      );
+    } finally {
+      setIsModalLoading(false);
+    }
+  };
+
   // View Details
   const handleView = async (item: Product) => {
     try {
@@ -394,6 +434,8 @@ const ProductPage = () => {
           fetchProducts(1, size);
         }}
         tableMaxHeightClass="max-h-[60vh]"
+        statusField="is_active"
+        onStatusChange={handleStatusChange}
         filters={[
           {
             key: "is_active",

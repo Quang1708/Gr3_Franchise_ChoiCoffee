@@ -11,8 +11,12 @@ export type UserFormValues = {
   phone: string;
   password?: string;
   name: string;
-  roleCode: string;
+  roleCode?: string;
   avatar_url?: string;
+};
+
+type UserViewData = User & {
+  roleDetailsText?: string;
 };
 
 const ROLE_OPTIONS = ["ADMIN", "MANAGER", "STAFF", "CUSTOMER"];
@@ -27,7 +31,7 @@ export const UserForm = ({
   setIsLoadingGlobal,
 }: {
   mode: "view" | "create" | "edit";
-  initialData?: User;
+  initialData?: UserViewData;
   onSubmit: (
     data: UserFormValues,
     setError: (field: keyof UserFormValues, error: { message: string }) => void,
@@ -82,7 +86,7 @@ export const UserForm = ({
         avatar_url: "",
       });
     } else {
-      reset(initialData || {});
+      reset(initialData ?? {});
     }
   }, [isOpen, initialData, mode, reset]);
 
@@ -142,40 +146,42 @@ export const UserForm = ({
             isView={isView}
             defaultValue={initialData?.email}
           />
-          <div>
-            <label
-              htmlFor="roleCode"
-              className="block text-xs font-bold text-gray-500 uppercase mb-2"
-            >
-              Vai trò
-            </label>
-            {isView ? (
-              <div className="py-2 min-h-[38px] border-b border-gray-100 md:border-none">
-                <span className="text-sm text-gray-900">
-                  {initialData?.roleCode || "—"}
-                </span>
-              </div>
-            ) : (
-              <select
-                id="roleCode"
-                {...register("roleCode")}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all cursor-pointer"
-                defaultValue={initialData?.roleCode || ""}
+          {mode !== "create" && (
+            <div>
+              <label
+                htmlFor="roleCode"
+                className="block text-xs font-bold text-gray-500 uppercase mb-2"
               >
-                <option value="">Chọn vai trò</option>
-                {ROLE_OPTIONS.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
-            )}
-            {errors.roleCode && (
-              <span className="text-xs text-red-500 mt-1 block">
-                {errors.roleCode.message}
-              </span>
-            )}
-          </div>
+                Vai trò
+              </label>
+              {isView ? (
+                <div className="py-2 min-h-[38px] border-b border-gray-100 md:border-none">
+                  <span className="text-sm text-gray-900">
+                    {initialData?.roleDetailsText || initialData?.roleCode || "—"}
+                  </span>
+                </div>
+              ) : (
+                <select
+                  id="roleCode"
+                  {...register("roleCode")}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all cursor-pointer"
+                  defaultValue={initialData?.roleCode || ""}
+                >
+                  <option value="">Chọn vai trò</option>
+                  {ROLE_OPTIONS.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {errors.roleCode && (
+                <span className="text-xs text-red-500 mt-1 block">
+                  {errors.roleCode.message}
+                </span>
+              )}
+            </div>
+          )}
           {mode === "create" && (
             <FormInput
               label="Mật khẩu"

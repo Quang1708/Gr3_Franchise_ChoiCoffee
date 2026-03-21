@@ -151,7 +151,7 @@ export const CustomerForm = ({
                 <span className="text-xs font-bold text-gray-500 uppercase">
                   Trạng thái
                 </span>
-                <div className="py-2 min-h-[38px] border-b border-gray-100 md:border-none">
+                <div className="py-2 min-h-9.5 border-b border-gray-100 md:border-none">
                   <span
                     className={`px-2 py-1 text-xs rounded-full ${
                       initialData?.is_active
@@ -168,7 +168,7 @@ export const CustomerForm = ({
                 <span className="text-xs font-bold text-gray-500 uppercase">
                   Xác thực
                 </span>
-                <div className="py-2 min-h-[38px] border-b border-gray-100 md:border-none">
+                <div className="py-2 min-h-9.5 border-b border-gray-100 md:border-none">
                   <span
                     className={`px-2 py-1 text-xs rounded-full ${
                       initialData?.is_verified

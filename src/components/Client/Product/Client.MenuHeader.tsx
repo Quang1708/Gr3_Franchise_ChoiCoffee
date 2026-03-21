@@ -24,7 +24,7 @@ const ProductMenu = ({ activeCategory, setActiveCategory, categories, isLoading 
   return (
     <>
         {/* {isLoading && <ClientLoading />} */}
-        <div className="sticky top-32 space-y-3 px-15">
+        <div className="space-y-3 px-4 lg:px-15 pb-10">
             <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-neutral-500 mb-5 ml-4">Danh mục</h3>          
             <div className="flex flex-col gap-4">
                 {categories.map((category) => (

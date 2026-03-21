@@ -48,6 +48,8 @@ const AdminSelectContextPage = React.lazy(
   () => import("../../pages/admin/auth/context/AdminSelectContext.page"),
 );
 
+const CartPage = React.lazy(() => import("../../pages/admin/cart"));
+
 /* ==================== ROUTES ==================== */
 
 const AdminRoutes = (
@@ -141,6 +143,9 @@ const AdminRoutes = (
 
         <Route element={<RequirePermission perm={PERM.USER_MANAGE} />}>
           <Route path="user" element={<UserPage />} />
+        </Route>
+        <Route element={<RequirePermission perm={PERM.CART_READ} />}>
+          <Route path="cart" element={<CartPage/>} />
         </Route>
 
         {/* PUBLIC IN ADMIN */}

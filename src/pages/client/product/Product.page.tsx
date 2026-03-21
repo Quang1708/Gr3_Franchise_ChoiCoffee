@@ -27,7 +27,7 @@ const ClientProductPage = () => {
 
   
   return (
-    <>
+    <div className="bg-background-light dark:bg-background-dark min-h-screen">
       {/* <img
         src="https://images.squarespace-cdn.com/content/v1/5ebe4d17fa0cb47f52dd2601/bf63362a-b99b-466f-9d21-a648925b9ba3/latte+art.jpeg"
         alt="Banner"
@@ -40,7 +40,7 @@ const ClientProductPage = () => {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-10 pb-20 min-h-screen">
-        <nav className="w-full lg:w-72 shrink-0 transition-all duration-300 nav-wrapper sticky top-21 self-start">
+        <nav className="w-full lg:w-72 shrink-0 transition-all duration-300 nav-wrapper sticky top-25 self-start max-h-[calc(100vh-100px)] hide-scrollbar">
           <ProductMenu
             activeCategory={activeCategory}
             setActiveCategory={handleCategoryChange}
@@ -92,7 +92,7 @@ const ClientProductPage = () => {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

@@ -15,7 +15,7 @@ export const getUserSchema = (mode: "create" | "edit" | "view") => {
         name: z.string().min(1, "Tên là bắt buộc"),
         phone: z.string().min(10, "SĐT là bắt buộc và SĐT không dưới 10 số").max(12, "SĐT không quá 12 số"),
         password: z.string().optional().or(z.literal("")),
-        roleCode: z.string().min(1, "Vai trò là bắt buộc"),
+        roleCode: z.string().optional().or(z.literal("")),
         avatar_url: z.string().optional().or(z.literal("")),
     }).refine((data) => {
         if (mode === "create") {
@@ -25,5 +25,13 @@ export const getUserSchema = (mode: "create" | "edit" | "view") => {
     }, {
         message: "Mật khẩu là bắt buộc và tối thiểu 6 ký tự khi tạo mới",
         path: ["password"],
+    }).refine((data) => {
+        if (mode === "edit" || mode === "view") {
+            return !!data.roleCode;
+        }
+        return true;
+    }, {
+        message: "Vai trò là bắt buộc",
+        path: ["roleCode"],
     });
 }

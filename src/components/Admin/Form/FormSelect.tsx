@@ -4,14 +4,14 @@ import type { FieldError, UseFormRegisterReturn } from "react-hook-form";
 
 interface FormSelectProps {
   label?: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; isExisting?: boolean }[];
   register: UseFormRegisterReturn;
   error?: FieldError;
   placeholder?: string;
   className?: string;
   value?: string;
   onChange?: (value: string) => void;
-  name?: string; // Thêm prop name để hiển thị trong label "Xem tất cả {name}"
+  name?: string;
 }
 
 const FormSelect: React.FC<FormSelectProps> = ({
@@ -23,7 +23,6 @@ const FormSelect: React.FC<FormSelectProps> = ({
   onChange,
   value,
   className,
-  name,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -72,13 +71,14 @@ const FormSelect: React.FC<FormSelectProps> = ({
     opt.label.toLowerCase().includes(search.toLowerCase()),
   );
 
+
   return (
     <div
-      className={`relative w-full ${className || "sm:min-w-[200px]"}`}
+      className={`relative w-full ${className || "sm:min-w-50"}`}
       ref={containerRef}
     >
       {label && (
-        <label className="block text-sm font-bold tracking-widest text-charcoal/80 ml-1 mb-2 uppercase">
+        <label className="block text-[14px] font-medium text-gray-500 ml-1 mb-2">
           {label}
         </label>
       )}
@@ -87,11 +87,10 @@ const FormSelect: React.FC<FormSelectProps> = ({
       <div
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center justify-between w-full px-3 py-2 text-sm bg-white border rounded-lg cursor-pointer
-            ${
-              error
-                ? "border-primary ring-2 ring-primary/20"
-                : "border-gray-200 hover:border-gray-300"
-            }`}
+            ${error
+            ? "border-primary ring-2 ring-primary/20"
+            : "border-gray-200 hover:border-gray-300"
+          }`}
       >
         <span
           className={`${selectedOption ? "text-gray-700" : "text-gray-400"}`}
@@ -100,9 +99,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
         </span>
 
         <ChevronDown
-          className={`w-4 h-4 text-gray-500 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
         />
       </div>
 
@@ -129,17 +126,11 @@ const FormSelect: React.FC<FormSelectProps> = ({
                   key={opt.value}
                   onClick={() => handleSelect(opt.value)}
                   className={`flex items-center justify-between px-3 py-2 text-sm rounded-md cursor-pointer transition-colors
-                    ${
-                      opt.value === currentValue
-                        ? "bg-primary/10 text-primary font-medium"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
+                    ${opt.value === currentValue ? "bg-primary/10 text-primary font-medium" : "hover:bg-gray-100"}
+                    ${opt.isExisting ? "text-primary font-medium" : ""}`}
                 >
                   <span className="truncate">{opt.label}</span>
-
-                  {opt.value === currentValue && (
-                    <Check className="w-3.5 h-3.5 flex-shrink-0" />
-                  )}
+                  {opt.value === currentValue && <Check className="w-3.5 h-3.5 shrink-0" />}
                 </div>
               ))
             ) : (

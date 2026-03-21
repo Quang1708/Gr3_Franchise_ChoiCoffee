@@ -1,499 +1,357 @@
-import { useEffect, useMemo, useState } from "react";
-import { CRUDTable, type Column } from "../../../components/Admin/template/CRUD.template";
-import {
-  getCustomerLoyalties,
-  getLoyaltyTransactions,
-  getTransactionsByCustomerFranchise,
-} from "../../../services/loyalty.service";
-import type { CustomerFranchise } from "../../../models/customer_franchise.model";
-import type { LoyaltyTransaction } from "../../../models/loyalty_transaction.model";
-import { CUSTOMER_SEED_DATA } from "../../../mocks/customer.seed";
-import { FRANCHISE_SEED_DATA } from "../../../mocks/franchise.seed";
-import { USER_SEED_DATA } from "../../../mocks/user.seed";
-import { ORDER_SEED_DATA } from "../../../mocks/order.seed";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { useAdminContextStore } from "@/stores";
 
-type LoyaltyTier = CustomerFranchise["loyaltyTier"];
-type TransactionType = LoyaltyTransaction["type"];
+import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
+import ClientLoading from "@/components/Client/Client.Loading";
 
-const tierLabel: Record<LoyaltyTier, string> = {
-  Silver: "Bạc",
-  Gold: "Vàng",
-  Platinum: "Bạch kim",
-};
+import type { LoyaltyRule } from "@/pages/admin/loyalty/models/loyalty.model";
+import { searchLoyaltyRulesUsecase } from "@/pages/admin/loyalty/usecases/searchLoyalty02.usecase";
+import { getLoyaltyDetailUsecase } from "@/pages/admin/loyalty/usecases/getLoyalty03.usecase";
+import { createLoyaltyUsecase } from "@/pages/admin/loyalty/usecases/createLoyalty01.usecase";
+import { updateLoyaltyUsecase } from "@/pages/admin/loyalty/usecases/updateLoyalty04.usecase";
 
-const tierColor: Record<LoyaltyTier, string> = {
-  Silver: "bg-gray-100 text-gray-800",
-  Gold: "bg-amber-100 text-amber-800",
-  Platinum: "bg-slate-200 text-slate-800",
-};
-
-const typeLabel: Record<TransactionType, string> = {
-  EARN: "Tích điểm",
-  REDEEM: "Đổi điểm",
-  ADJUST: "Điều chỉnh",
-};
-
-const typeColor: Record<TransactionType, string> = {
-  EARN: "bg-green-100 text-green-800",
-  REDEEM: "bg-amber-100 text-amber-800",
-  ADJUST: "bg-blue-100 text-blue-800",
-};
-
-const formatDateTime = (value?: string) => {
-  if (!value) return "--";
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime())
-    ? value
-    : parsed.toLocaleString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-};
-
-type CustomerLoyaltyRow = CustomerFranchise & {
-  customerName: string;
-  franchiseName: string;
-};
-
-type TransactionRow = LoyaltyTransaction & {
-  customerName: string;
-  franchiseName: string;
-  orderCode: string;
-  createdByName: string;
-};
+import FormSelect from "@/components/Admin/form/FormSelect";
+import { FormInput } from "@/components/Admin/form/FormInput";
+import { LoyaltyForm } from "@/pages/admin/loyalty/components/LoyaltyForm";
+import type { SearchLoyaltyRequest } from "@/pages/admin/loyalty/models/searchLoyaltyRequest.model";
 
 const LoyaltyPage = () => {
-  const [activeTab, setActiveTab] = useState<"customers" | "transactions">(
-    "customers"
+  // --- Kiểm tra quyền Admin & franchise được chọn ---
+  const selectedFranchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
+  const isAdmin = selectedFranchiseId === null;
+
+  // --- Form ---
+  const { register, getValues, setValue, watch } = useForm({
+    defaultValues: {
+      franchise_id: selectedFranchiseId || "",
+      earn_amount_per_point: "",
+      redeem_value_per_point: "",
+    },
+  });
+
+  // --- State ---
+  const [rules, setRules] = useState<LoyaltyRule[]>([]);
+  const [franchises, setFranchises] = useState<{ id: string; name: string }[]>([]);
+  const [tiers, setTiers] = useState<{ value: string; label: string }[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // --- State Modal ---
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
+  const [selectedRule, setSelectedRule] = useState<LoyaltyRule | null>(null);
+
+  // --- Lấy danh sách Loyalty Rules ---
+  const fetchLoyaltyRules = useCallback(
+    async (
+      pageNum = 1,
+      type: "full" | "table" = "full",
+      size = pageSize,
+      searchParams?: { searchTerm?: string; filters?: any }
+    ) => {
+      try {
+        if (type === "full") setIsLoading(true);
+        if (type === "table") setIsTableLoading(true);
+
+        const formData = getValues();
+        const filters = searchParams?.filters || {};
+
+        const payload: SearchLoyaltyRequest = {
+          searchCondition: {
+            franchise_id: formData.franchise_id || selectedFranchiseId || "",
+            earn_amount_per_point: formData.earn_amount_per_point || "",
+            redeem_value_per_point: formData.redeem_value_per_point || "",
+            tier: filters.tier || "",
+            is_active:
+              filters.is_active === "true" ? true : filters.is_active === "false" ? false : "",
+            is_deleted:
+              filters.is_deleted === "true" ? true : filters.is_deleted === "false" ? false : "",
+          },
+          pageInfo: { pageNum, pageSize: size },
+        };
+
+        const res = await searchLoyaltyRulesUsecase(payload);
+
+        if (res.success) {
+          setRules(res.data);
+          setTotalItems(res.pageInfo.totalItems);
+          setPage(res.pageInfo.pageNum);
+
+          // --- Tạo danh sách franchise chỉ 1 lần ---
+          if (franchises.length === 0) {
+            const franchiseMap = new Map<string, string>();
+            res.data.forEach((rule: any) => {
+              if (rule.franchise_id != null) {
+                const key = String(rule.franchise_id);
+                if (!franchiseMap.has(key)) {
+                  franchiseMap.set(key, rule.franchise_name);
+                }
+              }
+            });
+            setFranchises(Array.from(franchiseMap, ([id, name]) => ({ id, name })));
+          }
+
+          // --- Tạo danh sách tier động ---
+          const tierSet = new Map<string, string>();
+          res.data.forEach((rule: any) => {
+            rule.tier_rules?.forEach((t: any) => {
+              if (!tierSet.has(t.tier)) tierSet.set(t.tier, t.tier);
+            });
+          });
+          setTiers(Array.from(tierSet, ([value, label]) => ({ value, label })));
+        }
+      } catch {
+        toast.error("Lỗi kết nối hệ thống");
+      } finally {
+        setIsLoading(false);
+        setIsTableLoading(false);
+      }
+    },
+    [pageSize, selectedFranchiseId, getValues, franchises.length]
   );
-
-  const [customerLoyalties, setCustomerLoyalties] = useState<
-    CustomerFranchise[]
-  >([]);
-  const [transactions, setTransactions] = useState<LoyaltyTransaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const [selectedCustomer, setSelectedCustomer] =
-    useState<CustomerLoyaltyRow | null>(null);
-  const [customerTransactions, setCustomerTransactions] = useState<
-    LoyaltyTransaction[]
-  >([]);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isDetailLoading, setIsDetailLoading] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const [cust, txn] = await Promise.all([
-          getCustomerLoyalties(),
-          getLoyaltyTransactions(),
-        ]);
-        if (!mounted) return;
-        setCustomerLoyalties(cust);
-        setTransactions(txn);
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-    void load();
-    return () => {
-      mounted = false;
-    };
+    fetchLoyaltyRules(1, "full");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const customerNameById = useMemo(
-    () => new Map(CUSTOMER_SEED_DATA.map((c) => [c.id, c.name])),
-    []
-  );
-  const franchiseNameById = useMemo(
-    () => new Map(FRANCHISE_SEED_DATA.map((f) => [f.id, f.name])),
-    []
-  );
-  const userNameById = useMemo(
-    () => new Map(USER_SEED_DATA.map((u) => [u.id, u.name])),
-    []
-  );
-  const orderCodeById = useMemo(
-    () => new Map(ORDER_SEED_DATA.map((o) => [o.id, o.code])),
-    []
-  );
-
-  const customerFranchiseById = useMemo(
-    () => new Map(customerLoyalties.map((cf) => [cf.id, cf])),
-    [customerLoyalties]
-  );
-
-  const customerRows = useMemo<CustomerLoyaltyRow[]>(() => {
-    return customerLoyalties.map((cf) => ({
-      ...cf,
-      customerName:
-        customerNameById.get(cf.customerId) ?? `#${cf.customerId}`,
-      franchiseName:
-        franchiseNameById.get(String(cf.franchiseId)) ?? `#${cf.franchiseId}`,
-    }));
-  }, [customerLoyalties, customerNameById, franchiseNameById]);
-
-  const transactionRows = useMemo<TransactionRow[]>(() => {
-    return transactions.map((t) => {
-      const cf = customerFranchiseById.get(t.customerFranchiseId);
-      const customerId = cf?.customerId;
-      const franchiseId = cf?.franchiseId;
-      return {
-        ...t,
-        customerName: customerId
-          ? customerNameById.get(customerId) ?? `#${customerId}`
-          : "--",
-        franchiseName: franchiseId
-          ? franchiseNameById.get(String(franchiseId)) ?? `#${franchiseId}`
-          : "--",
-        orderCode: t.orderId
-          ? orderCodeById.get(t.orderId) ?? `#${t.orderId}`
-          : "--",
-        createdByName: t.createdBy
-          ? userNameById.get(t.createdBy) ?? `User #${t.createdBy}`
-          : "Hệ thống",
-      };
-    });
-  }, [
-    transactions,
-    customerFranchiseById,
-    customerNameById,
-    franchiseNameById,
-    orderCodeById,
-    userNameById,
-  ]);
-
-  const handleViewCustomer = async (item: CustomerLoyaltyRow) => {
-    setSelectedCustomer(item);
-    setIsDetailOpen(true);
-    setIsDetailLoading(true);
+  // --- Xử lý mở Modal ---
+  const handleOpenForm = async (mode: "create" | "edit" | "view", rule?: LoyaltyRule) => {
+    setFormMode(mode);
+    if (mode === "create") {
+      setSelectedRule(null);
+      setIsFormOpen(true);
+      return;
+    }
+    if (!rule) return;
+    setIsFormOpen(true);
     try {
-      const list = await getTransactionsByCustomerFranchise(item.id);
-      setCustomerTransactions(list);
-    } finally {
-      setIsDetailLoading(false);
+      const res = await getLoyaltyDetailUsecase(rule.id);
+      if (res.success) setSelectedRule(res.data);
+      else toast.error("Không lấy được chi tiết");
+    } catch {
+      toast.error("Lỗi khi lấy chi tiết");
     }
   };
 
-  const customerColumns: Column<CustomerLoyaltyRow>[] = useMemo(
-    () => [
-      {
-        header: "Khách hàng",
-        accessor: "customerName",
-        className: "min-w-[180px]",
-        sortable: true,
-      },
-      {
-        header: "Chi nhánh",
-        accessor: "franchiseName",
-        className: "min-w-[200px]",
-        sortable: true,
-      },
-      {
-        header: "Điểm tích lũy",
-        accessor: "loyaltyPoint",
-        sortable: true,
-        render: (it) => (
-          <span className="font-semibold text-primary">
-            {it.loyaltyPoint.toLocaleString("vi-VN")} điểm
-          </span>
-        ),
-      },
-      {
-        header: "Hạng",
-        accessor: "loyaltyTier",
-        sortable: true,
-        render: (it) => (
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${tierColor[it.loyaltyTier]}`}
-          >
-            {tierLabel[it.loyaltyTier]}
-          </span>
-        ),
-      },
-      {
-        header: "Đơn cuối",
-        accessor: (it) => formatDateTime(it.lastOrderAt),
-        sortable: true,
-      },
-    ],
-    []
+  // --- Xử lý submit form Loyalty ---
+  const handleSubmitLoyalty = async (data: any) => {
+    try {
+      setIsProcessing(true);
+      if (formMode === "create") {
+        await createLoyaltyUsecase(data);
+        toast.success("Thêm mới thành công");
+      } else if (formMode === "edit" && selectedRule) {
+        await updateLoyaltyUsecase(selectedRule.id, data);
+        toast.success("Cập nhật thành công");
+      }
+      setIsFormOpen(false);
+      fetchLoyaltyRules(page, "table");
+    } catch (error: any) {
+      const errorData = error?.response?.data || error;
+      if (errorData?.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+        errorData.errors.forEach((e: any) => toast.error(e.message || "Lỗi không xác định"));
+      }
+      else if (errorData?.message) {
+        toast.error(errorData.message);
+      }
+      else {
+        toast.error("Thao tác thất bại");
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // --- Danh sách options franchise ---
+  const franchiseOptions = useMemo(
+    () => [{ label: "Tất cả chi nhánh", value: "" }, ...franchises.map(f => ({ label: f.name, value: f.id }))],
+    [franchises]
   );
 
-  const transactionColumns: Column<TransactionRow>[] = useMemo(
-    () => [
-      {
-        header: "ID",
-        accessor: "id",
-        className: "min-w-[60px]",
-      },
-      {
-        header: "Khách hàng",
-        accessor: "customerName",
-        className: "min-w-[160px]",
-        sortable: true,
-      },
-      {
-        header: "Chi nhánh",
-        accessor: "franchiseName",
-        className: "min-w-[180px]",
-        sortable: true,
-      },
-      {
-        header: "Loại",
-        accessor: "type",
-        sortable: true,
-        render: (it) => (
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${typeColor[it.type]}`}
-          >
-            {typeLabel[it.type]}
-          </span>
-        ),
-      },
-      {
-        header: "Điểm",
-        accessor: "pointChange",
-        sortable: true,
-        render: (it) => (
-          <span
-            className={
-              it.pointChange >= 0
-                ? "font-medium text-green-600"
-                : "font-medium text-red-600"
-            }
-          >
-            {it.pointChange >= 0 ? `+${it.pointChange}` : it.pointChange} điểm
-          </span>
-        ),
-      },
-      {
-        header: "Lý do",
-        accessor: "reason",
-        className: "max-w-[200px] truncate",
-      },
-      {
-        header: "Ngày tạo",
-        accessor: (it) => formatDateTime(it.createdAt),
-        sortable: true,
-      },
-      {
-        header: "Người thực hiện",
-        accessor: "createdByName",
-        sortable: true,
-      },
-    ],
-    []
-  );
+  // --- Xử lý tìm kiếm ---
+  const handleSearch = (term?: string, filters?: any) => {
+    fetchLoyaltyRules(1, "table", pageSize, { searchTerm: term, filters });
+  };
 
-  return (
-    <div className="p-6 transition-all animate-fade-in">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">
-        Quản lý Loyalty
-      </h1>
+  // --- Xử lý refresh ---
+  const handleRefresh = () => {
+    setValue("franchise_id", "");
+    setValue("earn_amount_per_point", "");
+    setValue("redeem_value_per_point", "");
+    fetchLoyaltyRules(1, "full");
+  };
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
-        <button
-          type="button"
-          onClick={() => setActiveTab("customers")}
-          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeTab === "customers"
-              ? "bg-white border border-b-0 border-gray-200 text-primary -mb-px"
-              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-          }`}
-        >
-          Khách hàng Loyalty
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("transactions")}
-          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeTab === "transactions"
-              ? "bg-white border border-b-0 border-gray-200 text-primary -mb-px"
-              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-          }`}
-        >
-          Giao dịch điểm
-        </button>
-      </div>
+  // --- Columns bảng ---
+  const columns: Column<LoyaltyRule>[] = useMemo(() => {
+    // Danh sách màu badge có sẵn
+    const tierColors = [
+      "bg-gray-200 text-gray-800",
+      "bg-yellow-200 text-yellow-800",
+      "bg-blue-200 text-blue-800",
+      "bg-green-200 text-green-800",
+      "bg-purple-200 text-purple-800",
+      "bg-pink-200 text-pink-800",
+    ];
 
-      {isLoading ? (
-        <div className="py-12 text-center text-gray-500">
-          Đang tải dữ liệu...
-        </div>
-      ) : activeTab === "customers" ? (
-        <CRUDTable<CustomerLoyaltyRow>
-          title="Danh sách khách hàng loyalty"
-          data={customerRows}
-          columns={customerColumns}
-          pageSize={10}
-          hideScrollbars
-          wrapCells
-          onView={handleViewCustomer}
-          searchKeys={["customerName", "franchiseName"]}
-          filters={[
-            {
-              key: "loyaltyTier",
-              label: "Hạng",
-              options: [
-                { value: "Silver", label: "Bạc" },
-                { value: "Gold", label: "Vàng" },
-                { value: "Platinum", label: "Bạch kim" },
-              ],
-            },
-          ]}
-        />
-      ) : (
-        <CRUDTable<TransactionRow>
-          title="Danh sách giao dịch điểm"
-          data={transactionRows}
-          columns={transactionColumns}
-          pageSize={10}
-          hideScrollbars
-          wrapCells
-          searchKeys={["customerName", "reason", "createdByName"]}
-          filters={[
-            {
-              key: "type",
-              label: "Loại",
-              options: [
-                { value: "EARN", label: "Tích điểm" },
-                { value: "REDEEM", label: "Đổi điểm" },
-                { value: "ADJUST", label: "Điều chỉnh" },
-              ],
-            },
-          ]}
-        />
-      )}
-
-      {/* Modal chi tiết khách hàng loyalty */}
-      {isDetailOpen && selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-          <div className="w-full max-w-4xl rounded-xl border border-gray-100 bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Chi tiết Loyalty - {selectedCustomer.customerName}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {selectedCustomer.franchiseName} • ID #{selectedCustomer.id}
-                </p>
+    return [
+      ...(isAdmin
+        ? [
+          {
+            header: "Chi Nhánh",
+            accessor: "franchise_name" as keyof LoyaltyRule,
+            render: (item: any) => (
+              <div className="text-[14px] font-semibold text-gray-800">
+                {item.franchise_name || "N/A"}
               </div>
-              <button
-                type="button"
-                className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-                onClick={() => {
-                  setIsDetailOpen(false);
-                  setSelectedCustomer(null);
-                  setCustomerTransactions([]);
-                }}
-              >
-                Đóng
-              </button>
+            ),
+          },
+        ]
+        : []),
+      // {
+      //   header: "Mô tả quy tắc",
+      //   accessor: "description",
+      //   className: "text-[14px] font-medium text-blue-600 max-w-[250px] truncate",
+      //   sortable: true,
+      // },
+      {
+        header: "Tỷ lệ đổi điểm",
+        accessor: "earn_amount_per_point",
+        render: (item) => (
+          <div className="text-[14px] space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 italic w-8">Tích:</span>
+              <span className="font-bold text-green-600">
+                {item.earn_amount_per_point?.toLocaleString()}đ = 1 points
+              </span>
             </div>
-            <div className="max-h-[78vh] space-y-5 overflow-y-auto px-6 py-5">
-              <div className="rounded-lg border border-gray-100 p-4">
-                <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">
-                  Thông tin loyalty
-                </p>
-                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 lg:grid-cols-4">
-                  <p>
-                    <span className="font-medium text-gray-600">
-                      Điểm tích lũy:
-                    </span>{" "}
-                    <span className="font-semibold text-primary">
-                      {selectedCustomer.loyaltyPoint.toLocaleString("vi-VN")}{" "}
-                      điểm
-                    </span>
-                  </p>
-                  <p>
-                    <span className="font-medium text-gray-600">Hạng:</span>{" "}
-                    {tierLabel[selectedCustomer.loyaltyTier]}
-                  </p>
-                  <p>
-                    <span className="font-medium text-gray-600">
-                      Đơn đầu tiên:
-                    </span>{" "}
-                    {formatDateTime(selectedCustomer.firstOrderAt)}
-                  </p>
-                  <p>
-                    <span className="font-medium text-gray-600">
-                      Đơn gần nhất:
-                    </span>{" "}
-                    {formatDateTime(selectedCustomer.lastOrderAt)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-gray-100 p-4">
-                <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">
-                  Lịch sử giao dịch điểm
-                </p>
-                {isDetailLoading ? (
-                  <p className="text-sm text-gray-500">Đang tải...</p>
-                ) : customerTransactions.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full table-auto text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-500">
-                          <th className="px-2 py-2">ID</th>
-                          <th className="px-2 py-2">Loại</th>
-                          <th className="px-2 py-2">Điểm</th>
-                          <th className="px-2 py-2">Lý do</th>
-                          <th className="px-2 py-2">Ngày</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {customerTransactions.map((t) => (
-                          <tr
-                            key={t.id}
-                            className="border-b border-gray-50 last:border-0"
-                          >
-                            <td className="px-2 py-2">{t.id}</td>
-                            <td className="px-2 py-2">
-                              <span
-                                className={`inline-flex rounded px-1.5 py-0.5 text-xs ${typeColor[t.type]}`}
-                              >
-                                {typeLabel[t.type]}
-                              </span>
-                            </td>
-                            <td
-                              className={`px-2 py-2 font-medium ${
-                                t.pointChange >= 0
-                                  ? "text-green-600"
-                                  : "text-red-600"
-                              }`}
-                            >
-                              {t.pointChange >= 0
-                                ? `+${t.pointChange}`
-                                : t.pointChange}
-                            </td>
-                            <td className="px-2 py-2">{t.reason || "--"}</td>
-                            <td className="px-2 py-2">
-                              {formatDateTime(t.createdAt)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">
-                    Không có giao dịch nào.
-                  </p>
-                )}
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 italic w-8">Tiêu:</span>
+              <span className="font-bold text-orange-600">
+                1 points = {item.redeem_value_per_point?.toLocaleString()}đ
+              </span>
             </div>
           </div>
+        ),
+      },
+      {
+        header: "Hạng thành viên",
+        accessor: "tier_rules",
+        render: (item) => {
+          const tierColorMap = new Map<string, string>();
+          item.tier_rules?.forEach((t: any) => {
+            if (!tierColorMap.has(t.tier)) {
+              tierColorMap.set(t.tier, tierColors[tierColorMap.size % tierColors.length]);
+            }
+          });
+
+          return (
+            <div className="flex flex-wrap gap-2">
+              {item.tier_rules?.map((t: any) => {
+                const range = t.min_points && t.max_points
+                  ? `${t.min_points.toLocaleString()} – ${t.max_points.toLocaleString()} points`
+                  : t.min_points
+                    ? `Từ ${t.min_points.toLocaleString()} points`
+                    : "";
+                return (
+                  <span
+                    key={t.tier}
+                    className={`px-2 py-1 text-[13px] font-semibold rounded-full ${tierColorMap.get(t.tier)}`}
+                    title={range}
+                  >
+                    {t.tier}
+                  </span>
+                );
+              })}
+            </div>
+          );
+        },
+      },
+    ];
+  }, [isAdmin]);
+
+  return (
+    <>
+      {isLoading && <ClientLoading />}
+      {isProcessing && (
+        <div className="fixed inset-0 z-200 flex items-center justify-center">
+          <ClientLoading />
         </div>
       )}
-    </div>
+
+      <CRUDPageTemplate<LoyaltyRule>
+        title="Cấu hình Loyalty & Membership"
+        data={rules}
+        columns={columns}
+        pageSize={pageSize}
+        totalItems={totalItems}
+        currentPage={page}
+        onPageChange={(p) => fetchLoyaltyRules(p, "table")}
+        onPageSizeChange={(s) => { setPageSize(s); fetchLoyaltyRules(1, "full", s); }}
+        searchContent={
+          <div className="flex flex-wrap items-center gap-3 w-full">
+            {isAdmin && (
+              <div className="flex-1">
+                <FormSelect
+                  label=""
+                  options={franchiseOptions}
+                  register={register("franchise_id")}
+                  placeholder="Chi nhánh"
+                  value={watch("franchise_id")}
+                />
+              </div>
+            )}
+            <div className="flex-1">
+              <FormInput
+                label=""
+                type="number"
+                placeholder="Tiền chi tiêu / 1 điểm"
+                register={register("earn_amount_per_point")}
+              />
+            </div>
+            <div className="flex-1">
+              <FormInput
+                label=""
+                type="number"
+                placeholder="Giá trị / 1 điểm"
+                register={register("redeem_value_per_point")}
+              />
+            </div>
+          </div>
+        }
+        onSearch={handleSearch}
+        onRefresh={handleRefresh}
+        onAdd={() => handleOpenForm("create")}
+        onView={(item) => handleOpenForm("view", item)}
+        onEdit={(item) => handleOpenForm("edit", item)}
+        isTableLoading={isTableLoading}
+        filters={[
+          { key: "tier" as any, label: "Hạng thành viên", options: tiers },
+          { key: "is_active", label: "Trạng thái", options: [{ value: "true", label: "Đang hoạt động" }, { value: "false", label: "Tạm ngưng" }] },
+          { key: "is_deleted", label: "Trạng thái xóa", options: [{ value: "false", label: "Còn tồn tại" }, { value: "true", label: "Đã xóa" }] },
+        ]}
+      />
+
+      <LoyaltyForm
+        isOpen={isFormOpen}
+        mode={formMode}
+        initialData={selectedRule || undefined}
+        onClose={() => setIsFormOpen(false)}
+        onSave={handleSubmitLoyalty}
+        isLoading={isProcessing}
+        isAdmin={isAdmin}
+        selectedFranchiseId={selectedFranchiseId || undefined}
+        existingFranchiseIds={rules
+          .map(r => r.franchise_id)
+          .filter((id): id is string => typeof id === "string")}
+      />
+    </>
   );
 };
 

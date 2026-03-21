@@ -17,8 +17,42 @@ import { restoreUserUsecase } from "./usecases/restoreUserUsecase";
 import { createUserUsecase } from "./usecases/createUser.usecase";
 import { updateUserUsecase } from "./usecases/updateUser.usecase";
 import { getUserDetailUsecase } from "./usecases/getUserDetail.usecase";
+import { getUserRolesByUserIdUsecase } from "../user-franchise-role/usecases/getUserRolesByUserId.usecase";
+import UserFranchiseRolePage from "../user-franchise-role/UserFranchiseRole.page";
 
 const DEFAULT_AVATAR = "https://i.pinimg.com/736x/af/80/37/af80374611f4673d1928a881727e13b0.jpg";
+
+type UserFranchiseRoleItem = {
+  role_name?: string;
+  role_code?: string;
+  franchise_name?: string;
+};
+
+type UserWithRoleDetails = User & {
+  roleDetailsText?: string;
+};
+
+const resolveUserFranchiseRoleItems = (payload: unknown): UserFranchiseRoleItem[] => {
+  if (Array.isArray(payload)) return payload as UserFranchiseRoleItem[];
+  if (!payload || typeof payload !== "object") return [];
+
+  const source = payload as {
+    data?: unknown;
+    items?: unknown;
+    rows?: unknown;
+  };
+
+  if (Array.isArray(source.data)) return source.data as UserFranchiseRoleItem[];
+  if (source.data && typeof source.data === "object") {
+    const nested = source.data as { items?: unknown; rows?: unknown };
+    if (Array.isArray(nested.items)) return nested.items as UserFranchiseRoleItem[];
+    if (Array.isArray(nested.rows)) return nested.rows as UserFranchiseRoleItem[];
+  }
+  if (Array.isArray(source.items)) return source.items as UserFranchiseRoleItem[];
+  if (Array.isArray(source.rows)) return source.rows as UserFranchiseRoleItem[];
+
+  return [];
+};
 
 const UserPage = () => {
   const selectedFranchiseId = useAdminContextStore((state) => state.selectedFranchiseId);
@@ -42,10 +76,10 @@ const UserPage = () => {
   // Modal Form (Thêm/Sửa/Xem)
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserWithRoleDetails | null>(null);
+  const [activeTab, setActiveTab] = useState<"users" | "userFranchiseRoles">("users");
 
   // Helper function to map API response to User with proper property names
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const toUserRow = (item: any): User => {
     return {
       id: item.id,
@@ -58,6 +92,7 @@ const UserPage = () => {
       is_deleted: item.is_deleted,
       created_at: item.created_at,
       updated_at: item.updated_at,
+      is_verified: item.is_verified , // Assuming API might return this field
     } as User;
   };
 
@@ -177,13 +212,29 @@ const UserPage = () => {
     if (mode === "view" && user) {
       try {
         const detail = await getUserDetailUsecase(user.id);
-        setSelectedUser(toUserRow(detail.data));
+        const userDetail = toUserRow(detail.data);
+        const userRolesRes = await getUserRolesByUserIdUsecase(String(user.id));
+        const roleItems = resolveUserFranchiseRoleItems(userRolesRes);
+        const roleDetailsText = roleItems.length
+          ? roleItems
+              .map((item) => {
+                const role = item.role_name || item.role_code || "Không rõ vai trò";
+                const franchise = item.franchise_name || "Hệ thống";
+                return `${role} (${franchise})`;
+              })
+              .join(", ")
+          : undefined;
+
+        setSelectedUser({
+          ...userDetail,
+          roleDetailsText,
+        });
       } catch {
         toast.error("Không thể tải chi tiết người dùng");
         return;
       }
     } else {
-      setSelectedUser(user);
+      setSelectedUser(user as UserWithRoleDetails | null);
     }
     setIsFormOpen(true);
   };
@@ -198,7 +249,6 @@ const UserPage = () => {
           password: data.password || "",
           phone: data.phone,
           name: data.name,
-          roleCode: data.roleCode,
           avatar_url: data.avatar_url?.trim() ? data.avatar_url : DEFAULT_AVATAR,
         };
 
@@ -219,19 +269,15 @@ const UserPage = () => {
       await fetchUsers(page);
       setIsFormOpen(false);
     } catch (error: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const errData = (error as Record<string, any>)?.response?.data || error;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const serverErrors = (errData as Record<string, any>)?.errors as Array<Record<string, any>> | undefined;
 
       if (Array.isArray(serverErrors)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         serverErrors.forEach((e: Record<string, any>) => {
           setError(e.field as keyof UserFormValues, { message: e.message as string });
           toast.error(e.message as string);
         });
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         toast.error((errData as Record<string, any>)?.message || "Thao tác thất bại!");
       }
     } finally {
@@ -325,79 +371,114 @@ const UserPage = () => {
 
 
   return (
-    <>
-      {(isLoading || isTableLoading) && <ClientLoading />}
-      {isProcessing && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20">
-          <ClientLoading />
+    <div className="p-6 transition-all animate-fade-in">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Quản lý người dùng</h1>
+
+      <div className="flex flex-1 gap-2 mb-6 border-b border-gray-200">
+        <button
+          type="button"
+          onClick={() => setActiveTab("users")}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            activeTab === "users"
+              ? "bg-white border border-b-0 border-gray-200 text-primary -mb-px"
+              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+          }`}
+        >
+          Người dùng
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("userFranchiseRoles")}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            activeTab === "userFranchiseRoles"
+              ? "bg-white border border-b-0 border-gray-200 text-primary -mb-px"
+              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+          }`}
+        >
+          User Franchise Role
+        </button>
+      </div>
+
+      {activeTab === "users" ? (
+        <>
+          {(isLoading || isTableLoading) && <ClientLoading />}
+          {isProcessing && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20">
+              <ClientLoading />
+            </div>
+          )}
+
+          <CRUDPageTemplate<User>
+            title="Danh sách người dùng"
+            data={users}
+            columns={columns}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            currentPage={page}
+            onPageChange={(page) => fetchUsers(page)}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              fetchUsers(1, size);
+            }}
+            statusField="is_active"
+            onStatusChange={isAdmin ? handleStatusChange : undefined}
+            filters={[
+              {
+                key: "is_active",
+                label: "trạng thái",
+                options: [
+                  { value: "true", label: "Hoạt động" },
+                  { value: "false", label: "Ngưng hoạt động" }
+                ]
+              },
+              {
+                key: "is_deleted",
+                label: "trạng thái xóa",
+                options: [
+                  { value: "false", label: "Còn tồn tại" },
+                  { value: "true", label: "Đã xóa" },
+                ]
+              }
+            ]}
+            onAdd={() => handleOpenForm("create")}
+            onView={(item) => handleOpenForm("view", item)}
+            onEdit={(item) => handleOpenForm("edit", item)}
+            onDelete={isAdmin ? handleDeleteClick : undefined}
+            onRestore={isAdmin ? handleRestoreClick : undefined}
+            onRefresh={() => fetchUsers(1)}
+            onSearch={handleSearchUsers}
+            isTableLoading={isTableLoading}
+          />
+
+          <UserForm
+            isOpen={isFormOpen}
+            mode={formMode}
+            initialData={selectedUser ?? undefined}
+            isLoading={isProcessing}
+            onClose={() => setIsFormOpen(false)}
+            onSubmit={handleSubmitUser}
+            setIsLoadingGlobal={setIsProcessing}
+          />
+
+          <ActionConfirmModal
+            isOpen={modalConfig.isOpen}
+            type={modalConfig.type}
+            isLoading={isProcessing}
+            onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+            onConfirm={handleConfirmAction}
+            message={
+              modalConfig.type === "delete"
+                ? `Bạn có chắc muốn xóa "${modalConfig.user?.name}"?`
+                : `Khôi phục tài khoản cho "${modalConfig.user?.name}"?`
+            }
+          />
+        </>
+      ) : (
+        <div className="rounded-lg border border-gray-100 bg-white p-2">
+          <UserFranchiseRolePage />
         </div>
       )}
-
-      <CRUDPageTemplate<User>
-        title="Quản lý người dùng"
-        data={users}
-        columns={columns}
-        pageSize={pageSize}
-        totalItems={totalItems}
-        currentPage={page}
-        onPageChange={(page) => fetchUsers(page)}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          fetchUsers(1, size);
-        }}
-        statusField="is_active"
-        onStatusChange={isAdmin ? handleStatusChange : undefined}
-        filters={[
-          {
-            key: "is_active",
-            label: "trạng thái",
-            options: [
-              { value: "true", label: "Hoạt động" },
-              { value: "false", label: "Ngưng hoạt động" }
-            ]
-          },
-          {
-            key: "is_deleted",
-            label: "trạng thái xóa",
-            options: [
-              { value: "false", label: "Còn tồn tại" },
-              { value: "true", label: "Đã xóa" },
-            ]
-          }
-        ]}
-        onAdd={() => handleOpenForm("create")}
-        onView={(item) => handleOpenForm("view", item)}
-        onEdit={(item) => handleOpenForm("edit", item)}
-        onDelete={isAdmin ? handleDeleteClick : undefined}
-        onRestore={isAdmin ? handleRestoreClick : undefined}
-        onRefresh={() => fetchUsers(1)}
-        onSearch={handleSearchUsers}
-        isTableLoading={isTableLoading}
-      />
-
-      <UserForm
-        isOpen={isFormOpen}
-        mode={formMode}
-        initialData={selectedUser || undefined}
-        isLoading={isProcessing}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleSubmitUser}
-        setIsLoadingGlobal={setIsProcessing}
-      />
-
-      <ActionConfirmModal
-        isOpen={modalConfig.isOpen}
-        type={modalConfig.type}
-        isLoading={isProcessing}
-        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
-        onConfirm={handleConfirmAction}
-        message={
-          modalConfig.type === "delete"
-            ? `Bạn có chắc muốn xóa "${modalConfig.user?.name}"?`
-            : `Khôi phục tài khoản cho "${modalConfig.user?.name}"?`
-        }
-      />
-    </>
+    </div>
   );
 };
 

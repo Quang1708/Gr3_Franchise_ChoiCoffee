@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
-import { FormInput } from "@/components/Admin/Form/FormInput";
+import { FormInput } from "@/components/Admin/form/FormInput";
 import type { ProductFranchise } from "@/models/product_franchise.model";
 
 export type PromotionFormValues = {
@@ -105,7 +105,10 @@ export const PromotionForm = ({
 
   const sortedProducts = useMemo(() => {
     return [...productOptions].sort((a, b) =>
-      String(a.product_name ?? "").localeCompare(String(b.product_name ?? ""), "vi"),
+      String(a.product_name ?? "").localeCompare(
+        String(b.product_name ?? ""),
+        "vi",
+      ),
     );
   }, [productOptions]);
 
@@ -184,14 +187,18 @@ export const PromotionForm = ({
                 <select
                   {...register("type", { required: "Không được để trống" })}
                   className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm transition-all outline-none focus:ring-2 focus:ring-primary/20 ${
-                    errors.type ? "border-primary" : "border-gray-200 focus:border-primary"
+                    errors.type
+                      ? "border-primary"
+                      : "border-gray-200 focus:border-primary"
                   }`}
                 >
                   <option value="PERCENT">PERCENT</option>
                   <option value="FIXED">FIXED</option>
                 </select>
                 {errors.type && (
-                  <p className="text-primary text-xs mt-1">{errors.type.message}</p>
+                  <p className="text-primary text-xs mt-1">
+                    {errors.type.message}
+                  </p>
                 )}
               </>
             )}
@@ -219,7 +226,9 @@ export const PromotionForm = ({
           <FormInput
             label="Start date"
             type="date"
-            register={register("start_date", { required: "Không được để trống" })}
+            register={register("start_date", {
+              required: "Không được để trống",
+            })}
             error={errors.start_date}
             isView={isView}
           />
@@ -227,7 +236,9 @@ export const PromotionForm = ({
           <FormInput
             label="Start time"
             type="time"
-            register={register("start_time", { required: "Không được để trống" })}
+            register={register("start_time", {
+              required: "Không được để trống",
+            })}
             error={errors.start_time}
             isView={isView}
           />
@@ -238,11 +249,14 @@ export const PromotionForm = ({
             register={register("end_date", {
               required: "Không được để trống",
               validate: (v, formValues) => {
-                if (!formValues.start_date || !formValues.start_time) return true;
+                if (!formValues.start_date || !formValues.start_time)
+                  return true;
                 const s = new Date(
                   `${formValues.start_date}T${formValues.start_time}:00`,
                 ).getTime();
-                const e = new Date(`${v}T${formValues.end_time || "23:59"}:00`).getTime();
+                const e = new Date(
+                  `${v}T${formValues.end_time || "23:59"}:00`,
+                ).getTime();
                 if (Number.isFinite(s) && Number.isFinite(e) && e < s) {
                   return "End datetime phải >= Start datetime";
                 }
@@ -267,4 +281,3 @@ export const PromotionForm = ({
     </CRUDModalTemplate>
   );
 };
-

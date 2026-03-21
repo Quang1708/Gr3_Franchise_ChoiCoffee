@@ -9,7 +9,7 @@ import { toastSuccess, toastError } from "@/utils/toast.util";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import ShiftAssignmentForm, {
   type ShiftAssignmentFormValues,
-} from "@/components/Admin/shift_assignment/ShiftAssignmentForm";
+} from "./components/ShiftAssignmentForm";
 
 // Usecases
 import { searchShiftAssignment } from "./usecases/searchShiftAssignment.usecase";
@@ -23,6 +23,13 @@ import { statusBadge } from "./shiftAssignment.utils";
 type SelectOption = {
   value: string;
   label: string;
+};
+
+const STATUS_LABEL_MAP: Record<ShiftAssignmentItem["status"], string> = {
+  ASSIGNED: "Đã phân công",
+  COMPLETED: "Hoàn thành",
+  ABSENT: "Vắng mặt",
+  CANCELED: "Đã hủy",
 };
 
 // ── Page Component ────────────────────────────────────────────────────────────
@@ -43,9 +50,7 @@ const ShiftAssignmentPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [formMode, setFormMode] = useState<"create" | "edit" | "view">(
-    "create",
-  );
+  const [formMode, setFormMode] = useState<"create" | "view">("create");
   const [selectedShiftAssignment, setSelectedShiftAssignment] =
     useState<ShiftAssignmentItem | null>(null);
 
@@ -59,14 +64,6 @@ const ShiftAssignmentPage = () => {
   ): ShiftAssignmentItem["status"] | "" => {
     if (value === "all" || value == null) return "";
     return String(value) as ShiftAssignmentItem["status"];
-  };
-
-  const mapToggleToStatus = (
-    item: ShiftAssignmentItem,
-    isEnabled: boolean,
-  ): ShiftAssignmentItem["status"] => {
-    if (!isEnabled) return "CANCELED";
-    return item.status === "CANCELED" ? "ASSIGNED" : item.status;
   };
 
   // ── Data Fetching ─────────────────────────────────────────────────────────
@@ -136,6 +133,93 @@ const ShiftAssignmentPage = () => {
     void loadLookupOptions();
   }, [loadLookupOptions]);
 
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const handleOpenForm = (
+    mode: "create" | "view",
+    shiftAssignment: ShiftAssignmentItem | null = null,
+  ) => {
+    setFormMode(mode);
+    setSelectedShiftAssignment(shiftAssignment);
+    setIsFormOpen(true);
+  };
+
+  const handleSubmitShiftAssignment = async (
+    data: ShiftAssignmentFormValues,
+    setError: any,
+  ) => {
+    try {
+      setIsProcessing(true);
+
+      if (formMode === "create") {
+        await createShiftAssignment({
+          user_id: data.user_id,
+          shift_id: data.shift_id,
+          work_date: data.work_date,
+          note: data.note,
+        });
+        toastSuccess("Phân ca thành công!");
+      }
+
+      setIsFormOpen(false);
+      await fetchShiftAssignments(page, "table", pageSize);
+    } catch (error: any) {
+      console.error("Error submitting shift assignment:", error);
+
+      // Handle validation errors from backend
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+
+        if (Array.isArray(errors)) {
+          errors.forEach((err: { field: string; message: string }) => {
+            setError(err.field, {
+              type: "manual",
+              message: err.message,
+            });
+          });
+        } else {
+          Object.keys(errors).forEach((field) => {
+            setError(field, {
+              type: "manual",
+              message: errors[field],
+            });
+          });
+        }
+      } else {
+        const errorMessage =
+          error.response?.data?.message || "Có lỗi xảy ra khi phân ca";
+        toastError(errorMessage);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleChangeStatus = useCallback(
+    async (
+      item: ShiftAssignmentItem,
+      newStatus: ShiftAssignmentItem["status"],
+    ) => {
+      try {
+        setIsProcessing(true);
+        await updateShiftAssignmentStatus(item.id, newStatus);
+        setShiftAssignments((prev) =>
+          prev.map((sa) =>
+            sa.id === item.id ? { ...sa, status: newStatus } : sa,
+          ),
+        );
+        toastSuccess("Cập nhật trạng thái phân ca thành công!");
+        await fetchShiftAssignments(page, "table", pageSize);
+      } catch (error) {
+        console.error("Error changing shift assignment status:", error);
+        toastError("Có lỗi xảy ra khi cập nhật trạng thái phân ca");
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [fetchShiftAssignments, page, pageSize],
+  );
+
   // ── Columns ───────────────────────────────────────────────────────────────
 
   const columns: Column<ShiftAssignmentItem>[] = useMemo(
@@ -175,8 +259,30 @@ const ShiftAssignmentPage = () => {
           <span
             className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${statusBadge(item.status)}`}
           >
-            {item.status}
+            {STATUS_LABEL_MAP[item.status]}
           </span>
+        ),
+      },
+      {
+        header: "Đổi trạng thái",
+        accessor: "id",
+        render: (item) => (
+          <select
+            value={item.status}
+            disabled={isProcessing || isTableLoading}
+            onChange={(e) => {
+              const newStatus = e.target.value as ShiftAssignmentItem["status"];
+              if (newStatus !== item.status) {
+                void handleChangeStatus(item, newStatus);
+              }
+            }}
+            className={`w-full rounded-full border border-transparent px-2.5 py-1 text-xs font-medium ${statusBadge(item.status)} focus:outline-none focus:ring-2 focus:ring-primary/20`}
+          >
+            <option value="ASSIGNED">Đã phân công</option>
+            <option value="COMPLETED">Hoàn thành</option>
+            <option value="ABSENT">Vắng mặt</option>
+            <option value="CANCELED">Đã hủy</option>
+          </select>
         ),
       },
       {
@@ -185,95 +291,8 @@ const ShiftAssignmentPage = () => {
         render: (item) => item.assigned_by_name ?? item.assigned_by ?? "--",
       },
     ],
-    [],
+    [handleChangeStatus, isProcessing, isTableLoading],
   );
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
-
-  const handleOpenForm = (
-    mode: "create" | "edit" | "view",
-    shiftAssignment: ShiftAssignmentItem | null = null,
-  ) => {
-    setFormMode(mode);
-    setSelectedShiftAssignment(shiftAssignment);
-    setIsFormOpen(true);
-  };
-
-  const handleSubmitShiftAssignment = async (
-    data: ShiftAssignmentFormValues,
-    setError: any,
-  ) => {
-    try {
-      setIsProcessing(true);
-
-      if (formMode === "create") {
-        await createShiftAssignment({
-          user_id: data.user_id,
-          shift_id: data.shift_id,
-          work_date: data.work_date,
-          note: data.note,
-        });
-        toastSuccess("Phân ca thành công!");
-      } else if (formMode === "edit" && selectedShiftAssignment) {
-        // Note: You may want to create an update usecase if needed
-        toastSuccess("Cập nhật phân ca thành công!");
-      }
-
-      setIsFormOpen(false);
-      await fetchShiftAssignments(page, "table", pageSize);
-    } catch (error: any) {
-      console.error("Error submitting shift assignment:", error);
-
-      // Handle validation errors from backend
-      if (error.response?.data?.errors) {
-        const errors = error.response.data.errors;
-
-        if (Array.isArray(errors)) {
-          errors.forEach((err: { field: string; message: string }) => {
-            setError(err.field, {
-              type: "manual",
-              message: err.message,
-            });
-          });
-        } else {
-          Object.keys(errors).forEach((field) => {
-            setError(field, {
-              type: "manual",
-              message: errors[field],
-            });
-          });
-        }
-      } else {
-        const errorMessage =
-          error.response?.data?.message || "Có lỗi xảy ra khi phân ca";
-        toastError(errorMessage);
-      }
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleChangeStatus = async (
-    item: ShiftAssignmentItem,
-    newStatus: ShiftAssignmentItem["status"],
-  ) => {
-    try {
-      setIsProcessing(true);
-      await updateShiftAssignmentStatus(item.id, newStatus);
-      setShiftAssignments((prev) =>
-        prev.map((sa) =>
-          sa.id === item.id ? { ...sa, status: newStatus } : sa,
-        ),
-      );
-      toastSuccess("Cập nhật trạng thái phân ca thành công!");
-      await fetchShiftAssignments(page, "table", pageSize);
-    } catch (error) {
-      console.error("Error changing shift assignment status:", error);
-      toastError("Có lỗi xảy ra khi cập nhật trạng thái phân ca");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   const handleSearch = async (keyword: string, filters: any) => {
     try {
@@ -296,7 +315,6 @@ const ShiftAssignmentPage = () => {
       {isLoading && <ClientLoading />}
 
       <CRUDPageTemplate<ShiftAssignmentItem>
-        statusField="status"
         title="Phân ca làm việc"
         columns={columns}
         data={shiftAssignments}
@@ -305,11 +323,7 @@ const ShiftAssignmentPage = () => {
         currentPage={page}
         onView={(item) => handleOpenForm("view", item)}
         onAdd={() => handleOpenForm("create")}
-        onEdit={(item) => handleOpenForm("edit", item)}
         onRefresh={() => fetchShiftAssignments(1, "full")}
-        onStatusChange={(item, newStatus) =>
-          handleChangeStatus(item, mapToggleToStatus(item, Boolean(newStatus)))
-        }
         onPageChange={(newPage) => fetchShiftAssignments(newPage, "table")}
         onPageSizeChange={(newSize) => {
           setPageSize(newSize);

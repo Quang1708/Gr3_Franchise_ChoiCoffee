@@ -23,7 +23,6 @@ const FormSelect: React.FC<FormSelectProps> = ({
   onChange,
   value,
   className,
-  name,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");

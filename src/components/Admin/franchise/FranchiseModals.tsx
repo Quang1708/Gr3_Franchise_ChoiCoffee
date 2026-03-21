@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Modal } from "../../UI/Modal";
-import { FormInput } from "@/components/Admin/Form/FormInput";
+import { FormInput } from "@/components/Admin/form/FormInput";
 import type { Franchise } from "@/pages/admin/franchise/models/franchise.model";
 import { AlertTriangle } from "lucide-react";
 

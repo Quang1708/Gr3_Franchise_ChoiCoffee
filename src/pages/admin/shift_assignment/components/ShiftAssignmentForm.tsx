@@ -1,12 +1,13 @@
-import { FormInput } from "@/components/Admin/Form/FormInput";
-import { useForm } from "react-hook-form";
+import { FormInput } from "@/components/Admin/form/FormInput";
+import FormSelect from "@/components/Admin/form/FormSelect";
+import { TextEditor } from "@/components/UI/TextEditor";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { useEffect } from "react";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { ShiftAssignmentItem } from "@/pages/admin/shift_assignment/models/shiftAssignment.model";
+import type { ShiftAssignmentItem } from "../models/shiftAssignment.model";
 
-// Define schema inline to avoid resolver type issues
 const shiftAssignmentFormSchema = z.object({
   user_id: z.string().min(1, "Nhân viên là bắt buộc"),
   shift_id: z.string().min(1, "Ca làm là bắt buộc"),
@@ -24,6 +25,13 @@ export type ShiftAssignmentFormValues = {
 type SelectOption = {
   value: string;
   label: string;
+};
+
+const STATUS_LABEL_MAP: Record<string, string> = {
+  ASSIGNED: "Đã phân công",
+  COMPLETED: "Hoàn thành",
+  ABSENT: "Vắng mặt",
+  CANCELED: "Đã hủy",
 };
 
 type ShiftAssignmentFormProps = {
@@ -59,6 +67,7 @@ const ShiftAssignmentForm = ({
   lookupLoading = false,
 }: ShiftAssignmentFormProps) => {
   const {
+    control,
     register,
     handleSubmit,
     reset,
@@ -71,7 +80,8 @@ const ShiftAssignmentForm = ({
       work_date: "",
       note: "",
     },
-    resolver: mode === "view" ? undefined : zodResolver(shiftAssignmentFormSchema),
+    resolver:
+      mode === "view" ? undefined : zodResolver(shiftAssignmentFormSchema),
     mode: "onChange",
   });
 
@@ -96,8 +106,9 @@ const ShiftAssignmentForm = ({
   }, [isOpen, initialData, mode, reset]);
 
   const isView = mode === "view";
+  const selectedUserId = useWatch({ control, name: "user_id" });
+  const selectedShiftId = useWatch({ control, name: "shift_id" });
 
-  // Get display labels for view mode
   const getUserLabel = () => {
     if (!initialData?.user_id) return "---";
     return initialData.user_name || initialData.user_id;
@@ -113,16 +124,13 @@ const ShiftAssignmentForm = ({
     return initialData.shift_id;
   };
 
-  // Show loading screen when fetching data - removed blocking behavior
-  // Just let the select dropdowns show "Đang tải..." if loading
-
   return (
     <CRUDModalTemplate
       isOpen={isOpen}
       onClose={onClose}
       title="phân ca"
       mode={mode}
-      maxWidth="max-w-3xl"
+      maxWidth={isView ? "max-w-5xl" : "max-w-3xl"}
       isLoading={isLoading}
       onSave={() =>
         document.getElementById("shift-assignment-form-submit")?.click()
@@ -133,12 +141,15 @@ const ShiftAssignmentForm = ({
         onSubmit={handleSubmit((data) => {
           onSubmit(data, setError);
         })}
-        className="w-full space-y-6"
+        className="w-full space-y-4"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-7">
-          {/* Nhân viên */}
+        <div
+          className={`grid grid-cols-1 md:grid-cols-2 ${
+            isView ? "gap-x-5 gap-y-4" : "gap-x-6 gap-y-7"
+          }`}
+        >
           {isView ? (
-            <div className="flex flex-col gap-1 md:col-span-2">
+            <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Nhân viên
               </label>
@@ -148,40 +159,33 @@ const ShiftAssignmentForm = ({
             </div>
           ) : (
             <div className="flex flex-col gap-1 md:col-span-2">
-              <label className="text-xs font-bold text-gray-500 uppercase">
-                Nhân viên <span className="text-red-500">*</span>
-              </label>
-              <select
-                {...register("user_id", {
+              <FormSelect
+                label="Nhân viên"
+                name="nhân viên"
+                options={
+                  lookupLoading
+                    ? [{ value: "", label: "Đang tải nhân viên..." }]
+                    : staffOptions
+                }
+                value={selectedUserId}
+                register={register("user_id", {
                   required: "Vui lòng chọn nhân viên",
                 })}
-                disabled={mode === "edit" || lookupLoading}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-700"
-              >
-                <option value="">
-                  {lookupLoading
+                error={errors.user_id}
+                placeholder={
+                  lookupLoading
                     ? "Đang tải nhân viên..."
                     : staffOptions.length === 0
                       ? "Không có nhân viên"
-                      : `-- Chọn nhân viên (${staffOptions.length}) --`}
-                </option>
-                {staffOptions.map((staff) => (
-                  <option key={staff.value} value={staff.value}>
-                    {staff.label}
-                  </option>
-                ))}
-              </select>
-              {errors.user_id && (
-                <p className="text-xs text-red-500 mt-1">
-                  {errors.user_id.message}
-                </p>
-              )}
+                      : `Chọn nhân viên (${staffOptions.length})`
+                }
+                className="w-full"
+              />
             </div>
           )}
 
-          {/* Ca làm */}
           {isView ? (
-            <div className="flex flex-col gap-1 md:col-span-2">
+            <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Ca làm
               </label>
@@ -191,38 +195,31 @@ const ShiftAssignmentForm = ({
             </div>
           ) : (
             <div className="flex flex-col gap-1 md:col-span-2">
-              <label className="text-xs font-bold text-gray-500 uppercase">
-                Ca làm <span className="text-red-500">*</span>
-              </label>
-              <select
-                {...register("shift_id", {
+              <FormSelect
+                label="Ca làm"
+                name="ca làm"
+                options={
+                  lookupLoading
+                    ? [{ value: "", label: "Đang tải ca làm..." }]
+                    : shiftOptions
+                }
+                value={selectedShiftId}
+                register={register("shift_id", {
                   required: "Vui lòng chọn ca làm",
                 })}
-                disabled={mode === "edit" || lookupLoading}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-700"
-              >
-                <option value="">
-                  {lookupLoading
+                error={errors.shift_id}
+                placeholder={
+                  lookupLoading
                     ? "Đang tải ca làm..."
                     : shiftOptions.length === 0
                       ? "Không có ca làm"
-                      : `-- Chọn ca làm (${shiftOptions.length}) --`}
-                </option>
-                {shiftOptions.map((shift) => (
-                  <option key={shift.value} value={shift.value}>
-                    {shift.label}
-                  </option>
-                ))}
-              </select>
-              {errors.shift_id && (
-                <p className="text-xs text-red-500 mt-1">
-                  {errors.shift_id.message}
-                </p>
-              )}
+                      : `Chọn ca làm (${shiftOptions.length})`
+                }
+                className="w-full"
+              />
             </div>
           )}
 
-          {/* Ngày làm */}
           <FormInput
             label="Ngày làm"
             type={isView ? "text" : "date"}
@@ -230,43 +227,53 @@ const ShiftAssignmentForm = ({
             error={errors.work_date}
             isView={isView}
             defaultValue={initialData?.work_date}
-            className="md:col-span-2"
+            className={isView ? "md:col-span-1" : "md:col-span-2"}
             isDisabled={mode === "edit"}
           />
 
-          {/* Ghi chú */}
           {isView ? (
-            <div className="flex flex-col gap-1 md:col-span-2">
+            <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase">
                 Ghi chú
               </label>
               <div className="py-2 border-b border-gray-100">
-                <span className="text-sm text-gray-700">
-                  {initialData?.note || "Không có ghi chú"}
-                </span>
+                {initialData?.note ? (
+                  <div
+                    className="prose prose-sm max-w-none text-sm text-gray-700"
+                    dangerouslySetInnerHTML={{ __html: initialData.note }}
+                  />
+                ) : (
+                  <span className="text-sm text-gray-700">
+                    Không có ghi chú
+                  </span>
+                )}
               </div>
             </div>
           ) : (
             <div className="flex flex-col gap-1 md:col-span-2">
-              <label className="text-xs font-bold text-gray-500 uppercase">
-                Ghi chú
-              </label>
-              <textarea
-                {...register("note")}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white min-h-[100px] resize-none"
-                placeholder="Nhập ghi chú (không bắt buộc)"
+              <Controller
+                name="note"
+                control={control}
+                render={({ field }) => (
+                  <TextEditor
+                    label="Ghi chú"
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    placeholder="Nhập ghi chú (không bắt buộc)"
+                    minHeight={180}
+                  />
+                )}
               />
             </div>
           )}
 
-          {/* View mode - additional info */}
           {isView && (
-            <div className="flex flex-col gap-6 md:col-span-2">
-              <div>
-                <span className="text-xs font-bold text-gray-500 uppercase">
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-gray-500 uppercase">
                   Trạng thái
-                </span>
-                <div className="py-2 min-h-10 border-b border-gray-100 md:border-none">
+                </label>
+                <div className="py-2 border-b border-gray-100">
                   <span
                     className={`px-2 py-1 text-xs rounded-full ${
                       initialData?.status === "COMPLETED"
@@ -278,7 +285,8 @@ const ShiftAssignmentForm = ({
                             : "bg-blue-100 text-blue-700"
                     }`}
                   >
-                    {initialData?.status || "ASSIGNED"}
+                    {STATUS_LABEL_MAP[initialData?.status || "ASSIGNED"] ||
+                      "Đã phân công"}
                   </span>
                 </div>
               </div>
@@ -296,7 +304,7 @@ const ShiftAssignmentForm = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-7">
+              <div className="grid grid-cols-1 gap-2">
                 <FormInput
                   label="Tạo lúc"
                   type="text"

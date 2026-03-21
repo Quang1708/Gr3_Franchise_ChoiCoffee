@@ -84,7 +84,7 @@ const AdminSidebar = ({ collapsed = false, onToggle }: AdminSidebarProps) => {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-200 transition-all duration-300 ${
+      className={`fixed left-0 top-0 flex h-screen flex-col overflow-hidden bg-white border-r border-gray-200 transition-all duration-300 ${
         collapsed ? "w-16" : "w-64"
       }`}
     >
@@ -110,7 +110,7 @@ const AdminSidebar = ({ collapsed = false, onToggle }: AdminSidebarProps) => {
         </button>
       </div>
 
-      <nav className="p-2 space-y-1">
+      <nav className="min-h-0 flex-1 overflow-y-auto p-2 space-y-1">
         {visibleItems.map((item) => {
           const isActive =
             location.pathname === `/admin/${item.path}` ||

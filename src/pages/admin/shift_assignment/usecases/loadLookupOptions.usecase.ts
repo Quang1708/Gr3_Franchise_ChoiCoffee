@@ -1,11 +1,7 @@
 import { getAllShifts } from "../../shift/services/shift01.service";
 import { searchUsersApi } from "../../user/services/user03.service";
 import type { SearchShiftRequest } from "../../shift/models/ShiftRequest02.model";
-import {
-  normalizeArray,
-  isStaffUser,
-  getUserLabel,
-} from "../utils/shiftAssignment.helpers";
+import { normalizeArray, getUserLabel } from "../utils/shiftAssignment.helpers";
 
 type SelectOption = {
   value: string;

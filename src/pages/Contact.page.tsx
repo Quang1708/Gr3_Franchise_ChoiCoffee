@@ -1,7 +1,43 @@
 import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
+import MapScript from "@/components/Client/Map/Map";
+import { useEffect, useState } from "react";
+
+import { getFranchiseName } from "@/components/categoryFranchise/services/client06.service";
+import type { Franchise } from "@/components/categoryFranchise/models/client06.model";
+import ClientLoading from "@/components/Client/Client.Loading";
+
 
 
 const ContactPage = () => {
+      const [isLoading, setIsLoading] = useState(true);
+      const [franchise, setFranchise] = useState<Franchise | null>(null);
+  
+      const franchiseId = localStorage.getItem("selectedFranchise");
+  
+      
+  
+      useEffect(() => {
+          const fetchFranchise = async () => {
+              try {
+                  const response = await getFranchiseName(franchiseId || "");
+                  if (response) {
+                      setFranchise(response);
+                  }
+              } catch (error) {
+                  console.error("Error fetching franchise:", error);
+              } finally {
+                  setIsLoading(false);
+              }
+          }
+  
+          if (franchiseId) {
+              fetchFranchise();
+          }
+      }, [franchiseId]);
+
+        if (isLoading) {
+          return <ClientLoading />;
+        }
   return (
     <div className="flex-1 flex flex-col bg-white font-display overflow-x-hidden">
       <div className="relative w-full h-[250px] md:h-[400px] flex items-center justify-center overflow-hidden">
@@ -97,8 +133,7 @@ const ContactPage = () => {
                       Trụ sở chính
                     </p>
                     <p className="text-clay text-xs md:text-sm leading-relaxed">
-                      FPT Software HCM - Lô T2, Đường D1, Khu Công Nghệ Cao,
-                      Quận 9, TP. Hồ Chí Minh
+                      {franchise?.address || "Đang tải địa chỉ..."}
                     </p>
                   </div>
                 </div>
@@ -114,7 +149,7 @@ const ContactPage = () => {
                       Hotline tư vấn
                     </p>
                     <p className="text-clay text-xs md:text-sm">
-                      (+84) 243 768 9048 (24/7)
+                      (+84) {franchise?.hotline || "Đang tải số điện thoại..."}
                     </p>
                   </div>
                 </div>
@@ -130,7 +165,7 @@ const ContactPage = () => {
                       Email hợp tác
                     </p>
                     <p className="text-clay text-xs md:text-sm">
-                      franchise@choicoffee.vn
+                      {franchise?.code || "Đang tải email..."}@gmail.com
                     </p>
                   </div>
                 </div>
@@ -138,13 +173,14 @@ const ContactPage = () => {
             </div>
 
             <div className="rounded-2xl overflow-hidden border border-input-border shadow-lg h-[250px] md:h-[350px] relative group">
-              <iframe
+              {/* <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3918.4436614509425!2d106.772597!3d10.852264!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752763f2381667%3A0x28456475e0481d02!2sFPT%20Software%20HCMC!5e0!3m2!1svi!2s!4v1715678901234!5m2!1svi!2s"
                 title="Google Map FPT Software"
                 className="w-full h-full border-0 contrast-[1.1]"
                 allowFullScreen
                 loading="lazy"
-              ></iframe>
+              ></iframe> */}
+              <MapScript />
             </div>
           </div>
         </div>

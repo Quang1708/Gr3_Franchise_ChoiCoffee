@@ -31,7 +31,7 @@ const LoyaltyPage = React.lazy(() => import("../../pages/admin/loyalty"));
 const OrderPage = React.lazy(() => import("../../pages/admin/order"));
 const PaymentPage = React.lazy(() => import("../../pages/admin/payment"));
 const VoucherPage = React.lazy(
-  () => import("../../pages/admin/voucher/Voucher.page"),
+  () => import("../../pages/admin/voucher/VoucherApi.page"),
 );
 const PromotionPage = React.lazy(
   () => import("../../pages/admin/promotion/Promotion.page"),
@@ -50,6 +50,8 @@ const ProfilePage = React.lazy(() => import("../../pages/admin/profile"));
 const AdminSelectContextPage = React.lazy(
   () => import("../../pages/admin/auth/context/AdminSelectContext.page"),
 );
+
+const CartPage = React.lazy(() => import("../../pages/admin/cart"));
 
 /* ==================== ROUTES ==================== */
 
@@ -148,6 +150,9 @@ const AdminRoutes = (
             path="user-franchise-role"
             element={<UserFranchiseRolePage />}
           />
+        </Route>
+        <Route element={<RequirePermission perm={PERM.CART_READ} />}>
+          <Route path="cart" element={<CartPage/>} />
         </Route>
 
         {/* PUBLIC IN ADMIN */}

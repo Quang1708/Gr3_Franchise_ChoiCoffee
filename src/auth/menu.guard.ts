@@ -18,6 +18,7 @@ export type MenuPath =
   | "logout"
   | "shift"
   | "category-franchise"
+  | "cart"
   | string;
 
 export function isMenuVisible(

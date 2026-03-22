@@ -237,17 +237,18 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
   };
 
   const handleRefresh = () => {
-    setInputValue("");
     const resetFilters: Partial<Record<keyof T, string>> = {};
     filters.forEach((f) => {
-      if (f.key === "is_deleted") {
-        resetFilters[f.key] = "false";
-      } else {
-        resetFilters[f.key] = "";
-      }
+      resetFilters[f.key] = f.key === "is_deleted" ? "false" : "";
     });
     setFilterInput(resetFilters);
-    onRefresh?.();
+    setInputValue("");
+    onPageChange?.(1);
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      onSearch?.("", resetFilters);
+    }
   };
 
   const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -330,6 +331,20 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
       });
     }
   }, [focusedIndex]);
+
+  const handleRestore = (item: T) => {
+    const newFilters: Partial<Record<keyof T, string>> = {
+      ...filterInput,
+      is_deleted: "false",
+    };
+    setFilterInput(newFilters);
+    setInputValue("");
+    if (onSearch) {
+      onSearch("", newFilters);
+    }
+    onRestore?.(item);
+  };
+
   return (
     <div className="w-full h-full flex flex-col justify-between bg-white overflow-hidden font-sans">
       {/* Header */}
@@ -353,8 +368,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
           e.preventDefault();
           handleSearch();
         }}
-        className="px-4 md:px-8 py-3 bg-gray-50/50 
-  flex flex-col lg:flex-row gap-3 lg:items-center"
+        className="px-4 md:px-8 py-3 bg-gray-50/50 flex flex-col lg:flex-row gap-3 lg:items-center"
       >
         {/* SEARCH */}
         <div className="relative w-full lg:flex-1 group">
@@ -370,9 +384,9 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                 type="text"
                 placeholder="Tìm kiếm..."
                 className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-white
-          text-sm text-gray-900 placeholder-gray-400
-          focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
-          transition-all hover:border-gray-300"
+                  text-sm text-gray-900 placeholder-gray-400
+                  focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
+                  transition-all hover:border-gray-300"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => {
@@ -403,7 +417,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                 ...filter.options,
               ]}
               icon={<Filter className="w-4 h-4" />}
-              className="w-full sm:min-w-[180px]"
+              className="w-full sm:min-w-45"
             />
           ))}
         </div>
@@ -413,7 +427,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
           <button
             type="submit"
             className="flex-1 sm:flex-none px-4 py-2 text-sm rounded-lg bg-primary text-white 
-      transition-all duration-200 active:scale-95 hover:brightness-110"
+              transition-all duration-200 active:scale-95 hover:brightness-110"
           >
             Tìm kiếm
           </button>
@@ -422,7 +436,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
             type="button"
             onClick={handleRefresh}
             className="px-3 py-2 text-sm rounded-lg bg-gray-200 text-gray-600 
-      transition-all duration-200 active:scale-95 hover:bg-gray-300"
+              transition-all duration-200 active:scale-95 hover:bg-gray-300"
           >
             <RotateCw className="w-4 h-4" />
           </button>
@@ -510,7 +524,6 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                           return;
                         }
 
-                        // nếu click không phải checkbox thì tick checkbox
                         if (!target.closest("input[type='checkbox']")) {
                           const checkbox = e.currentTarget.querySelector(
                             "input[type='checkbox']",
@@ -522,15 +535,14 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                         onRowClick?.(item);
                       }}
                       className={`transition-colors cursor-pointer
-${
-  focusedIndex === index
-    ? "bg-primary/10"
-    : item.id === selectedRowId
-      ? "bg-primary/5"
-      : isDeleted
-        ? "bg-gray-50 text-gray-400"
-        : "bg-white hover:bg-primary/5"
-}`}
+                        ${focusedIndex === index
+                          ? "bg-primary/10"
+                          : item.id === selectedRowId
+                            ? "bg-primary/5"
+                            : isDeleted
+                              ? "bg-gray-50 text-gray-400"
+                              : "bg-white hover:bg-primary/5"
+                        }`}
                     >
                       <td className="px-4 py-3 text-center text-gray-500">
                         {(page - 1) * pageSizeState + index + 1}
@@ -539,7 +551,7 @@ ${
                       {columns.map((col, idx) => (
                         <td
                           key={idx}
-                          className="px-4 py-3 text-gray-700 max-w-[300px] truncate"
+                          className="px-4 py-3 text-gray-700 max-w-75 truncate"
                         >
                           {col.render
                             ? col.render(item)
@@ -560,11 +572,10 @@ ${
                               />
                               <span
                                 className={`text-[9px] font-medium uppercase
-                                    ${
-                                      item[statusField]
-                                        ? "text-primary"
-                                        : "text-gray-400"
-                                    }`}
+                                    ${item[statusField]
+                                    ? "text-primary"
+                                    : "text-gray-400"
+                                  }`}
                               >
                                 {item[statusField]
                                   ? "Hoạt động"
@@ -575,7 +586,7 @@ ${
                             <div className="flex flex-col items-center gap-1">
                               <ToggleSwitch
                                 checked={false}
-                                onChange={() => {}}
+                                onChange={() => { }}
                                 disabled
                               />
                               <span
@@ -621,7 +632,7 @@ ${
 
                           {isDeleted && onRestore && (
                             <button
-                              onClick={() => onRestore(item)}
+                              onClick={() => handleRestore(item)}
                               className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition active:scale-90 cursor-pointer"
                             >
                               <RotateCw className="w-5 h-5" />

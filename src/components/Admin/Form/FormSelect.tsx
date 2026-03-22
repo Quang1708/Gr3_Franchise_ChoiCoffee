@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronDown, Check, Search } from "lucide-react";
+import { ChevronDown, Check, Search, AlertCircle } from "lucide-react"; 
 import type { FieldError, UseFormRegisterReturn } from "react-hook-form";
 
 interface FormSelectProps {
   label?: string;
   options: { value: string; label: string; isExisting?: boolean }[];
   register: UseFormRegisterReturn;
-  error?: FieldError;
+  error?: FieldError | any; 
   placeholder?: string;
   className?: string;
   value?: string;
@@ -45,7 +45,6 @@ const FormSelect: React.FC<FormSelectProps> = ({
   }, []);
 
   const allOptions = options;
-
   const currentValue = value ?? internalValue;
   const selectedOption = allOptions.find((opt) => opt.value === currentValue);
 
@@ -71,24 +70,22 @@ const FormSelect: React.FC<FormSelectProps> = ({
     opt.label.toLowerCase().includes(search.toLowerCase()),
   );
 
-
   return (
     <div
       className={`relative w-full ${className || "sm:min-w-50"}`}
       ref={containerRef}
     >
       {label && (
-        <label className="block text-[14px] font-medium text-gray-500 ml-1 mb-2">
+        <label className={`block text-[14px] font-medium ml-1 mb-2 ${error ? "text-primary" : "text-gray-500"}`}>
           {label}
         </label>
       )}
 
-      {/* select box */}
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-between w-full px-3 py-2 text-sm bg-white border rounded-lg cursor-pointer
+        className={`flex items-center justify-between w-full px-3 py-2 text-sm bg-white border rounded-lg cursor-pointer transition-all
             ${error
-            ? "border-primary ring-2 ring-primary/20"
+            ? "border-primary ring-2 ring-primary/20 shadow-[0_0_8px_rgba(var(--primary-rgb),0.2)]"
             : "border-gray-200 hover:border-gray-300"
           }`}
       >
@@ -97,15 +94,21 @@ const FormSelect: React.FC<FormSelectProps> = ({
         >
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-
         <ChevronDown
           className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
         />
       </div>
 
+      {error && (
+        <p className="mt-1.5 ml-1 text-xs text-primary flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
+          <AlertCircle size={12} />
+          {error.message}
+        </p>
+      )}
+
       {/* dropdown */}
       {isOpen && (
-        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 overflow-hidden">
+        <div className="absolute z-100 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 overflow-hidden animate-in zoom-in-95 duration-150">
           <div className="p-2 border-b border-gray-100">
             <div className="flex items-center gap-2 px-2 py-1.5 text-sm bg-white border border-gray-200 rounded-md focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
               <Search className="w-4 h-4 text-gray-400" />
@@ -115,6 +118,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
                 className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                onClick={(e) => e.stopPropagation()} 
               />
             </div>
           </div>
@@ -134,13 +138,14 @@ const FormSelect: React.FC<FormSelectProps> = ({
                 </div>
               ))
             ) : (
-              <div className="px-3 py-2 text-sm text-gray-400">
-                Không tìm thấy
+              <div className="px-3 py-2 text-sm text-gray-400 italic">
+                Không tìm thấy kết quả
               </div>
             )}
           </div>
         </div>
       )}
+      {/* Input ẩn để react-hook-form lấy giá trị */}
       <input type="hidden" {...register} value={currentValue} />
     </div>
   );

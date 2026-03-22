@@ -1,4 +1,3 @@
-// LoyaltyForm.tsx
 import { useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { Plus, Trash2, Coins, Award, Loader2 } from "lucide-react";

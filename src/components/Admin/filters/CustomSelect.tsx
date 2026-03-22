@@ -121,6 +121,16 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
   }, [page]);
 
   React.useEffect(() => {
+    if (!value) {
+      setSearch("");
+      setApiOptions([]);
+      setPage(1);
+      setHasMore(true);
+    }
+  }, [value]);
+
+
+  React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
         containerRef.current &&

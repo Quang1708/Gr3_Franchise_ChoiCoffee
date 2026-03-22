@@ -370,9 +370,8 @@ const InventoryPage = () => {
   if (pageLoading || apiLoading) return <ClientLoading />;
 
   return (
-    <>
+    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm space-y-3">
       {/* BULK TOOLS */}
-
       <div className="flex items-center gap-3 flex-wrap">
         <InventoryExcelTools
           rows={tableRows}
@@ -464,6 +463,7 @@ const InventoryPage = () => {
         totalItems={tableRows.length}
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
+        tableMaxHeightClass="max-h-[40vh]"
         isTableLoading={loading}
         onSearch={handleSearch}
         selectedRowId={selectedItem?.id}
@@ -565,7 +565,7 @@ const InventoryPage = () => {
         inventoryId={logInventoryId}
         onClose={() => setLogInventoryId(null)}
       />
-    </>
+    </div>
   );
 };
 

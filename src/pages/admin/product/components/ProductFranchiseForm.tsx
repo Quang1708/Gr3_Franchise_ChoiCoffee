@@ -153,9 +153,11 @@ export const ProductFranchiseForm = ({
                             <label className="text-sm font-semibold text-gray-600">Chi nhánh áp dụng:</label>
 
                             {(isView || !isAdmin) ? (
-                                <div className="py-2.5 px-3 bg-gray-50 rounded-lg border border-gray-200 text-gray-700 font-medium text-sm flex items-center justify-between">
+                                <div className="py-2.5 text-gray-700 font-medium flex items-center justify-between">
                                     <span>
-                                        {franchiseOptions.find(opt => opt.value === String(selectedFranchiseId))?.label || "Đang xác định..."}
+                                        {franchiseOptions.find(opt =>
+                                            opt.value === String(watch("franchise_id") || initialData?.franchise_id || selectedFranchiseId)
+                                        )?.label || "Đang tải tên chi nhánh..."}
                                     </span>
                                     {!isView && (
                                         <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full uppercase">
@@ -179,7 +181,7 @@ export const ProductFranchiseForm = ({
                         <div className="space-y-1.5">
                             <label className="text-sm font-semibold text-gray-600">Sản phẩm:</label>
                             {isView ? (
-                                <div className="py-2.5 px-3 bg-gray-50 rounded-lg border border-gray-200 text-gray-700 font-medium text-sm">
+                                <div className="py-2.5 text-gray-700 font-medium">
                                     {productOptions.find(opt => opt.value === watch("product_id"))?.label || "---"}
                                 </div>
                             ) : (
@@ -219,32 +221,39 @@ export const ProductFranchiseForm = ({
                                 register={register("size")}
                                 error={errors.size}
                                 placeholder="VD: L"
+                                defaultValue={initialData?.size}
                             />
-                            <div className="mt-2 min-h-7.75 flex flex-wrap gap-2">
-                                {watchedProductId && (
-                                    (() => {
-                                        const matches = existingDataList.filter(item =>
-                                            String(item.product_id) === String(watchedProductId) &&
-                                            String(item.franchise_id) === String(watchedFranchiseId || selectedFranchiseId)
-                                        );
-                                        if (matches.length === 0) return null;
-                                        const sortedSizes = getSortedSizes(matches);
-                                        return (
-                                            <div className="flex items-center gap-2">
-                                                <div className="text-[14px] text-gray-500">Đã có size:</div>
-                                                {sortedSizes.map((size, idx) => (
-                                                    <span
-                                                        key={idx}
-                                                        className="text-[14px] bg-orange-100 text-orange-700 px-2 py-1 rounded-md border border-orange-200 font-medium"
-                                                    >
-                                                        {size}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        );
-                                    })()
-                                )}
-                            </div>
+                            {isView ?
+                                (
+                                    <></>
+                                ) : (
+                                    <div className="mt-2 min-h-7.75 flex flex-wrap gap-2">
+                                        {watchedProductId && (
+                                            (() => {
+                                                const matches = existingDataList.filter(item =>
+                                                    String(item.product_id) === String(watchedProductId) &&
+                                                    String(item.franchise_id) === String(watchedFranchiseId || selectedFranchiseId)
+                                                );
+                                                if (matches.length === 0) return null;
+                                                const sortedSizes = getSortedSizes(matches);
+                                                return (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="text-[14px] text-gray-500">Đã có size:</div>
+                                                        {sortedSizes.map((size, idx) => (
+                                                            <span
+                                                                key={idx}
+                                                                className="text-[14px] bg-orange-100 text-orange-700 px-2 py-1 rounded-md border border-orange-200 font-medium"
+                                                            >
+                                                                {size}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            })()
+                                        )}
+                                    </div>
+                                )
+                            }
                         </div>
 
                         <div className="space-y-1.5">
@@ -255,6 +264,7 @@ export const ProductFranchiseForm = ({
                                 register={register("price_base")}
                                 error={errors.price_base}
                                 placeholder="VD: 10000"
+                                defaultValue={initialData?.price_base}
                             />
                         </div>
 

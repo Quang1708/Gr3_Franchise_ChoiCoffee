@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -15,7 +16,7 @@ import { updateLoyaltyUsecase } from "@/pages/admin/loyalty/usecases/updateLoyal
 import FormSelect from "@/components/Admin/form/FormSelect";
 import { FormInput } from "@/components/Admin/form/FormInput";
 import { LoyaltyForm } from "@/pages/admin/loyalty/components/LoyaltyForm";
-import type { SearchLoyaltyRequest } from "@/pages/admin/loyalty/models/searchLoyaltyRequest.model";
+import type { SearchLoyaltyRequest } from "@/pages/admin/loyalty/models/searchLoyalty.model";
 
 const LoyaltyPage = () => {
   // --- Kiểm tra quyền Admin & franchise được chọn ---
@@ -23,7 +24,7 @@ const LoyaltyPage = () => {
   const isAdmin = selectedFranchiseId === null;
 
   // --- Form ---
-  const { register, getValues, setValue, watch } = useForm({
+  const { register, getValues, reset, watch } = useForm({
     defaultValues: {
       franchise_id: selectedFranchiseId || "",
       earn_amount_per_point: "",
@@ -33,7 +34,7 @@ const LoyaltyPage = () => {
 
   // --- State ---
   const [rules, setRules] = useState<LoyaltyRule[]>([]);
-  const [franchises, setFranchises] = useState<{ id: string; name: string }[]>([]);
+  const [franchiseOptions, setFranchiseOptions] = useState<{ value: string; label: string }[]>([]);
   const [tiers, setTiers] = useState<{ value: string; label: string }[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -47,31 +48,57 @@ const LoyaltyPage = () => {
   const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
   const [selectedRule, setSelectedRule] = useState<LoyaltyRule | null>(null);
 
+  const fetchFilterOptions = useCallback(async () => {
+    try {
+      const res = await searchLoyaltyRulesUsecase({
+        searchCondition: {
+          franchise_id: selectedFranchiseId || "",
+          is_active: "",
+          is_deleted: "false"
+        },
+        pageInfo: { pageNum: 1, pageSize: 10000 }, 
+      });
+
+      if (res.success && res.data) {
+        const fMap = new Map();
+        const tMap = new Map();
+        res.data.forEach((rule: any) => {
+          if (rule.franchise_id) fMap.set(String(rule.franchise_id), rule.franchise_name);
+          rule.tier_rules?.forEach((t: any) => tMap.set(t.tier, t.tier));
+        });
+
+        setFranchiseOptions([{ label: "Tất cả chi nhánh", value: "" }, ...Array.from(fMap, ([value, label]) => ({ value, label }))]);
+        setTiers(Array.from(tMap, ([value, label]) => ({ value, label })));
+      }
+    } catch (e) {
+      console.error("Lỗi lấy filter options:", e);
+    }
+  }, [selectedFranchiseId]);
+
   // --- Lấy danh sách Loyalty Rules ---
   const fetchLoyaltyRules = useCallback(
     async (
       pageNum = 1,
       type: "full" | "table" = "full",
       size = pageSize,
-      searchParams?: { searchTerm?: string; filters?: any }
+      searchParams?: { searchTerm?: string; filters?: any; formData?: any }
     ) => {
       try {
         if (type === "full") setIsLoading(true);
         if (type === "table") setIsTableLoading(true);
 
-        const formData = getValues();
+        const currentFormData = searchParams?.formData || getValues();
         const filters = searchParams?.filters || {};
 
         const payload: SearchLoyaltyRequest = {
           searchCondition: {
-            franchise_id: formData.franchise_id || selectedFranchiseId || "",
-            earn_amount_per_point: formData.earn_amount_per_point || "",
-            redeem_value_per_point: formData.redeem_value_per_point || "",
+            franchise_id: currentFormData.franchise_id || selectedFranchiseId || "",
+            earn_amount_per_point: currentFormData.earn_amount_per_point || "",
+            redeem_value_per_point: currentFormData.redeem_value_per_point || "",
+
             tier: filters.tier || "",
-            is_active:
-              filters.is_active === "true" ? true : filters.is_active === "false" ? false : "",
-            is_deleted:
-              filters.is_deleted === "true" ? true : filters.is_deleted === "false" ? false : "",
+            is_active: filters.is_active === "true" ? true : filters.is_active === "false" ? false : "",
+            is_deleted: filters.is_deleted === "true" ? true : filters.is_deleted === "false" ? false : "",
           },
           pageInfo: { pageNum, pageSize: size },
         };
@@ -82,29 +109,6 @@ const LoyaltyPage = () => {
           setRules(res.data);
           setTotalItems(res.pageInfo.totalItems);
           setPage(res.pageInfo.pageNum);
-
-          // --- Tạo danh sách franchise chỉ 1 lần ---
-          if (franchises.length === 0) {
-            const franchiseMap = new Map<string, string>();
-            res.data.forEach((rule: any) => {
-              if (rule.franchise_id != null) {
-                const key = String(rule.franchise_id);
-                if (!franchiseMap.has(key)) {
-                  franchiseMap.set(key, rule.franchise_name);
-                }
-              }
-            });
-            setFranchises(Array.from(franchiseMap, ([id, name]) => ({ id, name })));
-          }
-
-          // --- Tạo danh sách tier động ---
-          const tierSet = new Map<string, string>();
-          res.data.forEach((rule: any) => {
-            rule.tier_rules?.forEach((t: any) => {
-              if (!tierSet.has(t.tier)) tierSet.set(t.tier, t.tier);
-            });
-          });
-          setTiers(Array.from(tierSet, ([value, label]) => ({ value, label })));
         }
       } catch {
         toast.error("Lỗi kết nối hệ thống");
@@ -113,13 +117,13 @@ const LoyaltyPage = () => {
         setIsTableLoading(false);
       }
     },
-    [pageSize, selectedFranchiseId, getValues, franchises.length]
+    [pageSize, selectedFranchiseId, getValues]
   );
 
   useEffect(() => {
+    fetchFilterOptions();
     fetchLoyaltyRules(1, "full");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchFilterOptions]);
 
   // --- Xử lý mở Modal ---
   const handleOpenForm = async (mode: "create" | "edit" | "view", rule?: LoyaltyRule) => {
@@ -169,23 +173,29 @@ const LoyaltyPage = () => {
     }
   };
 
-  // --- Danh sách options franchise ---
-  const franchiseOptions = useMemo(
-    () => [{ label: "Tất cả chi nhánh", value: "" }, ...franchises.map(f => ({ label: f.name, value: f.id }))],
-    [franchises]
-  );
-
   // --- Xử lý tìm kiếm ---
   const handleSearch = (term?: string, filters?: any) => {
-    fetchLoyaltyRules(1, "table", pageSize, { searchTerm: term, filters });
+    const currentForm = getValues();
+
+    fetchLoyaltyRules(1, "table", pageSize, {
+      searchTerm: term,
+      filters,
+      formData: currentForm
+    });
   };
 
-  // --- Xử lý refresh ---
   const handleRefresh = () => {
-    setValue("franchise_id", "");
-    setValue("earn_amount_per_point", "");
-    setValue("redeem_value_per_point", "");
-    fetchLoyaltyRules(1, "full");
+    const defaults = {
+      franchise_id: selectedFranchiseId || "",
+      earn_amount_per_point: "",
+      redeem_value_per_point: "",
+    };
+    reset(defaults);
+    fetchLoyaltyRules(1, "full", pageSize, {
+      formData: defaults,
+      filters: { tier: "", is_active: "", is_deleted: "false" }
+    });
+    toast.success("Làm mới thành công");
   };
 
   // --- Columns bảng ---

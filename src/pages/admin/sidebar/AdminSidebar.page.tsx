@@ -43,6 +43,11 @@ const menuItems: MenuItem[] = [
   },
   {
     icon: <Package size={20} />,
+    label: "Product Franchise",
+    path: "product-franchise",
+  },
+  {
+    icon: <Package size={20} />,
     label: "Product Category Franchise",
     path: "product-category",
   },

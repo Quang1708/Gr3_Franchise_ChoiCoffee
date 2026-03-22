@@ -27,7 +27,7 @@ export const CRUDModalTemplate = ({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto"
+      className="fixed inset-0 z-110 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto"
     >
       <div
         className={`w-full ${maxWidth} bg-white rounded-2xl shadow-2xl flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200`}
@@ -65,6 +65,7 @@ export const CRUDModalTemplate = ({
 
           {mode !== "view" && (
             <button
+              type = "submit"
               onClick={onSave}
               disabled={isLoading}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg shadow-sm hover:shadow-md transition-all active:scale-95 disabled:opacity-70"

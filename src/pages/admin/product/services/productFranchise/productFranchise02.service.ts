@@ -6,7 +6,7 @@ export const searchProductFranchiseService = async (
     payload: SearchProductFranchiseRequest
 ): Promise<SearchProductFranchiseResponse> => {
     const response = await axiosAdminClient.post(
-        "/api/product-franchises/searchInput",
+        "/api/product-franchises/search",
         payload
     );
     return response.data;

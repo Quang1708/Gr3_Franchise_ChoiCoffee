@@ -1,4 +1,4 @@
-export type productFranchise = { 
+export type ProductFranchise = { 
     id: string;
     is_active: boolean;
     is_deleted: boolean;

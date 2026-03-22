@@ -83,7 +83,7 @@ const CustomerPage = () => {
 
   useEffect(() => {
     fetchCustomers(1, "full");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearchCustomers = async (keyword: string, filters: any) => {
@@ -207,7 +207,6 @@ const CustomerPage = () => {
     if (!customer) return;
 
     try {
-      setIsProcessing(true);
       const res = type === "delete"
         ? await deleteCustomerUsecase(customer.id)
         : await restoreCustomerUsecase(customer.id);
@@ -216,15 +215,13 @@ const CustomerPage = () => {
         setCustomers((prev) =>
           prev.map((c) => (c.id === customer.id ? { ...c, is_deleted: type === "delete" } : c))
         );
-        toast.success(type === "delete" ? "Đã xóa khách hàng" : "Đã khôi phục khách hàng");
         setModalConfig((prev) => ({ ...prev, isOpen: false }));
-        await fetchCustomers(page, 'table');
+        await fetchCustomers(page, "full");
+        toast.success(type === "delete" ? "Đã xóa khách hàng" : "Đã khôi phục khách hàng");
       }
 
     } catch {
       toast.error("Thao tác thất bại");
-    } finally {
-      setIsProcessing(false);
     }
   };
 

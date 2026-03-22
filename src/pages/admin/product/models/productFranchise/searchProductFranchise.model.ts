@@ -1,4 +1,4 @@
-import type { ProductFranchise } from "@/pages/admin/product/models/productFranchise/ProductFranchise.model";
+import type { ProductFranchise } from "./productFranchise.model";
 
 export interface SearchProductFranchiseRequest {
     searchCondition: {

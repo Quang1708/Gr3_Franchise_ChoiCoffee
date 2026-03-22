@@ -43,6 +43,11 @@ const menuItems: MenuItem[] = [
   },
   {
     icon: <Package size={20} />,
+    label: "Product Franchise",
+    path: "product-franchise",
+  },
+  {
+    icon: <Package size={20} />,
     label: "Product Category Franchise",
     path: "product-category",
   },
@@ -59,8 +64,11 @@ const menuItems: MenuItem[] = [
   { icon: <Package size={20} />, label: "Categories", path: "category" },
 
   { icon: <User size={20} />, label: "Users", path: "user" },
+  // { icon:  }
   { icon: <User size={20} />, label: "Shift", path: "shift" },
+  { icon: <ShoppingCart size={20} />, label: "Cart", path: "cart" },
   {
+
     icon: <CalendarCheck size={20} />,
     label: "Shift Assignment",
     path: "shift-assignment",

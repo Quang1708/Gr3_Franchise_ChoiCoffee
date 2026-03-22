@@ -5,10 +5,12 @@
 export type VoucherType = "PERCENT" | "FIXED";
 
 export interface Voucher {
-  id: number;
+  id: string | number;
   code: string;
-  franchiseId: number;
-  productFranchiseId: number | null;
+  franchiseId: string | number;
+  franchiseName?: string;
+  productFranchiseId: string | number | null;
+  productName?: string;
   name: string;
   description: string;
   type: VoucherType;
@@ -19,7 +21,7 @@ export interface Voucher {
   endTime: string;
   isActive: boolean;
   isDeleted: boolean;
-  createdBy: number;
+  createdBy?: string | number;
   createdAt: string;
   updatedAt: string;
 }

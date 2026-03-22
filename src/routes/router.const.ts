@@ -50,6 +50,7 @@ const ROUTER_URL = {
     REQUEST_NEW_PASSWORD: `/admin/request-new-password`,
     VERIFY_TOKEN: "/admin/verify",
     VERIFY_EMAIL: "/verify-email/:token",
+    ADMIN_CART: `/admin/cart`,
   },
 };
 

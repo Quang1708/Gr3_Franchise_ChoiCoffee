@@ -10,6 +10,7 @@ export const PERM = {
   PRODUCT_WRITE: "product.write",
 
   PRODUCT_CATEGORY_READ: "product_category.read",
+  PRODUCT_CATEGORY_WRITE: "product_category.read",
 
   CATEGORY_READ: "category.read",
   CATEGORY_WRITE: "category.write",
@@ -50,6 +51,10 @@ export const PERM = {
   // Voucher (admin / manager)
   VOUCHER_READ: "voucher.read",
   VOUCHER_WRITE: "voucher.write",
+
+  // Cart
+  CART_READ: "cart.read",
+  CART_WRITE: "cart.write",
 } as const;
 
 export type PermissionCode = (typeof PERM)[keyof typeof PERM];

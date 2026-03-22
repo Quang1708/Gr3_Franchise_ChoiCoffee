@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CRUDTable, type Column } from "@/components/Admin/template/CRUD.template";
+import ClientLoading from "@/components/Client/Client.Loading";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import { useAuthStore } from "@/stores/auth.store";
 import {
@@ -301,69 +302,75 @@ const PromotionPage = () => {
     [isGlobalAdmin],
   );
 
-  return (
-    <div className="p-6 transition-all animate-fade-in">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">Quản lý Promotion</h1>
-      </div>
+  const isFormLoading = isCreating || isUpdating;
 
-      {isLoading ? (
-        <div>Đang tải dữ liệu...</div>
-      ) : error ? (
-        <div className="text-red-500">{error}</div>
-      ) : (
-        <CRUDTable<PromotionRow>
-          title="Danh sách promotion"
-          data={list}
-          columns={columns}
-          pageSize={10}
-          onAdd={handleCreate}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          searchKeys={
-            isGlobalAdmin
-              ? ([
-                  "name",
-                  "franchise_name",
-                  "product",
-                  "type",
-                  "value",
-                  "start_date",
-                  "end_date",
-                ] as (keyof PromotionRow)[])
-              : ([
-                  "name",
-                  "product",
-                  "type",
-                  "value",
-                  "start_date",
-                  "end_date",
-                ] as (keyof PromotionRow)[])
+  return (
+    <>
+      {isFormLoading && <ClientLoading />}
+
+      <div className="p-6 transition-all animate-fade-in">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-3xl font-bold text-gray-800">Quản lý Promotion</h1>
+        </div>
+
+        {isLoading ? (
+          <div>Đang tải dữ liệu...</div>
+        ) : error ? (
+          <div className="text-red-500">{error}</div>
+        ) : (
+          <CRUDTable<PromotionRow>
+            title="Danh sách promotion"
+            data={list}
+            columns={columns}
+            pageSize={10}
+            onAdd={handleCreate}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            searchKeys={
+              isGlobalAdmin
+                ? ([
+                    "name",
+                    "franchise_name",
+                    "product",
+                    "type",
+                    "value",
+                    "start_date",
+                    "end_date",
+                  ] as (keyof PromotionRow)[])
+                : ([
+                    "name",
+                    "product",
+                    "type",
+                    "value",
+                    "start_date",
+                    "end_date",
+                  ] as (keyof PromotionRow)[])
+            }
+          />
+        )}
+
+        <PromotionForm
+          isOpen={isFormOpen}
+          mode={formMode}
+          isLoading={formMode === "create" ? isCreating : isUpdating}
+          productOptions={productOptions}
+          onClose={() => setIsFormOpen(false)}
+          onSubmit={formMode === "create" ? handleSubmitCreate : handleSubmitEdit}
+          initialData={
+            formMode === "edit" && selectedItem
+              ? ({
+                  name: selectedItem.name,
+                  product_franchise_id: selectedItem.product_franchise_id ?? null,
+                  type: selectedItem.type,
+                  value: selectedItem.value,
+                  start_date: selectedItem.start_raw ?? null,
+                  end_date: selectedItem.end_raw ?? null,
+                } satisfies PromotionFormInitialData)
+              : undefined
           }
         />
-      )}
-
-      <PromotionForm
-        isOpen={isFormOpen}
-        mode={formMode}
-        isLoading={formMode === "create" ? isCreating : isUpdating}
-        productOptions={productOptions}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={formMode === "create" ? handleSubmitCreate : handleSubmitEdit}
-        initialData={
-          formMode === "edit" && selectedItem
-            ? ({
-                name: selectedItem.name,
-                product_franchise_id: selectedItem.product_franchise_id ?? null,
-                type: selectedItem.type,
-                value: selectedItem.value,
-                start_date: selectedItem.start_raw ?? null,
-                end_date: selectedItem.end_raw ?? null,
-              } satisfies PromotionFormInitialData)
-            : undefined
-        }
-      />
-    </div>
+      </div>
+    </>
   );
 };
 

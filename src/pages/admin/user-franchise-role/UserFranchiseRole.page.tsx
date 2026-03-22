@@ -371,7 +371,6 @@ const UserFranchiseRolePage = () => {
       } else if (formMode === "edit" && selectedItem) {
         await updateUserFranchiseRoleUsecase(String(selectedItem.id), {
           role_id: data.role_id ?? "",
-          note: data.note ?? "",
         });
         toast.success("Cập nhật phân quyền thành công");
       }

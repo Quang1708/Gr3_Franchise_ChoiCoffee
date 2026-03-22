@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
@@ -62,6 +62,7 @@ export const UserFranchiseRoleForm = ({
     handleSubmit,
     reset,
     setError,
+    control,
     formState: { errors },
   } = useForm<UserFranchiseRoleFormValues>({
     resolver: zodResolver(getUserFranchiseRoleFormSchema(mode)),
@@ -102,6 +103,9 @@ export const UserFranchiseRoleForm = ({
 
   const isView = mode === "view";
   const isEdit = mode === "edit";
+  const selectedUserId = useWatch({ control, name: "user_id" }) ?? "";
+  const selectedRoleId = useWatch({ control, name: "role_id" }) ?? "";
+  const selectedFranchiseId = useWatch({ control, name: "franchise_id" }) ?? "";
 
   return (
     <CRUDModalTemplate
@@ -132,6 +136,7 @@ export const UserFranchiseRoleForm = ({
               options={userOptions}
               error={errors.user_id}
               register={register("user_id")}
+              value={selectedUserId}
             />
           )}
 
@@ -148,6 +153,7 @@ export const UserFranchiseRoleForm = ({
               options={roleOptions}
               error={errors.role_id}
               register={register("role_id")}
+              value={selectedRoleId}
             />
           )}
 
@@ -166,6 +172,7 @@ export const UserFranchiseRoleForm = ({
               register={register("franchise_id", {
                 setValueAs: (v) => (v === "" ? null : v),
               })}
+              value={selectedFranchiseId}
             />
           )}
 

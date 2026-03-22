@@ -1,5 +1,5 @@
 import { httpClient } from "@/api";
-import type { CreateUserFranchiseRoleItem } from "../models/createUserFranchiseRoleItem.model";
+import type { RequestUserFranchiseRole } from "../models/requestUserFranchiseRole.model";
 import type { UpdateUserFranchiseRoleRequest } from "../models/updateUserFranchiseRole.model";
 
 export const userFranchiseRoleService = {
@@ -10,7 +10,7 @@ export const userFranchiseRoleService = {
     });
   },
 
-  async create(payload: CreateUserFranchiseRoleItem) {
+  async create(payload: RequestUserFranchiseRole) {
     return await httpClient.post({
       url: "/api/user-franchise-roles",
       data: payload,
@@ -43,9 +43,14 @@ export const userFranchiseRoleService = {
   },
 
   async getByUserId(userId: string) {
-    return await httpClient.get({
+    const payload = await httpClient.get<unknown[]>({
       url: `/api/user-franchise-roles/user/${userId}`,
     });
+
+    return {
+      success: true,
+      data: Array.isArray(payload) ? payload : [],
+    };
   },
 
   async getByFranchiseId(franchiseId: string) {

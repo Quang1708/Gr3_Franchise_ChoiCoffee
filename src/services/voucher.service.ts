@@ -3,7 +3,6 @@ import type { Voucher, VoucherType } from "@/models/voucher.model";
 
 const BASE = "/api/vouchers";
 
-/** Unwrap common API envelopes: {data}, {success, data}, etc. */
 function unwrapPayload(raw: unknown): Record<string, unknown> {
   if (raw && typeof raw === "object") {
     const obj = raw as Record<string, unknown>;
@@ -14,7 +13,6 @@ function unwrapPayload(raw: unknown): Record<string, unknown> {
   return {};
 }
 
-/** Chuẩn hóa 1 item từ API (snake_case hoặc camelCase) sang Voucher */
 function toVoucher(raw: Record<string, unknown>): Voucher {
   const id = String(raw.id ?? raw.ID ?? "");
   const code = String(raw.code ?? "");
@@ -69,7 +67,6 @@ function toVoucher(raw: Record<string, unknown>): Voucher {
   };
 }
 
-/** Body gửi lên khi tạo voucher (theo bảng voucher) */
 export type VoucherCreatePayload = {
   code: string;
   franchiseId: string;
@@ -87,7 +84,6 @@ export type VoucherCreatePayload = {
 
 export type VoucherUpdatePayload = Partial<VoucherCreatePayload>;
 
-/** Điều kiện tìm kiếm */
 export type VoucherSearchPayload = {
   keyword?: string;
   code?: string;
@@ -100,7 +96,6 @@ export type VoucherSearchPayload = {
   [key: string]: unknown;
 };
 
-/** Response search (cấu trúc tùy backend) */
 type SearchResponse = {
   data?: unknown[];
   items?: unknown[];
@@ -113,6 +108,7 @@ type VoucherSearchApiPayload = {
     keyword: string;
     code: string;
     franchise_id: string | null;
+    franchiseId?: string | null;
     type: VoucherType | "";
     is_active: boolean | "";
     is_deleted: boolean;
@@ -141,7 +137,6 @@ const DEFAULT_SEARCH_PAYLOAD: VoucherSearchApiPayload = {
 function buildSearchPayload(
   payload: VoucherSearchPayload = {},
 ): VoucherSearchApiPayload {
-  // Allow passing already-built payload
   if ((payload as any).searchCondition && (payload as any).pageInfo) {
     return payload as unknown as VoucherSearchApiPayload;
   }
@@ -151,6 +146,8 @@ function buildSearchPayload(
       keyword: typeof payload.keyword === "string" ? payload.keyword : "",
       code: typeof payload.code === "string" ? payload.code : "",
       franchise_id:
+        typeof payload.franchiseId === "string" ? payload.franchiseId : null,
+      franchiseId:
         typeof payload.franchiseId === "string" ? payload.franchiseId : null,
       type:
         payload.type === "PERCENT" || payload.type === "FIXED"
@@ -192,7 +189,6 @@ export async function createVoucher(
     type: payload.type,
     value: payload.value,
     quota_total: payload.quotaTotal ?? 0,
-    // backend hiện dùng start_date/end_date
     start_date: payload.startTime,
     end_date: payload.endTime,
     is_active: payload.isActive ?? true,
@@ -213,11 +209,27 @@ export async function searchVouchers(
     `${BASE}/search`,
     buildSearchPayload(payload),
   );
-  const list =
-    Array.isArray(data)
-      ? data
-      : (data?.data ?? data?.items ?? data?.content ?? data?.list ?? []);
-  return list.map((item) => toVoucher(item as Record<string, unknown>));
+  const root = data as any;
+  const list: unknown[] = Array.isArray(root)
+    ? root
+    : Array.isArray(root?.data)
+      ? root.data
+      : Array.isArray(root?.items)
+        ? root.items
+        : Array.isArray(root?.content)
+          ? root.content
+          : Array.isArray(root?.list)
+            ? root.list
+            : Array.isArray(root?.data?.items)
+              ? root.data.items
+              : Array.isArray(root?.data?.content)
+                ? root.data.content
+                : Array.isArray(root?.data?.list)
+                  ? root.data.list
+                  : [];
+  return list.map((item: unknown) =>
+    toVoucher(item as Record<string, unknown>),
+  );
 }
 
 /**
@@ -280,17 +292,13 @@ export async function restoreVoucher(id: string): Promise<Voucher> {
   return toVoucher(unwrapPayload(data));
 }
 
-/**
- * Change status (is_active)
- * PATCH /api/vouchers/:id/status
- */
+
 export async function changeVoucherStatus(
   id: string,
   isActive: boolean,
 ): Promise<Voucher> {
   const { data } = await axiosAdminClient.patch<Record<string, unknown>>(
     `${BASE}/${id}/status`,
-    // send both snake_case & camelCase for compatibility
     { is_active: isActive, isActive },
   );
   return toVoucher(unwrapPayload(data));

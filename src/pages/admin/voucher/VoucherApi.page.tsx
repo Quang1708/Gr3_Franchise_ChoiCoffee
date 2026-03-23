@@ -17,7 +17,7 @@ import {
 } from "@/services/franchise.service";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 import { useAdminContextStore } from "@/stores/adminContext.store";
-import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
+import { useAuthStore } from "@/stores/auth.store";
 
 type VoucherRow = Voucher & {
   is_deleted: boolean;
@@ -43,8 +43,25 @@ const formatDate = (value?: string) => {
 };
 
 const VoucherApiPage = () => {
+  const user = useAuthStore((s) => s.user);
   const selectedFranchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
-  const isAdminMode = selectedFranchiseId === null;
+  const hasGlobalAdminRole = useMemo(
+    () =>
+      (user?.roles ?? []).some(
+        (r) => (r.role ?? r.role_code) === "ADMIN" && r.scope === "GLOBAL",
+      ),
+    [user],
+  );
+  const managerFranchiseId = useMemo(() => {
+    if (selectedFranchiseId) return String(selectedFranchiseId);
+    const frRole = (user?.roles ?? []).find(
+      (r) => r.scope === "FRANCHISE" && (r.franchise_id ?? (r as any).franchiseId),
+    );
+    const roleFranchiseId = frRole?.franchise_id ?? (frRole as any)?.franchiseId;
+    return roleFranchiseId ? String(roleFranchiseId) : null;
+  }, [selectedFranchiseId, user]);
+  const isAdminMode = hasGlobalAdminRole && selectedFranchiseId === null;
+  const effectiveFranchiseId = isAdminMode ? null : managerFranchiseId;
 
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -123,30 +140,39 @@ const VoucherApiPage = () => {
       setIsLoading(true);
       setError(null);
 
-      const franchiseId =
-        !isAdminMode && selectedFranchiseId != null
-          ? String(selectedFranchiseId)
-          : undefined;
+      const franchiseId = effectiveFranchiseId || undefined;
 
-      // hỗ trợ cả restore
-      const [activeList, deletedList] = await Promise.all([
-        searchVouchers({
-          franchiseId,
-          isDeleted: false,
-          pageNum: 1,
-          pageSize: 1000,
-          keyword: "",
-        } as any),
-        searchVouchers({
+      
+      const activeList = await searchVouchers({
+        franchiseId,
+        isDeleted: false,
+        pageNum: 1,
+        pageSize: 1000,
+        keyword: "",
+      } as any);
+      const normalizedActive =
+        franchiseId && Array.isArray(activeList) && activeList.length === 0
+          ? await searchVouchers({
+              isDeleted: false,
+              pageNum: 1,
+              pageSize: 1000,
+              keyword: "",
+            } as any)
+          : activeList;
+      let deletedList: Voucher[] = [];
+      try {
+        deletedList = await searchVouchers({
           franchiseId,
           isDeleted: true,
           pageNum: 1,
           pageSize: 1000,
           keyword: "",
-        } as any),
-      ]);
+        } as any);
+      } catch {
+        deletedList = [];
+      }
 
-      const merged = [...(activeList ?? []), ...(deletedList ?? [])];
+      const merged = [...(normalizedActive ?? []), ...(deletedList ?? [])];
       const map = new Map<string, Voucher>();
       for (const v of merged) map.set(String(v.id), v);
       setVouchers(Array.from(map.values()));
@@ -169,14 +195,13 @@ const VoucherApiPage = () => {
 
   useEffect(() => {
     void fetchVoucherList();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFranchiseId, isAdminMode]);
+  }, [effectiveFranchiseId, isAdminMode]);
 
   useEffect(() => {
-    if (!isAdminMode && selectedFranchiseId != null) {
-      setCreateForm((p) => ({ ...p, franchiseId: String(selectedFranchiseId) }));
+    if (!isAdminMode && effectiveFranchiseId != null) {
+      setCreateForm((p) => ({ ...p, franchiseId: String(effectiveFranchiseId) }));
     }
-  }, [isAdminMode, selectedFranchiseId]);
+  }, [isAdminMode, effectiveFranchiseId]);
 
   const tableData: VoucherRow[] = useMemo(
     () =>
@@ -191,7 +216,6 @@ const VoucherApiPage = () => {
     [vouchers, franchiseLabelById],
   );
 
-  /** Lọc theo khoảng ngày (theo ngày bắt đầu hiệu lực), giống Order page */
   const filteredTableData = useMemo(() => {
     if (!fromDate && !toDate) return tableData;
     return tableData.filter((row) => {
@@ -277,7 +301,7 @@ const VoucherApiPage = () => {
 
   const handleOpenCreate = () => {
     setCreateForm({
-      franchiseId: selectedFranchiseId ? String(selectedFranchiseId) : "",
+      franchiseId: effectiveFranchiseId ? String(effectiveFranchiseId) : "",
       code: "",
       name: "",
       description: "",
@@ -423,12 +447,9 @@ const VoucherApiPage = () => {
   }
 
   return (
-    <>
-      {/*
-        Layout giống Order page: một khối CRUDTable (tiêu đề IN HOA trong card),
-        thanh tìm kiếm + lọc ngày trái, dropdown lọc phải, badge loại, giá trị màu primary.
-      */}
-      <CRUDPageTemplate<VoucherRow>
+    <div className="p-6 transition-all animate-fade-in">
+    
+      <CRUDTable<VoucherRow>
         title="Danh sách voucher"
         data={filteredTableData}
         columns={columns}

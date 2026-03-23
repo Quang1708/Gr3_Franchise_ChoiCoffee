@@ -82,8 +82,6 @@ const CartAdminPage = () => {
         }
     }
 
-    // console.log("cảt", carts);
-
     useEffect(() => {
 
     }, [customerSelected])
@@ -93,9 +91,6 @@ const CartAdminPage = () => {
         setSelectedCart(data || null);
         setIsModalOpen(true);
     };
-
-
-
     const columns: Column<Cart>[] = [
       {
         header: "Tên khách hàng",
@@ -215,7 +210,6 @@ const CartAdminPage = () => {
                 },
             ]}
         />
-
         <CartForm
           isOpen={isModalOpen}
           mode={formMode}

@@ -10,6 +10,7 @@ import { searchCustomersUsecase } from "@/pages/admin/customer/usecases/searchCu
 import { searchFranchsie } from "../usecase/searchFranchise.usecase";
 import { searchProductFranchise } from "../usecase/searchProductFranchise.usecase";
 import { getCategoryFranchise } from "@/components/Client/Product/services/category.service";
+import { toast } from "react-toastify";
 
 type ToppingOption = {
   product_data: {
@@ -283,7 +284,10 @@ export const useCartForm = ({
   };
 
   const handleFinalSubmit = () => {
-    if (selectedItems.length === 0) return alert("Giỏ hàng đang trống");
+    if (mode === "edit") {
+      
+    }else{
+      if (selectedItems.length === 0) return toast.error("Giỏ hàng đang trống");
     onSubmit(
       {
         customer_id: customerSelected?.id,
@@ -292,6 +296,7 @@ export const useCartForm = ({
       },
       setError,
     );
+    }; 
   };
 
   const updateQuantity = (val: number) => {

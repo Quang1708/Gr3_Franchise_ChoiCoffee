@@ -67,7 +67,7 @@ const CartAdminPage = () => {
         return;
     }
     setLoading(true);
-    const status = filters?.status || "ACTIVE";
+    const status = filters?.status;
         try {
             const res = await getCustomerCart(customerSelected?.id, status );
             if(res){
@@ -125,20 +125,34 @@ const CartAdminPage = () => {
       {
         header: "Trạng thái",
         accessor: "status",
+        className: "flex items-center justify-center",
         render(item) {
-
-
           return (
-            (item.status === "ACTIVE" && <span className="px-2 py-1 text-[10px] rounded-xl bg-yellow-200 text-yellow-500">Đang chờ</span>) ||
-            (item.status === "CANCELLED" && <span className="px-2 py-1 text-[10px] bg-red-200 text-red-500">Đã hủy</span>) ||
-            (item.status === "CHECKED_OUT" && <span className="px-2 py-1 text-[10px] bg-green-200 text-green-500">Đã hoàn thành</span>)
+            <div className="flex justify-center items-center w-full">
+              {item.status === "ACTIVE" && (
+                <span className="px-2 py-1 text-[10px] rounded-xl bg-yellow-200 text-yellow-500 text-center">
+                  Chưa checkout
+                </span>
+              )}
+
+              {item.status === "CANCELED" && (
+                <span className="px-2 py-1 text-[10px] rounded-xl bg-red-200 text-red-500 text-center">
+                  Đã hủy
+                </span>
+              )}
+
+              {item.status === "CHECKED_OUT" && (
+                <span className="px-2 py-1 text-[10px] rounded-xl bg-green-200 text-green-500 text-center">
+                  Đã checkout
+                </span>
+              )}
+            </div>
           );
-        }
-      }
+        },
+      },
     ];
 
-    const hanldeSubmit = async (data: any, setError: any) => {
-        // Implementation for form submission
+    const hanldeSubmit = async (data: any,) => {
         if(formMode === "create") {
             setIsSubmitting(true);
         try{
@@ -193,9 +207,10 @@ const CartAdminPage = () => {
                     label: "Trạng thái",
                     key: "status",
                     options: [
-                        { label: "Đang hoạt động", value: "ACTIVE" },
-                        { label: "Đã hủy", value: "CANCELLED" },
-                        { label: "Đã hoàn thành", value: "CHECKED_OUT" },
+              
+                        { label: "Chưa checkout", value: "ACTIVE" },
+                        { label: "Đã hủy", value: "CANCELED" },
+                        { label: "Đã checkout", value: "CHECKED_OUT" },
                     ],
                 },
             ]}

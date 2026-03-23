@@ -34,7 +34,7 @@ const LoyaltyPage = React.lazy(() => import("../../pages/admin/loyalty"));
 const OrderPage = React.lazy(() => import("../../pages/admin/order"));
 const PaymentPage = React.lazy(() => import("../../pages/admin/payment"));
 const VoucherPage = React.lazy(
-  () => import("../../pages/admin/voucher/VoucherApi.page"),
+  () => import("../../pages/admin/voucher"),
 );
 const PromotionPage = React.lazy(
   () => import("../../pages/admin/promotion/Promotion.page"),

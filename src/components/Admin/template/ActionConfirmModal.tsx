@@ -1,11 +1,11 @@
 import ClientLoading from "@/components/Client/Client.Loading";
-import { RotateCcw, Trash2, X, Loader2 } from "lucide-react";
+import { RotateCcw, Trash2, X, Loader2, Check } from "lucide-react";
 
 interface ActionConfirmModalProps {
     isOpen: boolean;
     onClose: () => void;
     onConfirm: () => void;
-    type: "delete" | "restore";
+    type: "delete" | "restore" | "confirm";
     title?: string;
     message?: string;
     isLoading?: boolean;
@@ -23,6 +23,7 @@ export const ActionConfirmModal = ({
     if (!isOpen) return null;
 
     const isDelete = type === "delete";
+    const isConfirm = type === "confirm";
 
     return (
         <div
@@ -56,9 +57,11 @@ export const ActionConfirmModal = ({
                                 className={`flex items-center justify-center w-14 h-14 rounded-full
                                     ${isDelete ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}
                             >
-                                {isDelete ? (
+                                {isDelete && (
                                     <Trash2 className="w-7 h-7" />
-                                ) : (
+                                )} {isConfirm && (
+                                    <Check className="w-7 h-7" />
+                                )} {!isDelete && !isConfirm && (
                                     <RotateCcw className="w-7 h-7" />
                                 )}
                             </div>
@@ -67,6 +70,8 @@ export const ActionConfirmModal = ({
                                 {message ||
                                     (isDelete
                                         ? "Bạn có chắc chắn muốn xóa mục này không?"
+                                        : isConfirm
+                                        ? "Bạn có chắc chắn muốn xác nhận hành động này không?"
                                         : "Bạn có chắc chắn muốn khôi phục mục này không?")}
                             </p>
                         </>

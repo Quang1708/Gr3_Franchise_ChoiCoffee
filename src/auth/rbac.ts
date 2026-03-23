@@ -56,17 +56,13 @@ export function getEffectivePermissions(
     .filter((r) => {
       if (!r.role) return false;
 
-      /**
-       * GLOBAL role chỉ dùng khi KHÔNG có franchise context
-       */
-      if (!franchiseId && r.scope === "GLOBAL") {
+      // ✅ GLOBAL role (ADMIN)
+      if (franchiseId === null && r.scope === "GLOBAL") {
         return true;
       }
 
-      /**
-       * FRANCHISE role
-       */
-      if (franchiseId && r.franchise_id != null) {
+      // ✅ FRANCHISE role
+      if (franchiseId !== null && r.scope === "FRANCHISE") {
         return String(r.franchise_id) === String(franchiseId);
       }
 
@@ -78,29 +74,11 @@ export function getEffectivePermissions(
 
   return Array.from(new Set(perms));
 }
+
 export function can(
   user: CmsUser | null,
   perm: PermissionCode,
   franchiseId?: string | null,
 ) {
   return getEffectivePermissions(user, franchiseId).includes(perm);
-}
-
-/**
- * Dùng cho route-level guard khi chưa có franchise context.
- * Nếu user có perm ở BẤT KỲ franchise nào (hoặc global) => true
- */
-
-export function canAny(
-  user: CmsUser | null,
-  perm: PermissionCode,
-  allFranchises: FranchiseOption[] = [],
-) {
-  if (!user?.roles?.length) return false;
-
-  if (can(user, perm, undefined)) return true;
-
-  const fr = getAccessibleFranchises(user, allFranchises);
-
-  return fr.some((f) => can(user, perm, f.id));
 }

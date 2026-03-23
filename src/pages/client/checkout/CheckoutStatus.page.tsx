@@ -1,6 +1,6 @@
 import ROUTER_URL from '@/routes/router.const';
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 
 const CheckoutStatusPage: React.FC = () => {

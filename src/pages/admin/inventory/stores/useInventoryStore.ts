@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { inventoryService } from "../services/inventory.service";
 import type { Inventory } from "../models/inventory.model";
 import { useAdminContextStore } from "@/stores/adminContext.store";
-
+import { handleApiError } from "@/utils/handleApiError";
 
 type InventoryState = {
   items: Inventory[];
@@ -41,7 +41,7 @@ export const useInventoryStore = create<InventoryState>((set) => ({
 
       const res = await inventoryService.search({
         searchCondition: {
-          is_deleted: false,
+          is_deleted: "",
           ...(franchiseId ? { franchise_id: franchiseId } : {}),
         },
         pageInfo: {
@@ -105,31 +105,26 @@ create: async (data) => {
     toast.success("Inventory created successfully");
 
   } catch (err: any) {
-    const message = err?.response?.data?.message;
+  if (err?.message === "Inventory already exists for this product franchise") {
+    const res = await inventoryService.search({
+      searchCondition: {
+        product_franchise_id: data.product_franchise_id,
+        is_deleted: true,
+      },
+      pageInfo: { pageNum: 1, pageSize: 10 },
+    });
 
-    if (message === "Inventory already exists for this product franchise") {
+    const exist = res?.data?.data?.[0];
 
-      console.log("Duplicate inventory -> restoring");
-
-      const res = await inventoryService.search({
-        searchCondition: {
-          product_franchise_id: data.product_franchise_id,
-          is_deleted: true,
-        },
-        pageInfo: { pageNum: 1, pageSize: 10 },
-      });
-
-      const exist = res?.data?.data?.[0];
-
-      if (exist) {
-        await inventoryService.restore(exist.id);
-        toast.success("Inventory restored successfully");
-        return;
-      }
+    if (exist) {
+      await inventoryService.restore(exist.id);
+      toast.success("Inventory restored successfully");
+      return;
     }
-
-    toast.error(message || "Create inventory failed");
   }
+
+  handleApiError(err);
+}
 },
   delete: async (id) => {
     await inventoryService.delete(id);

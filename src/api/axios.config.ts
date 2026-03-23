@@ -180,6 +180,10 @@ axiosAdminClient.interceptors.response.use(
       }
     }
 
-    return Promise.reject(error.response?.data);
+    return Promise.reject({
+    message: errorData?.message || error.message,
+    errors: errorData?.errors || [],
+    status: error.response?.status,
+});
   },
 );

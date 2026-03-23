@@ -20,6 +20,7 @@ const FranchisePage = () => {
   const {
     items,
     loading,
+    actionLoading,
     fetchAll,
     create,
     update,
@@ -103,9 +104,9 @@ const FranchisePage = () => {
     return items.slice(start, start + pageSize);
   }, [items, page, pageSize]);
 
-  if (loading) {
+  if (loading || actionLoading) {
     return (
-      <div className="h-[400px] flex items-center justify-center">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70">
         <ClientLoading />
       </div>
     );
@@ -189,12 +190,15 @@ const FranchisePage = () => {
       <RestoreFranchiseModal
         isOpen={restoreOpen}
         franchise={selected}
-        onClose={() => setRestoreOpen(false)}
+        onClose={() => {
+          setRestoreOpen(false);
+          setSelected(null);
+        }}
         onConfirm={async () => {
           if (!selected) return;
-
           await restore(selected.id);
           setRestoreOpen(false);
+          setSelected(null);
         }}
       />
     </>

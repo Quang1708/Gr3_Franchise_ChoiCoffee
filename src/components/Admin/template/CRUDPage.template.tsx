@@ -98,7 +98,7 @@ const ToggleSwitch = ({
 );
 
 // --- Main Template ---
-export function CRUDPageTemplate<T extends { id?: string | number }>({
+export function CRUDPageTemplate<T extends { id?: string | number, _id?: string}>({
   title,
   data,
   columns,
@@ -535,13 +535,14 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                         onRowClick?.(item);
                       }}
                       className={`transition-colors cursor-pointer
-                        ${focusedIndex === index
-                          ? "bg-primary/10"
-                          : item.id === selectedRowId
-                            ? "bg-primary/5"
-                            : isDeleted
-                              ? "bg-gray-50 text-gray-400"
-                              : "bg-white hover:bg-primary/5"
+                        ${
+                          focusedIndex === index
+                            ? "bg-primary/10"
+                            : item.id === selectedRowId
+                              ? "bg-primary/5"
+                              : isDeleted
+                                ? "bg-gray-50 text-gray-400"
+                                : "bg-white hover:bg-primary/5"
                         }`}
                     >
                       <td className="px-4 py-3 text-center text-gray-500">
@@ -572,10 +573,11 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                               />
                               <span
                                 className={`text-[9px] font-medium uppercase
-                                    ${item[statusField]
-                                    ? "text-primary"
-                                    : "text-gray-400"
-                                  }`}
+                                    ${
+                                      item[statusField]
+                                        ? "text-primary"
+                                        : "text-gray-400"
+                                    }`}
                               >
                                 {item[statusField]
                                   ? "Hoạt động"
@@ -586,7 +588,7 @@ export function CRUDPageTemplate<T extends { id?: string | number }>({
                             <div className="flex flex-col items-center gap-1">
                               <ToggleSwitch
                                 checked={false}
-                                onChange={() => { }}
+                                onChange={() => {}}
                                 disabled
                               />
                               <span

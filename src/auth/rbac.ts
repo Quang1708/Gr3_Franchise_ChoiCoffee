@@ -62,10 +62,8 @@ export function getEffectivePermissions(
       const roleCode = (r.role ?? r.role_code) as string | undefined;
       if (!roleCode) return false;
 
-      /**
-       * GLOBAL role chỉ dùng khi KHÔNG có franchise context
-       */
-      if (!franchiseId && r.scope === "GLOBAL") {
+      // ✅ GLOBAL role (ADMIN)
+      if (franchiseId === null && r.scope === "GLOBAL") {
         return true;
       }
 
@@ -85,6 +83,7 @@ export function getEffectivePermissions(
 
   return Array.from(new Set(perms));
 }
+
 export function can(
   user: CmsUser | null,
   perm: PermissionCode,

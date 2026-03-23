@@ -4,12 +4,14 @@ import { useForm, useWatch } from "react-hook-form";
 import type { Customer } from "@/models/customer.model";
 
 import type { Cart } from "@/pages/admin/cart/models/getCartResponse.model";
-import type { productFranchise } from "../models/productResponse.model";
+
 import { getPublicProducts } from "@/pages/client/product/services/product.service";
 import { searchCustomersUsecase } from "@/pages/admin/customer/usecases/searchCustomers.usecase";
 import { searchFranchsie } from "../usecase/searchFranchise.usecase";
 import { searchProductFranchise } from "../usecase/searchProductFranchise.usecase";
 import { getCategoryFranchise } from "@/components/Client/Product/services/category.service";
+import { toast } from "react-toastify";
+import type { ProductFranchise } from "../models/productResponse.model";
 
 type ToppingOption = {
   product_data: {
@@ -46,10 +48,10 @@ export const useCartForm = ({
   const [franchiseSelected, setFranchiseSelected] = useState<any | null>(null);
   const [franchiseCache, setFranchiseCache] = useState<any[]>([]);
   const [productFranchiseCache, setProductFranchiseCache] = useState<
-    productFranchise[]
+    ProductFranchise[]
   >([]);
   const [productFranchiseSelected, setProductFranchiseSelected] =
-    useState<productFranchise | null>(null);
+    useState<ProductFranchise | null>(null);
   const [toppingOptions, setToppingOptions] = useState<ToppingOption[]>([]);
   const [toppingSelected, setToppingSelected] = useState<
     Record<string, number>
@@ -283,7 +285,7 @@ export const useCartForm = ({
   };
 
   const handleFinalSubmit = () => {
-    if (selectedItems.length === 0) return alert("Giỏ hàng đang trống");
+      if (selectedItems.length === 0) return toast.error("Giỏ hàng đang trống");
     onSubmit(
       {
         customer_id: customerSelected?.id,

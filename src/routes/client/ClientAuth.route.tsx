@@ -1,5 +1,5 @@
 import React from "react";
-import { Route } from "react-router-dom";
+import { Navigate, Route } from "react-router-dom";
 import ClientLayout from "../../layouts/client/Client.layout";
 import ClientGuard from "../guard/ClientGuard.route";
 import OrderPage from "../../pages/client/order";
@@ -9,7 +9,6 @@ import CartPage from "@/pages/client/cart/Cart.page";
 import CheckoutPage from "@/pages/client/checkout/Checkout.page";
 import ClientProfilePage from "@/pages/client/account/profile/ClientProfile.page";
 import LoyaltyPage from "@/pages/client/loyalty/Loyalty.page";
-import ClientHistoryPage from "../../pages/client/history";
 
 const ClientLoginPage = React.lazy(
   () => import("@/pages/client/auth/login/ClientLogin.page"),
@@ -65,7 +64,12 @@ const ClientAuthRoutes = (
         <Route path={`${ROUTER_URL.CLIENT}/order`} element={<OrderPage />} />
         <Route
           path={ROUTER_URL.CLIENT_ROUTER.HISTORY}
-          element={<ClientHistoryPage />}
+          element={
+            <Navigate
+              to={`${ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER}?tab=completed`}
+              replace
+            />
+          }
         />
         <Route path={ROUTER_URL.CLIENT_ROUTER.CART} element={<CartPage />} />
         <Route

@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Modal } from "../../UI/Modal";
-import { FormInput } from "@/components/Admin/Form/FormInput";
+import { FormInput } from "@/components/Admin/form/FormInput";
 import type { Franchise } from "@/pages/admin/franchise/models/franchise.model";
 import { AlertTriangle } from "lucide-react";
 
@@ -69,28 +69,68 @@ const FranchiseModal: React.FC<FranchiseModalProps> = ({
   defaultValues,
   onSubmit,
   onCancel,
-  isLoading,
   submitLabel,
 }) => {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
     reset,
     setValue,
+    setError,
+    clearErrors,
   } = useForm<FranchiseFormData>({
     resolver: zodResolver(franchiseSchema),
+    mode: "onChange",
     defaultValues,
   });
 
+  // ✅ reset khi mở modal / đổi data
   useEffect(() => {
-    if (defaultValues) reset(defaultValues);
-  }, [defaultValues, reset]);
+    if (defaultValues) {
+      reset(defaultValues);
+    } else {
+      reset({
+        code: "",
+        name: "",
+        address: "",
+        hotline: "",
+        logo_url: "",
+        opened_at: "",
+        closed_at: "",
+      });
+    }
+
+    clearErrors();
+  }, [defaultValues, reset, clearErrors]);
+
+  // ✅ handle submit giống inventory (có BE error)
+  const submitHandler = async (data: FranchiseFormData) => {
+    try {
+      await onSubmit(data);
+    } catch (err: any) {
+      if (err?.errors?.length) {
+        err.errors.forEach((e: any) => {
+          setError(e.field || "root", {
+            message: e.message,
+          });
+        });
+      } else if (err?.message) {
+        setError("root", { message: err.message });
+      }
+    }
+  };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {/* LOGO UPLOAD */}
+    <form onSubmit={handleSubmit(submitHandler)} className="space-y-4">
+      {/* GLOBAL ERROR */}
+      {errors.root && (
+        <div className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded">
+          {errors.root.message}
+        </div>
+      )}
 
+      {/* LOGO */}
       <div className="flex flex-col items-center gap-3">
         {defaultValues?.logo_url && (
           <img
@@ -108,14 +148,13 @@ const FranchiseModal: React.FC<FranchiseModalProps> = ({
         />
       </div>
 
-      {/* Code */}
-
+      {/* CODE */}
       <div>
         <label className="block text-sm font-medium mb-1">Mã chi nhánh *</label>
 
         <input
           {...register("code")}
-          disabled={isLoading}
+          disabled={isSubmitting}
           className={inputClass(!!errors.code)}
         />
 
@@ -124,8 +163,7 @@ const FranchiseModal: React.FC<FranchiseModalProps> = ({
         )}
       </div>
 
-      {/* Name */}
-
+      {/* NAME */}
       <div>
         <label className="block text-sm font-medium mb-1">
           Tên chi nhánh *
@@ -133,7 +171,7 @@ const FranchiseModal: React.FC<FranchiseModalProps> = ({
 
         <input
           {...register("name")}
-          disabled={isLoading}
+          disabled={isSubmitting}
           className={inputClass(!!errors.name)}
         />
 
@@ -142,26 +180,24 @@ const FranchiseModal: React.FC<FranchiseModalProps> = ({
         )}
       </div>
 
-      {/* Address */}
-
+      {/* ADDRESS */}
       <div>
         <label className="block text-sm font-medium mb-1">Địa chỉ</label>
 
         <textarea
           {...register("address")}
-          disabled={isLoading}
+          disabled={isSubmitting}
           className={inputClass(false)}
         />
       </div>
 
-      {/* Hotline */}
-
+      {/* HOTLINE */}
       <div>
         <label className="block text-sm font-medium mb-1">Hotline *</label>
 
         <input
           {...register("hotline")}
-          disabled={isLoading}
+          disabled={isSubmitting}
           className={inputClass(!!errors.hotline)}
         />
 
@@ -170,18 +206,15 @@ const FranchiseModal: React.FC<FranchiseModalProps> = ({
         )}
       </div>
 
-      {/* Hours */}
-
+      {/* HOURS */}
       <div className="grid grid-cols-2 gap-4">
-        {/* Open */}
-
         <div>
           <label className="block text-sm font-medium mb-1">Giờ mở *</label>
 
           <input
             type="time"
             {...register("opened_at")}
-            disabled={isLoading}
+            disabled={isSubmitting}
             className={inputClass(!!errors.opened_at)}
           />
 
@@ -192,15 +225,13 @@ const FranchiseModal: React.FC<FranchiseModalProps> = ({
           )}
         </div>
 
-        {/* Close */}
-
         <div>
           <label className="block text-sm font-medium mb-1">Giờ đóng *</label>
 
           <input
             type="time"
             {...register("closed_at")}
-            disabled={isLoading}
+            disabled={isSubmitting}
             className={inputClass(!!errors.closed_at)}
           />
 
@@ -212,33 +243,23 @@ const FranchiseModal: React.FC<FranchiseModalProps> = ({
         </div>
       </div>
 
-      {/* Actions */}
-
+      {/* ACTION */}
       <div className="flex justify-end gap-3 pt-2">
         <button
           type="button"
           onClick={onCancel}
-          disabled={isLoading}
-          className="px-4 py-2 border rounded-lg disabled:opacity-50"
+          disabled={isSubmitting}
+          className="px-4 py-2 border rounded-lg"
         >
           Hủy
         </button>
 
         <button
           type="submit"
-          disabled={isLoading}
-          className={`px-4 py-2 rounded-lg text-white flex items-center gap-2
-          ${
-            isLoading
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-primary hover:opacity-90"
-          }`}
+          disabled={isSubmitting}
+          className="bg-primary text-white px-4 py-2 rounded-lg"
         >
-          {isLoading && (
-            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-          )}
-
-          {submitLabel}
+          {isSubmitting ? "Đang xử lý..." : submitLabel}
         </button>
       </div>
     </form>
@@ -275,8 +296,6 @@ export const EditFranchiseModal: React.FC<{
   franchise: Franchise | null;
   onSubmit: (data: FranchiseFormData) => void;
 }> = ({ isOpen, onClose, franchise, onSubmit }) => {
-  if (!franchise) return null;
-
   return (
     <Modal
       isOpen={isOpen}
@@ -284,20 +303,23 @@ export const EditFranchiseModal: React.FC<{
       title="Cập nhật chi nhánh"
       size="md"
     >
-      <FranchiseModal
-        defaultValues={{
-          code: franchise.code,
-          name: franchise.name,
-          address: franchise.address,
-          hotline: franchise.hotline,
-          logo_url: franchise.logo_url,
-          opened_at: franchise.opened_at,
-          closed_at: franchise.closed_at,
-        }}
-        submitLabel="Lưu"
-        onSubmit={onSubmit}
-        onCancel={onClose}
-      />
+      {/* ✅ chỉ render form khi có data */}
+      {franchise && (
+        <FranchiseModal
+          defaultValues={{
+            code: franchise.code ?? "",
+            name: franchise.name ?? "",
+            address: franchise.address ?? "",
+            hotline: franchise.hotline ?? "",
+            logo_url: franchise.logo_url ?? "",
+            opened_at: franchise.opened_at ?? "",
+            closed_at: franchise.closed_at ?? "",
+          }}
+          submitLabel="Lưu"
+          onSubmit={onSubmit}
+          onCancel={onClose}
+        />
+      )}
     </Modal>
   );
 };

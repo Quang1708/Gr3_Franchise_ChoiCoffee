@@ -27,7 +27,13 @@ const getStatusMeta = (status: ClientOrderStatus): StatusMeta => {
     };
   }
 
-  if (status === "ready_for_pickup" || status === "out_for_delivery") {
+  if (status === "ready_for_pickup" ) {
+    return {
+      label: "Đơn đang chờ shipper lấy",
+      className: "bg-orange-500/20 text-orange-500 border-orange-500/30",
+    };
+  }
+   if (status === "out_for_delivery") {
     return {
       label: "Đang giao đến bạn",
       className: "bg-orange-500/20 text-orange-500 border-orange-500/30",

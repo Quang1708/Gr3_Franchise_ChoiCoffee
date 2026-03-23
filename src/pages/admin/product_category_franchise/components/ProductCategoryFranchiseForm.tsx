@@ -124,6 +124,8 @@ export const ProductCategoryFranchiseForm = ({
 
   const managedFranchiseId =
     contextFranchiseId || (!isGlobalAdmin ? roleManagedFranchiseId : "");
+  const requiresFranchiseSelection =
+    isGlobalAdmin && !String(formFranchiseId || "").trim();
 
   const activeFranchiseId = formFranchiseId || managedFranchiseId;
 
@@ -205,7 +207,12 @@ export const ProductCategoryFranchiseForm = ({
       ? String(formFranchiseId || "")
       : managedFranchiseId;
 
-    // Nếu không có franchiseId cụ thể, vẫn load tất cả để user chọn được
+    if (isGlobalAdmin && !franchiseIdToLoad) {
+      setCategoryOptions([]);
+      setProductOptions([]);
+      return;
+    }
+
     loadOptionsForFranchise(franchiseIdToLoad);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, isGlobalAdmin, managedFranchiseId]);
@@ -227,8 +234,13 @@ export const ProductCategoryFranchiseForm = ({
     setValue("product_franchise_id", "");
     setValue("display_order", "");
 
-    // Nếu GLOBAL admin chưa chọn chi nhánh, vẫn cho phép load tất cả
     const franchiseIdToLoad = String(formFranchiseId || "");
+    if (!franchiseIdToLoad) {
+      setCategoryOptions([]);
+      setProductOptions([]);
+      return;
+    }
+
     loadOptionsForFranchise(franchiseIdToLoad);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formFranchiseId, isOpen, isGlobalAdmin, mode, setValue]);
@@ -491,11 +503,13 @@ export const ProductCategoryFranchiseForm = ({
                     value: "",
                     label: loadingOptions
                       ? "Đang tải..."
-                      : "-- Chọn danh mục --",
+                      : requiresFranchiseSelection
+                        ? "-- Chọn chi nhánh trước --"
+                        : "-- Chọn danh mục --",
                   },
                   ...filteredCategoryOptions.map((c) => ({
                     value: String(c.id),
-                    label: `${c.category_name ?? c.category_id} ${c.franchise_name ? `(${c.franchise_name})` : ""}`,
+                    label: `${c.category_name}`,
                   })),
                 ]}
                 register={register("category_franchise_id", {
@@ -514,13 +528,18 @@ export const ProductCategoryFranchiseForm = ({
                     value: "",
                     label: loadingOptions
                       ? "Đang tải..."
-                      : !selectedCategoryFranchiseId
-                        ? "-- Chọn danh mục trước --"
-                        : "-- Chọn sản phẩm --",
+                      : requiresFranchiseSelection
+                        ? "-- Chọn chi nhánh trước --"
+                        : !selectedCategoryFranchiseId
+                          ? "-- Chọn danh mục trước --"
+                          : "-- Chọn sản phẩm --",
                   },
                   ...filteredProductOptions.map((p) => ({
                     value: String(p.id),
-                    label: `${p.product_name} ${p.size ? `- ${p.size}` : ""} ${p.franchise_name ? `(${p.franchise_name})` : ""} ${usedProductFranchiseIdsInSelectedCategory.has(String(p.id)) ? "✓" : ""}`,
+                    label: `${p.product_name} ${p.size ? `- ${p.size}` : ""} ${p.franchise_name ? `(${p.franchise_name})` : ""}${usedProductFranchiseIdsInSelectedCategory.has(String(p.id)) ? " (Đã có)" : ""}`,
+                    isExisting: usedProductFranchiseIdsInSelectedCategory.has(
+                      String(p.id),
+                    ),
                   })),
                 ]}
                 register={register("product_franchise_id", {
@@ -530,11 +549,6 @@ export const ProductCategoryFranchiseForm = ({
                 error={errors.product_franchise_id}
                 placeholder="Chọn sản phẩm"
               />
-              {mode === "create" && selectedCategoryFranchiseId && (
-                <p className="text-xs text-amber-600">
-                  Các sản phẩm có nhãn "✓" đã tồn tại trong danh mục này.
-                </p>
-              )}
 
               {/* Thứ tự hiển thị */}
               <FormSelect
@@ -546,6 +560,7 @@ export const ProductCategoryFranchiseForm = ({
                     label: usedDisplayOrders.has(order)
                       ? `${order} ✓`
                       : String(order),
+                    isExisting: usedDisplayOrders.has(order),
                   })),
                 ]}
                 register={register("display_order")}

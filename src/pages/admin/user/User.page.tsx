@@ -2,7 +2,10 @@
 import { toast } from "sonner";
 import { useAdminContextStore } from "@/stores";
 
-import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
+import {
+  CRUDPageTemplate,
+  type Column,
+} from "@/components/Admin/template/CRUDPage.template";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import ClientLoading from "@/components/Client/Client.Loading";
 
@@ -19,8 +22,12 @@ import { updateUserUsecase } from "./usecases/updateUser.usecase";
 import { getUserDetailUsecase } from "./usecases/getUserDetail.usecase";
 import { getUserRolesByUserIdUsecase } from "../user-franchise-role/usecases/getUserRolesByUserId.usecase";
 import UserFranchiseRolePage from "../user-franchise-role/UserFranchiseRole.page";
+import { can } from "@/auth/rbac";
+import { PERM } from "@/auth/rbac.permissions";
+import { useAuthStore } from "@/stores/auth.store"; // hoặc store user của bạn
 
-const DEFAULT_AVATAR = "https://i.pinimg.com/736x/af/80/37/af80374611f4673d1928a881727e13b0.jpg";
+const DEFAULT_AVATAR =
+  "https://i.pinimg.com/736x/af/80/37/af80374611f4673d1928a881727e13b0.jpg";
 
 type UserFranchiseRoleItem = {
   role_name?: string;
@@ -32,7 +39,9 @@ type UserWithRoleDetails = User & {
   roleDetailsText?: string;
 };
 
-const resolveUserFranchiseRoleItems = (payload: unknown): UserFranchiseRoleItem[] => {
+const resolveUserFranchiseRoleItems = (
+  payload: unknown,
+): UserFranchiseRoleItem[] => {
   if (Array.isArray(payload)) return payload as UserFranchiseRoleItem[];
   if (!payload || typeof payload !== "object") return [];
 
@@ -45,17 +54,22 @@ const resolveUserFranchiseRoleItems = (payload: unknown): UserFranchiseRoleItem[
   if (Array.isArray(source.data)) return source.data as UserFranchiseRoleItem[];
   if (source.data && typeof source.data === "object") {
     const nested = source.data as { items?: unknown; rows?: unknown };
-    if (Array.isArray(nested.items)) return nested.items as UserFranchiseRoleItem[];
-    if (Array.isArray(nested.rows)) return nested.rows as UserFranchiseRoleItem[];
+    if (Array.isArray(nested.items))
+      return nested.items as UserFranchiseRoleItem[];
+    if (Array.isArray(nested.rows))
+      return nested.rows as UserFranchiseRoleItem[];
   }
-  if (Array.isArray(source.items)) return source.items as UserFranchiseRoleItem[];
+  if (Array.isArray(source.items))
+    return source.items as UserFranchiseRoleItem[];
   if (Array.isArray(source.rows)) return source.rows as UserFranchiseRoleItem[];
 
   return [];
 };
 
 const UserPage = () => {
-  const selectedFranchiseId = useAdminContextStore((state) => state.selectedFranchiseId);
+  const selectedFranchiseId = useAdminContextStore(
+    (state) => state.selectedFranchiseId,
+  );
   const isAdmin = selectedFranchiseId === null;
 
   const [users, setUsers] = useState<User[]>([]);
@@ -65,7 +79,9 @@ const UserPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const user = useAuthStore((s) => s.user);
 
+  const canManageUser = can(user, PERM.USER_MANAGE, selectedFranchiseId);
   // Modal xác nhận (Xóa/Khôi phục)
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
@@ -75,9 +91,15 @@ const UserPage = () => {
 
   // Modal Form (Thêm/Sửa/Xem)
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
-  const [selectedUser, setSelectedUser] = useState<UserWithRoleDetails | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "userFranchiseRoles">("users");
+  const [formMode, setFormMode] = useState<"create" | "edit" | "view">(
+    "create",
+  );
+  const [selectedUser, setSelectedUser] = useState<UserWithRoleDetails | null>(
+    null,
+  );
+  const [activeTab, setActiveTab] = useState<"users" | "userFranchiseRoles">(
+    "users",
+  );
 
   // Helper function to map API response to User with proper property names
   const toUserRow = (item: any): User => {
@@ -92,7 +114,7 @@ const UserPage = () => {
       is_deleted: item.is_deleted,
       created_at: item.created_at,
       updated_at: item.updated_at,
-      is_verified: item.is_verified , // Assuming API might return this field
+      is_verified: item.is_verified, // Assuming API might return this field
     } as User;
   };
 
@@ -140,14 +162,17 @@ const UserPage = () => {
         setIsTableLoading(false);
       }
     },
-    [pageSize]
+    [pageSize],
   );
 
   useEffect(() => {
     fetchUsers(1);
   }, [fetchUsers]);
 
-  const handleSearchUsers = async (keyword: string, filters?: Record<string, string>) => {
+  const handleSearchUsers = async (
+    keyword: string,
+    filters?: Record<string, string>,
+  ) => {
     try {
       setIsLoading(true);
 
@@ -206,7 +231,7 @@ const UserPage = () => {
   // Xử lý mở Modal Form
   const handleOpenForm = async (
     mode: "create" | "edit" | "view",
-    user: User | null = null
+    user: User | null = null,
   ) => {
     setFormMode(mode);
     if (mode === "view" && user) {
@@ -218,7 +243,8 @@ const UserPage = () => {
         const roleDetailsText = roleItems.length
           ? roleItems
               .map((item) => {
-                const role = item.role_name || item.role_code || "Không rõ vai trò";
+                const role =
+                  item.role_name || item.role_code || "Không rõ vai trò";
                 const franchise = item.franchise_name || "Hệ thống";
                 return `${role} (${franchise})`;
               })
@@ -240,7 +266,10 @@ const UserPage = () => {
   };
 
   // Xử lý Submit Form (Create/Edit)
-  const handleSubmitUser = async (data: UserFormValues, setError: (field: keyof UserFormValues, error: { message: string }) => void) => {
+  const handleSubmitUser = async (
+    data: UserFormValues,
+    setError: (field: keyof UserFormValues, error: { message: string }) => void,
+  ) => {
     setIsProcessing(true);
     try {
       if (formMode === "create") {
@@ -249,7 +278,9 @@ const UserPage = () => {
           password: data.password || "",
           phone: data.phone,
           name: data.name,
-          avatar_url: data.avatar_url?.trim() ? data.avatar_url : DEFAULT_AVATAR,
+          avatar_url: data.avatar_url?.trim()
+            ? data.avatar_url
+            : DEFAULT_AVATAR,
         };
 
         await createUserUsecase(createPayload);
@@ -260,7 +291,9 @@ const UserPage = () => {
           phone: data.phone,
           name: data.name,
           roleCode: data.roleCode,
-          avatar_url: data.avatar_url?.trim() ? data.avatar_url : DEFAULT_AVATAR,
+          avatar_url: data.avatar_url?.trim()
+            ? data.avatar_url
+            : DEFAULT_AVATAR,
         };
         await updateUserUsecase(selectedUser.id, updatePayload);
         toast.success("Cập nhật người dùng thành công!");
@@ -270,15 +303,21 @@ const UserPage = () => {
       setIsFormOpen(false);
     } catch (error: unknown) {
       const errData = (error as Record<string, any>)?.response?.data || error;
-      const serverErrors = (errData as Record<string, any>)?.errors as Array<Record<string, any>> | undefined;
+      const serverErrors = (errData as Record<string, any>)?.errors as
+        | Array<Record<string, any>>
+        | undefined;
 
       if (Array.isArray(serverErrors)) {
         serverErrors.forEach((e: Record<string, any>) => {
-          setError(e.field as keyof UserFormValues, { message: e.message as string });
+          setError(e.field as keyof UserFormValues, {
+            message: e.message as string,
+          });
           toast.error(e.message as string);
         });
       } else {
-        toast.error((errData as Record<string, any>)?.message || "Thao tác thất bại!");
+        toast.error(
+          (errData as Record<string, any>)?.message || "Thao tác thất bại!",
+        );
       }
     } finally {
       setIsProcessing(false);
@@ -291,7 +330,9 @@ const UserPage = () => {
       const res = await updateUserStatusUsecase(user.id, newStatus);
       if (res?.success || res?.status === 200) {
         setUsers((prev) =>
-          prev.map((u) => (u.id === user.id ? { ...u, is_active: newStatus } : u))
+          prev.map((u) =>
+            u.id === user.id ? { ...u, is_active: newStatus } : u,
+          ),
         );
         toast.success("Cập nhật trạng thái thành công");
       }
@@ -307,15 +348,20 @@ const UserPage = () => {
 
     try {
       setIsProcessing(true);
-      const res = type === "delete"
-        ? await deleteUserUsecase(user.id)
-        : await restoreUserUsecase(user.id);
+      const res =
+        type === "delete"
+          ? await deleteUserUsecase(user.id)
+          : await restoreUserUsecase(user.id);
 
       if (res?.success) {
         setUsers((prev) =>
-          prev.map((u) => (u.id === user.id ? { ...u, is_deleted: type === "delete" } : u))
+          prev.map((u) =>
+            u.id === user.id ? { ...u, is_deleted: type === "delete" } : u,
+          ),
         );
-        toast.success(type === "delete" ? "Đã xóa người dùng" : "Đã khôi phục người dùng");
+        toast.success(
+          type === "delete" ? "Đã xóa người dùng" : "Đã khôi phục người dùng",
+        );
         setModalConfig((prev) => ({ ...prev, isOpen: false }));
       }
     } catch {
@@ -349,7 +395,9 @@ const UserPage = () => {
             className="w-10 h-10 rounded-full object-cover border border-black/10 flex-shrink-0"
           />
           <div className="flex flex-col min-w-0">
-            <span className="font-medium text-gray-800 truncate">{item.name}</span>
+            <span className="font-medium text-gray-800 truncate">
+              {item.name}
+            </span>
             <span className="text-sm text-gray-500 truncate">{item.email}</span>
           </div>
         </div>
@@ -361,18 +409,24 @@ const UserPage = () => {
       header: "Verified",
       accessor: "is_verified",
       render: (item) => (
-        <span className={`px-2 py-1 text-[10px] rounded-xl ${item.is_verified ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
-          }`}>
+        <span
+          className={`px-2 py-1 text-[10px] rounded-xl ${
+            item.is_verified
+              ? "bg-green-100 text-green-700"
+              : "bg-gray-100 text-gray-500"
+          }`}
+        >
           {item.is_verified ? "Đã xác thực" : "Chưa xác thực"}
         </span>
       ),
     },
   ];
 
-
   return (
     <div className="p-6 transition-all animate-fade-in">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Quản lý người dùng</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">
+        Quản lý người dùng
+      </h1>
 
       <div className="flex flex-1 gap-2 mb-6 border-b border-gray-200">
         <button
@@ -386,20 +440,22 @@ const UserPage = () => {
         >
           Người dùng
         </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("userFranchiseRoles")}
-          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeTab === "userFranchiseRoles"
-              ? "bg-white border border-b-0 border-gray-200 text-primary -mb-px"
-              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-          }`}
-        >
-          User Franchise Role
-        </button>
+        {canManageUser && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("userFranchiseRoles")}
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+              activeTab === "userFranchiseRoles"
+                ? "bg-white border border-b-0 border-gray-200 text-primary -mb-px"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+            }`}
+          >
+            User Franchise Role
+          </button>
+        )}
       </div>
 
-      {activeTab === "users" ? (
+      {activeTab === "users" || !canManageUser ? (
         <>
           {(isLoading || isTableLoading) && <ClientLoading />}
           {isProcessing && (
@@ -428,8 +484,8 @@ const UserPage = () => {
                 label: "trạng thái",
                 options: [
                   { value: "true", label: "Hoạt động" },
-                  { value: "false", label: "Ngưng hoạt động" }
-                ]
+                  { value: "false", label: "Ngưng hoạt động" },
+                ],
               },
               {
                 key: "is_deleted",
@@ -437,12 +493,14 @@ const UserPage = () => {
                 options: [
                   { value: "false", label: "Còn tồn tại" },
                   { value: "true", label: "Đã xóa" },
-                ]
-              }
+                ],
+              },
             ]}
-            onAdd={() => handleOpenForm("create")}
+            onAdd={canManageUser ? () => handleOpenForm("create") : undefined}
             onView={(item) => handleOpenForm("view", item)}
-            onEdit={(item) => handleOpenForm("edit", item)}
+            onEdit={
+              canManageUser ? (item) => handleOpenForm("edit", item) : undefined
+            }
             onDelete={isAdmin ? handleDeleteClick : undefined}
             onRestore={isAdmin ? handleRestoreClick : undefined}
             onRefresh={() => fetchUsers(1)}
@@ -473,11 +531,11 @@ const UserPage = () => {
             }
           />
         </>
-      ) : (
+      ) : canManageUser ? (
         <div className="rounded-lg border border-gray-100 bg-white p-2">
           <UserFranchiseRolePage />
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

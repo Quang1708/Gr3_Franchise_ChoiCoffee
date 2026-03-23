@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { CRUDTable, type Column } from "@/components/Admin/template/CRUD.template";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import ClientLoading from "@/components/Client/Client.Loading";
@@ -18,6 +17,7 @@ import {
 } from "@/services/franchise.service";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 import { useAdminContextStore } from "@/stores/adminContext.store";
+import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
 
 type VoucherRow = Voucher & {
   is_deleted: boolean;
@@ -423,12 +423,12 @@ const VoucherApiPage = () => {
   }
 
   return (
-    <div className="p-6 transition-all animate-fade-in">
+    <>
       {/*
         Layout giống Order page: một khối CRUDTable (tiêu đề IN HOA trong card),
         thanh tìm kiếm + lọc ngày trái, dropdown lọc phải, badge loại, giá trị màu primary.
       */}
-      <CRUDTable<VoucherRow>
+      <CRUDPageTemplate<VoucherRow>
         title="Danh sách voucher"
         data={filteredTableData}
         columns={columns}
@@ -796,7 +796,7 @@ const VoucherApiPage = () => {
             : undefined
         }
       />
-    </div>
+    </>
   );
 };
 

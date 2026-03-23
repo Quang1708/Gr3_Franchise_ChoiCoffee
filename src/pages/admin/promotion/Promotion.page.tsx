@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CRUDTable, type Column } from "@/components/Admin/template/CRUD.template";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import { useAuthStore } from "@/stores/auth.store";
 import {
@@ -10,13 +9,15 @@ import {
   type PromotionApiItem,
 } from "@/services/promotion.service";
 import { searchProductFranchisesService } from "@/pages/admin/product_category_franchise/services/searchProductFranchises.service";
-import { toastError, toastSuccess } from "@/utils/toast.util";
+import { toastError } from "@/utils/toast.util";
 import type { ProductFranchise } from "@/models/product_franchise.model";
 import {
   PromotionForm,
   type PromotionFormInitialData,
   type PromotionFormValues,
 } from "./components/PromotionForm";
+import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
+import ClientLoading from "@/components/Client/Client.Loading";
 
 type PromotionRow = {
   id: string;
@@ -157,7 +158,7 @@ const PromotionPage = () => {
         });
 
       setList(rows);
-      toastSuccess(`Gọi API OK`);
+
     } catch {
       setError("Không thể tải danh sách promotion");
       setList([]);
@@ -302,17 +303,13 @@ const PromotionPage = () => {
   );
 
   return (
-    <div className="p-6 transition-all animate-fade-in">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">Quản lý Promotion</h1>
-      </div>
-
+    <>
       {isLoading ? (
-        <div>Đang tải dữ liệu...</div>
+        <ClientLoading/>
       ) : error ? (
         <div className="text-red-500">{error}</div>
       ) : (
-        <CRUDTable<PromotionRow>
+        <CRUDPageTemplate<PromotionRow>
           title="Danh sách promotion"
           data={list}
           columns={columns}
@@ -363,7 +360,7 @@ const PromotionPage = () => {
             : undefined
         }
       />
-    </div>
+    </>
   );
 };
 

@@ -5,17 +5,16 @@ export const PERM = {
   // Menu / Product / Category
   MENU_READ: "menu.read",
   MENU_WRITE: "menu.write",
-
   PRODUCT_READ: "product.read",
   PRODUCT_WRITE: "product.write",
-
   PRODUCT_CATEGORY_READ: "product_category.read",
-  PRODUCT_CATEGORY_WRITE: "product_category.read",
-
+  PRODUCT_CATEGORY_WRITE: "product_category.write",
   CATEGORY_READ: "category.read",
   CATEGORY_WRITE: "category.write",
   CATEGORY_FRANCHISE_READ: "category_franchise.read",
   CATEGORY_FRANCHISE_WRITE: "category_franchise.write",
+  PRODUCT_FRANCHISE_READ: "product_franchise.read",
+  PRODUCT_FRANCHISE_WRITE: "product_franchise.write",
 
   SHIFT_READ: "shift.read",
   SHIFT_WRITE: "shift.write",

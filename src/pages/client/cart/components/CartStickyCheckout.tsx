@@ -45,16 +45,23 @@ const CartStickyCheckout = ({
                 {subtotal.toLocaleString()}₫
               </span>
             )}
-
-            {discountBreakdown.map((discount) => (
-              <span
-                key={`${discount.label}-${discount.amount}`}
-                className="rounded-full bg-green-50 px-2 py-1 text-xs text-green-600"
-              >
-                -{discount.amount.toLocaleString()}₫ ({discount.label})
-              </span>
-            ))}
           </div>
+
+          {discountBreakdown.length > 0 && (
+            <div className="mt-2 flex flex-col gap-1 text-xs text-emerald-700">
+              {discountBreakdown.map((discount) => (
+                <div
+                  key={`${discount.label}-${discount.amount}`}
+                  className="flex items-center justify-between gap-4"
+                >
+                  <span className="text-slate-600">{discount.label}</span>
+                  <span className="font-semibold tabular-nums">
+                    -{discount.amount.toLocaleString()}₫
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end md:justify-end">

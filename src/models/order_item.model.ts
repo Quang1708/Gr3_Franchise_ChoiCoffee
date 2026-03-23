@@ -1,3 +1,12 @@
+export interface OrderItemOption {
+  productFranchiseRawId?: string;
+  productNameSnapshot: string;
+  productImageUrl?: string;
+  quantity: number;
+  priceSnapshot: number;
+  finalPrice: number;
+}
+
 export interface OrderItem {
   id: number;
   orderId: number;
@@ -12,7 +21,8 @@ export interface OrderItem {
   productImageUrl?: string;
   priceSnapshot: number; // Giá bán tại thời điểm mua (đã trừ KM nếu có)
   quantity: number;
-  lineTotal: number; // priceSnapshot * quantity
+  lineTotal: number; // Tổng tiền của dòng sản phẩm, bao gồm option
+  options?: OrderItemOption[];
   isDeleted: boolean;
   createdAt: string;
   updatedAt: string;

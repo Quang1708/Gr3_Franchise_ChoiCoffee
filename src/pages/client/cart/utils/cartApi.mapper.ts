@@ -13,6 +13,16 @@ type RawCartItem = {
     name?: string;
     image_url?: string;
   };
+  options?: RawCartItemOption[];
+};
+
+type RawCartItemOption = {
+  quantity?: number;
+  product_franchise_id?: string;
+  price_snapshot?: number;
+  final_price?: number;
+  product_name?: string;
+  product_image_url?: string;
 };
 
 type RawCartData = {
@@ -34,6 +44,7 @@ export type CartPricing = {
   cartId: string;
   franchiseId: string;
   subtotalAmount: number;
+  promotionDiscount: number;
   voucherDiscount: number;
   finalAmount: number;
   voucherCode: string;
@@ -64,6 +75,14 @@ export const mapCartDataToOrderItems = (cartData: RawCartData): OrderItem[] => {
     "https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=500&q=80";
 
   return (cartData.cart_items ?? []).map((item, index) => ({
+    options: (item.options ?? []).map((option, optionIndex) => ({
+      productFranchiseRawId: String(option.product_franchise_id ?? ""),
+      productNameSnapshot: option.product_name || `Option ${optionIndex + 1}`,
+      productImageUrl: option.product_image_url,
+      quantity: toNumber(option.quantity, 1),
+      priceSnapshot: toNumber(option.price_snapshot),
+      finalPrice: toNumber(option.final_price ?? option.price_snapshot),
+    })),
     id: index + 1,
     orderId: 0,
     productFranchiseId: toStableNumber(
@@ -106,6 +125,7 @@ export const extractCartPricing = (cartData: RawCartData): CartPricing => {
   const raw = cartData as RawCartData & {
     franchise_id?: string;
     subtotal_amount?: number;
+    promotion_discount?: number;
     voucher_discount?: number;
     final_amount?: number;
     voucher_code?: string;
@@ -117,16 +137,18 @@ export const extractCartPricing = (cartData: RawCartData): CartPricing => {
   );
 
   const subtotalAmount = toNumber(raw.subtotal_amount, fallbackSubtotal);
+  const promotionDiscount = toNumber(raw.promotion_discount, 0);
   const voucherDiscount = toNumber(raw.voucher_discount, 0);
   const finalAmount = toNumber(
     raw.final_amount,
-    subtotalAmount - voucherDiscount,
+    subtotalAmount - promotionDiscount - voucherDiscount,
   );
 
   return {
     cartId: String(cartData._id ?? ""),
     franchiseId: String(raw.franchise_id ?? ""),
     subtotalAmount,
+    promotionDiscount,
     voucherDiscount,
     finalAmount,
     voucherCode: String(raw.voucher_code ?? ""),

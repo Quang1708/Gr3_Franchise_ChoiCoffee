@@ -8,8 +8,9 @@ import type { CartVoucher } from "../models/cartVoucher.model";
 import { applyVoucherCart11Service } from "../services/cart11.service";
 import { removeVoucherCart12Service } from "../services/cart12.service";
 import { deleteFranchiseCartService } from "../services/cartDeleteFranchise.service";
-import { deleteCartItemService } from "../services/cartDeleteItem.service";
 import { getActiveCartByCustomer } from "../services/getActiveCart.service";
+import { deleteItem } from "@/components/cart/usecase/deleteItem.usecase";
+import { updateQuantityItem } from "@/components/cart/usecase/updateItemQuantity.usecase";
 import {
   extractCartData,
   extractCartDataList,
@@ -33,6 +34,7 @@ export const useCartPageState = () => {
         cartId: string;
         franchiseId: string;
         subtotalAmount: number;
+        promotionDiscount: number;
         voucherDiscount: number;
         finalAmount: number;
         voucherCode: string;
@@ -67,6 +69,7 @@ export const useCartPageState = () => {
   );
 
   const [subtotalAmount, setSubtotalAmount] = useState(0);
+  const [promotionDiscount, setPromotionDiscount] = useState(0);
   const [voucherDiscount, setVoucherDiscount] = useState(0);
   const [finalAmount, setFinalAmount] = useState(0);
 
@@ -77,6 +80,7 @@ export const useCartPageState = () => {
         cartId: string;
         franchiseId: string;
         subtotalAmount: number;
+        promotionDiscount: number;
         voucherDiscount: number;
         finalAmount: number;
         voucherCode: string;
@@ -84,6 +88,7 @@ export const useCartPageState = () => {
         cartId: string;
         franchiseId: string;
         subtotalAmount: number;
+        promotionDiscount: number;
         voucherDiscount: number;
         finalAmount: number;
         voucherCode: string;
@@ -95,6 +100,7 @@ export const useCartPageState = () => {
           cartId: targetCartId,
           franchiseId: fallbackFranchiseId,
           subtotalAmount: 0,
+          promotionDiscount: 0,
           voucherDiscount: 0,
           finalAmount: 0,
           voucherCode: "",
@@ -110,6 +116,8 @@ export const useCartPageState = () => {
           (acc, pricing) => ({
             subtotalAmount:
               acc.subtotalAmount + Number(pricing.subtotalAmount || 0),
+            promotionDiscount:
+              acc.promotionDiscount + Number(pricing.promotionDiscount || 0),
             voucherDiscount:
               acc.voucherDiscount + Number(pricing.voucherDiscount || 0),
             finalAmount: acc.finalAmount + Number(pricing.finalAmount || 0),
@@ -117,6 +125,7 @@ export const useCartPageState = () => {
           }),
           {
             subtotalAmount: 0,
+            promotionDiscount: 0,
             voucherDiscount: 0,
             finalAmount: 0,
             voucherCode: "",
@@ -124,6 +133,7 @@ export const useCartPageState = () => {
         );
 
         setSubtotalAmount(aggregated.subtotalAmount);
+        setPromotionDiscount(aggregated.promotionDiscount);
         setVoucherDiscount(aggregated.voucherDiscount);
         setFinalAmount(aggregated.finalAmount);
         setVoucherCode(aggregated.voucherCode);
@@ -146,6 +156,7 @@ export const useCartPageState = () => {
         setOrderItem([]);
         setSelectedIds([]);
         setSubtotalAmount(0);
+        setPromotionDiscount(0);
         setVoucherDiscount(0);
         setFinalAmount(0);
         setVoucherCode("");
@@ -175,6 +186,7 @@ export const useCartPageState = () => {
             cartId: string;
             franchiseId: string;
             subtotalAmount: number;
+            promotionDiscount: number;
             voucherDiscount: number;
             finalAmount: number;
             voucherCode: string;
@@ -192,12 +204,15 @@ export const useCartPageState = () => {
         .reduce(
           (acc, pricing) => ({
             subtotalAmount: acc.subtotalAmount + pricing.subtotalAmount,
+            promotionDiscount:
+              acc.promotionDiscount + pricing.promotionDiscount,
             voucherDiscount: acc.voucherDiscount + pricing.voucherDiscount,
             finalAmount: acc.finalAmount + pricing.finalAmount,
             voucherCode: acc.voucherCode || pricing.voucherCode,
           }),
           {
             subtotalAmount: 0,
+            promotionDiscount: 0,
             voucherDiscount: 0,
             finalAmount: 0,
             voucherCode: "",
@@ -210,6 +225,7 @@ export const useCartPageState = () => {
       setFranchiseName(cartMeta.franchiseName);
       setFranchiseImageUrl(cartMeta.franchiseImageUrl);
       setSubtotalAmount(aggregatedPricing.subtotalAmount);
+      setPromotionDiscount(aggregatedPricing.promotionDiscount);
       setVoucherDiscount(aggregatedPricing.voucherDiscount);
       setFinalAmount(aggregatedPricing.finalAmount);
       setVoucherCode(aggregatedPricing.voucherCode);
@@ -266,6 +282,18 @@ export const useCartPageState = () => {
     void loadCartFromApi();
   }, [loadCartFromApi]);
 
+  useEffect(() => {
+    const handleCartUpdated = () => {
+      void loadCartFromApi();
+    };
+
+    window.addEventListener("cartUpdated", handleCartUpdated);
+
+    return () => {
+      window.removeEventListener("cartUpdated", handleCartUpdated);
+    };
+  }, [loadCartFromApi]);
+
   const toggleSelectItem = (id: number) => {
     setSelectedIds((prev) =>
       prev.includes(id)
@@ -283,13 +311,57 @@ export const useCartPageState = () => {
   };
 
   const updateQuantity = (id: number, delta: number) => {
-    setOrderItem((prev) =>
-      prev.map((item) =>
-        item.productFranchiseId === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item,
-      ),
+    const targetItem = orderItems.find(
+      (item) => item.productFranchiseId === id,
     );
+    if (!targetItem) {
+      toastError("Không tìm thấy sản phẩm để cập nhật");
+      return;
+    }
+
+    const cartItemId = String(targetItem.cartItemId ?? "");
+    if (!cartItemId) {
+      toastError("Không đủ thông tin để cập nhật số lượng");
+      return;
+    }
+
+    const nextQuantity = Math.max(1, targetItem.quantity + delta);
+    if (nextQuantity === targetItem.quantity) {
+      return;
+    }
+
+    void (async () => {
+      setIsMutatingCart(true);
+      try {
+        const response = await updateQuantityItem(cartItemId, nextQuantity);
+        const isSuccess = Boolean(
+          response &&
+            typeof response === "object" &&
+            "success" in (response as Record<string, unknown>)
+            ? (response as { success?: unknown }).success
+            : true,
+        );
+
+        if (!isSuccess) {
+          toastError("Không thể cập nhật số lượng");
+          return;
+        }
+
+        const updatedCarts = extractCartDataList(response);
+        if (updatedCarts.length > 0) {
+          syncCartStateFromList(updatedCarts, targetItem.cartId);
+        } else {
+          await loadCartFromApi();
+        }
+      } catch (error) {
+        const err = error as { response?: { data?: { message?: string } } };
+        toastError(
+          err.response?.data?.message || "Không thể cập nhật số lượng",
+        );
+      } finally {
+        setIsMutatingCart(false);
+      }
+    })();
   };
 
   const openDeleteSingleModal = (id: number) => {
@@ -361,7 +433,7 @@ export const useCartPageState = () => {
       }
 
       console.log("[Cart] delete-item request", { cart_item_id: cartItemId });
-      const response = await deleteCartItemService(cartItemId);
+      const response = await deleteItem(cartItemId);
       console.log("[Cart] delete-item response", response);
       const isSuccess = Boolean(
         response &&
@@ -568,7 +640,10 @@ export const useCartPageState = () => {
           return {
             ...current,
             voucherDiscount: discount,
-            finalAmount: Math.max(0, baseSubtotal - discount),
+            finalAmount: Math.max(
+              0,
+              baseSubtotal - Number(current.promotionDiscount || 0) - discount,
+            ),
             voucherCode: voucher.code,
           };
         });
@@ -663,7 +738,11 @@ export const useCartPageState = () => {
           ...current,
           voucherCode: "",
           voucherDiscount: 0,
-          finalAmount: Number(current.subtotalAmount || 0),
+          finalAmount: Math.max(
+            0,
+            Number(current.subtotalAmount || 0) -
+              Number(current.promotionDiscount || 0),
+          ),
         }));
       }
 
@@ -706,7 +785,9 @@ export const useCartPageState = () => {
     productToDelete,
     franchiseToDelete,
     subtotal: subtotalAmount,
-    discountAmount: voucherDiscount,
+    voucherDiscount,
+    promotionDiscount,
+    discountAmount: voucherDiscount + promotionDiscount,
     finalTotal: finalAmount,
     setShowVoucherModal,
     setShowDeleteModal,

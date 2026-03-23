@@ -30,6 +30,8 @@ const CartPage: React.FC = () => {
     productToDelete,
     franchiseToDelete,
     subtotal,
+    voucherDiscount,
+    promotionDiscount,
     discountAmount,
     finalTotal,
     setShowVoucherModal,
@@ -53,6 +55,7 @@ const CartPage: React.FC = () => {
         franchiseName: string;
         franchiseImageUrl: string;
         franchiseId: string;
+        promotionDiscount: number;
         voucherCode: string;
         items: typeof orderItems;
       }
@@ -69,6 +72,7 @@ const CartPage: React.FC = () => {
           franchiseName: item.franchiseName || franchiseName,
           franchiseImageUrl: item.franchiseImageUrl || franchiseImageUrl,
           franchiseId: item.franchiseId || pricing?.franchiseId || "",
+          promotionDiscount: Number(pricing?.promotionDiscount ?? 0),
           voucherCode: pricing?.voucherCode || "",
           items: [],
         });
@@ -82,14 +86,21 @@ const CartPage: React.FC = () => {
 
   const discountBreakdown = React.useMemo(() => {
     return groupedByFranchise
-      .map((group) => {
+      .flatMap((group) => {
         const pricing = group.cartId ? cartPricingMap[group.cartId] : undefined;
-        const amount = Number(pricing?.voucherDiscount ?? 0);
+        const voucherAmount = Number(pricing?.voucherDiscount ?? 0);
+        const promotionAmount = Number(pricing?.promotionDiscount ?? 0);
 
-        return {
-          label: group.franchiseName,
-          amount,
-        };
+        return [
+          {
+            label: `Khuyến mãi - ${group.franchiseName}`,
+            amount: promotionAmount,
+          },
+          {
+            label: `Voucher - ${group.franchiseName}`,
+            amount: voucherAmount,
+          },
+        ];
       })
       .filter((item) => item.amount > 0);
   }, [groupedByFranchise, cartPricingMap]);
@@ -144,11 +155,20 @@ const CartPage: React.FC = () => {
 
                 <div className="p-3">
                   <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <span className="material-symbols-outlined text-base text-primary">
-                        local_activity
-                      </span>
-                      <span>Voucher của franchise</span>
+                    <div className="flex flex-col gap-1 text-sm text-slate-600">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-base text-primary">
+                          local_activity
+                        </span>
+                        <span>Ưu đãi của franchise</span>
+                      </div>
+
+                      {group.promotionDiscount > 0 && (
+                        <span className="text-xs text-emerald-700 font-medium">
+                          Khuyến mãi: -
+                          {group.promotionDiscount.toLocaleString()}₫
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <button
@@ -210,7 +230,8 @@ const CartPage: React.FC = () => {
                     subtotal,
                     finalAmount: finalTotal,
                     voucherCode,
-                    voucherDiscount: discountAmount,
+                    voucherDiscount,
+                    promotionDiscount,
                     cartId,
                   },
                 });

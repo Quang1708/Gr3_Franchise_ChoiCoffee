@@ -17,7 +17,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  CalendarCheck,
 } from "lucide-react";
 
 import { useAuthStore } from "@/stores/auth.store";
@@ -89,11 +88,6 @@ const menuSections: MenuSection[] = [
       { icon: <Users size={18} />, label: "Customers", path: "customer" },
       { icon: <Boxes size={18} />, label: "Inventory", path: "inventory" },
       { icon: <ShoppingCart size={18} />, label: "Cart", path: "cart" },
-      {
-        icon: <CalendarCheck size={18} />,
-        label: "Shift Assignment",
-        path: "shift-assignment",
-      },
       { icon: <User size={18} />, label: "Shift", path: "shift" },
     ],
   },

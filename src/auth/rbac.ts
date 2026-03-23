@@ -52,18 +52,21 @@ export function getEffectivePermissions(
 ): PermissionCode[] {
   if (!user?.roles?.length) return [];
 
+  const normalizedFranchiseId =
+    franchiseId == null || franchiseId === "" ? null : String(franchiseId);
+
   const roleCodes = user.roles
     .filter((r) => {
       if (!r.role) return false;
 
-      // ✅ GLOBAL role (ADMIN)
-      if (franchiseId === null && r.scope === "GLOBAL") {
+      // GLOBAL roles apply in all contexts.
+      if (r.scope === "GLOBAL") {
         return true;
       }
 
-      // ✅ FRANCHISE role
-      if (franchiseId !== null && r.scope === "FRANCHISE") {
-        return String(r.franchise_id) === String(franchiseId);
+      // FRANCHISE role only applies when a franchise is selected.
+      if (normalizedFranchiseId !== null && r.scope === "FRANCHISE") {
+        return String(r.franchise_id) === normalizedFranchiseId;
       }
 
       return false;

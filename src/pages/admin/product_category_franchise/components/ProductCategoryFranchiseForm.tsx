@@ -1,5 +1,5 @@
 import { FormInput } from "@/components/Admin/form/FormInput";
-import FormSelect from "@/components/Admin/form/FormSelect";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 import { useForm } from "react-hook-form";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";

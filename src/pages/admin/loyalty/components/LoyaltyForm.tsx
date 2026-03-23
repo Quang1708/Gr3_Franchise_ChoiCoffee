@@ -3,7 +3,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { Plus, Trash2, Coins, Award, Loader2 } from "lucide-react";
 
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
-import FormSelect from "@/components/Admin/form/FormSelect";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 import { FormInput } from "@/components/Admin/form/FormInput";
 import type { LoyaltyRule } from "@/pages/admin/loyalty/models/loyalty.model";
 import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
 import { FormInput } from "@/components/Admin/form/FormInput";
-import FormSelect from "@/components/Admin/form/FormSelect";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 import { getUserFranchiseRoleFormSchema } from "../schema/userFranchiseRole.schema";
 
 export type UserFranchiseRoleFormValues = {

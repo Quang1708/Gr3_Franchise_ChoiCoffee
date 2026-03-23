@@ -168,6 +168,11 @@ const UserPage = () => {
   useEffect(() => {
     fetchUsers(1);
   }, [fetchUsers]);
+  useEffect(() => {
+    if (!canManageUser && activeTab === "userFranchiseRoles") {
+      setActiveTab("users");
+    }
+  }, [canManageUser, activeTab]);
 
   const handleSearchUsers = async (
     keyword: string,

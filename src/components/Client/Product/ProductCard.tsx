@@ -55,14 +55,14 @@ const ProductCard = ({ item }: ProductCardProps) => {
     >
       <div className="group h-full bg-white border border-charcoal rounded-xl overflow-hidden flex flex-col relative">
 
-        <div className="absolute top-4 left-4 z-10 space-y-2 pointer-events-none">
+        {/* <div className="absolute top-4 left-4 z-10 space-y-2 pointer-events-none">
           <div className="bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-full">
             Hot
           </div>
           <div className="bg-charcoal text-white text-[10px] font-bold px-3 py-1 rounded-full">
             Mới
           </div>
-        </div>     
+        </div>      */}
         <div className="relative overflow-hidden">
           <div className="aspect-4/5">
             <img

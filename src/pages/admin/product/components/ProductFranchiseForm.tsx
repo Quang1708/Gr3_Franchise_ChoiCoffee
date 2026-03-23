@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { Loader2, MapPin, Layers, Info } from "lucide-react";
 
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
-import FormSelect from "@/components/Admin/form/FormSelect";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 import { FormInput } from "@/components/Admin/form/FormInput";
 import type { ProductFranchise } from "@/components/cart/models/productResponse.model";
 

@@ -47,7 +47,7 @@ const ROUTER_URL = {
     ADMIN_LOGIN: `/admin/login`,
     ADMIN_SELECT_CONTEXT: `/admin/select-context`,
     FORGOT_PASSWORD: `/admin/forgot-password`,
-    CHANGE_PASSWORD: `/admin/change-password`,
+    REQUEST_NEW_PASSWORD: `/admin/request-new-password`,
     VERIFY_TOKEN: "/admin/verify",
     VERIFY_EMAIL: "/verify-email/:token",
     ADMIN_CART: `/admin/cart`,

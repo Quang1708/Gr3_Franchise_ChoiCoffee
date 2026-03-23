@@ -57,13 +57,16 @@ export function getEffectivePermissions(
 ): PermissionCode[] {
   if (!user?.roles?.length) return [];
 
+  const normalizedFranchiseId =
+    franchiseId == null || franchiseId === "" ? null : String(franchiseId);
+
   const roleCodes = user.roles
     .filter((r) => {
       const roleCode = (r.role ?? r.role_code) as string | undefined;
       if (!roleCode) return false;
 
-      // ✅ GLOBAL role (ADMIN)
-      if (franchiseId === null && r.scope === "GLOBAL") {
+      // GLOBAL roles apply in all contexts.
+      if (r.scope === "GLOBAL") {
         return true;
       }
 

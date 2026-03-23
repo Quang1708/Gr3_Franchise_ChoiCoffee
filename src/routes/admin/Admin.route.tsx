@@ -153,8 +153,11 @@ const AdminRoutes = (
 
         <Route path="promotion" element={<PromotionPage />} />
 
-        <Route element={<RequirePermission perm={PERM.USER_MANAGE} />}>
+        <Route element={<RequirePermission perm={PERM.USER_READ} />}>
           <Route path="user" element={<UserPage />} />
+        </Route>
+
+        <Route element={<RequirePermission perm={PERM.USER_MANAGE} />}>
           <Route
             path="user-franchise-role"
             element={<UserFranchiseRolePage />}

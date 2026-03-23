@@ -18,6 +18,7 @@ interface CustomSelectProps {
   searchKey?: string; // thêm prop searchKey để hỗ trợ tìm kiếm theo key khác với value
   value: string;
   onChange: (value: string) => void;
+  disabled?: boolean;
   options?: Option[];
   placeholder?: string;
   icon?: React.ReactNode;
@@ -36,6 +37,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
   fetchOptions,
   value,
   onChange,
+  disabled = false,
   options: staticOptions = [],
   placeholder,
   icon,
@@ -151,22 +153,35 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
       ref={containerRef}
     >
       <div
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (disabled) return;
+          setIsOpen(!isOpen);
+        }}
         className={`flex items-center gap-2 w-full px-3 py-2 text-sm bg-white border rounded-lg cursor-pointer transition-all select-none
-            ${isOpen ? "border-primary ring-2 ring-primary/20" : "border-gray-200 hover:border-gray-300"}`}
+            ${disabled
+              ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+              : isOpen
+                ? "border-primary ring-2 ring-primary/20"
+                : "border-gray-200 hover:border-gray-300"}`}
       >
         {icon && <span className="text-gray-500">{icon}</span>}
         <span
-          className={`flex-1 truncate ${!selectedOption ? "text-gray-500" : "text-gray-700"}`}
+          className={`flex-1 truncate ${
+            disabled
+              ? "text-gray-500"
+              : !selectedOption
+                ? "text-gray-500"
+                : "text-gray-700"
+          }`}
         >
           {selectedOption ? selectedOption.label : placeholder || "Chọn..."}
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-gray-500 transition-transform ${isOpen && !disabled ? "rotate-180" : ""}`}
         />
       </div>
 
-      {isOpen && (
+      {isOpen && !disabled && (
         <div
           className={`absolute z-50 w-full bg-white border border-gray-100 rounded-lg shadow-lg max-h-60 overflow-auto mt-1 ${position === "top" ? "bottom-full mb-1" : "mt-1"}`}
         >

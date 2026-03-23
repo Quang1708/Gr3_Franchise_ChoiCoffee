@@ -28,6 +28,8 @@ import { deleteOption } from "./usecase/deleteOption.usecase";
 import type { AddOptionRequest } from "./services/addOption.service";
 import { ActionConfirmModal } from "../Admin/template/ActionConfirmModal";
 import { checkoutCart } from "./usecase/checkoutCart.usecase";
+import { useAdminContextStore } from "@/stores";
+import { useAuthStore } from "@/stores/auth.store";
 const MAX_TOPPING_ITEMS = 10;
 
 const CartForm = (props: CartFormProps) => {
@@ -36,6 +38,42 @@ const CartForm = (props: CartFormProps) => {
   const [cart, setCart] = useState<CartData | null>(
     initialData ? (initialData as any) : null,
   );
+
+  const selectedFranchiseId = useAdminContextStore(
+    (s) => s.selectedFranchiseId,
+  );
+  const adminFranchises = useAdminContextStore((s) => s.franchises);
+  const user = useAuthStore((s) => s.user);
+  const isAdmin =
+    user?.roles?.some((r) => (r.role ?? r.role_code) === "ADMIN") ?? false;
+  const shouldLockFranchise =
+    props.mode === "create" && isAdmin && !!selectedFranchiseId;
+
+  useEffect(() => {
+    if (!props.isOpen || props.mode !== "create" || !shouldLockFranchise) return;
+    if (state.franchiseSelected?.id === selectedFranchiseId) return;
+
+    const selected = adminFranchises.find((f) => f.id === selectedFranchiseId);
+    handlers.setFranchiseSelected(
+      selected
+        ? { id: selected.id, name: selected.name, code: selected.code }
+        : { id: selectedFranchiseId as string, name: "", code: "" },
+    );
+    form.setValue("franchise_id", selectedFranchiseId as string);
+    form.setValue("product_franchise_id", "");
+    handlers.setProductFranchiseSelected(null);
+    handlers.setProductFranchiseCache([]);
+    handlers.setToppingSelected({});
+    // Intentionally keep deps minimal to avoid re-triggering on unstable handler object identities.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    props.isOpen,
+    props.mode,
+    shouldLockFranchise,
+    selectedFranchiseId,
+    adminFranchises,
+    state.franchiseSelected?.id,
+  ]);
 
   const [loading, setLoading] = useState(false);
   const [activePopover, setActivePopover] = useState<string | null>(null);
@@ -274,9 +312,21 @@ const CartForm = (props: CartFormProps) => {
                   <label className={labelClass}>Chi nhánh</label>
                   <CustomSelect
                     fetchOptions={handlers.fetchFranchise as any}
+                    options={
+                      shouldLockFranchise && state.franchiseSelected?.id
+                        ? [
+                            {
+                              value: state.franchiseSelected.id,
+                              label: state.franchiseSelected.name || "Chi nhánh đã chọn",
+                            },
+                          ]
+                        : []
+                    }
                     value={state.franchiseSelected?.id || ""}
                     placeholder="Chọn chi nhánh"
+                    disabled={shouldLockFranchise}
                     onChange={(id) => {
+                      if (shouldLockFranchise) return;
                       const selected =
                         state.franchiseCache.find((f) => f.id === id) || null;
                       handlers.setFranchiseSelected(selected);
@@ -854,7 +904,7 @@ const CartForm = (props: CartFormProps) => {
                       {isEditing ? (
                         <textarea
                           title="Cập nhật địa chỉ"
-                          className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 focus:ring-1 focus:ring-primary outline-none min-h-[60px]"
+                          className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 focus:ring-1 focus:ring-primary outline-none min-h-15"
                           value={tempData.address}
                           onChange={(e) =>
                             setTempData({

@@ -22,6 +22,9 @@ import { inventoryTableSchema } from "./schemas/inventory.schema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { InventoryTableForm } from "./schemas/inventory.schema";
+import { can } from "@/auth/rbac";
+import { PERM } from "@/auth/rbac.permissions";
+import { useAuthStore } from "@/stores/auth.store";
 
 type InventoryRow = {
   id: string;
@@ -72,7 +75,8 @@ const InventoryPage = () => {
   const [pageSize, setPageSize] = useState(10);
 
   const hasSelection = selectedIds.length > 0;
-
+  const user = useAuthStore((s) => s.user);
+  const canUpdate = can(user, PERM.INVENTORY_UPDATE, selectedFranchiseId);
   const { register, setValue, watch, reset } = useForm<InventoryTableForm>({
     resolver: zodResolver(inventoryTableSchema),
     defaultValues: {
@@ -307,7 +311,7 @@ const InventoryPage = () => {
         return (
           <input
             type="number"
-            disabled={row.isDeleted}
+            disabled={row.isDeleted || !canUpdate}
             {...register(`rows.${index}.quantity`, { valueAsNumber: true })}
             defaultValue={row.quantity}
             onChange={(e) => {
@@ -340,7 +344,7 @@ const InventoryPage = () => {
         return (
           <input
             type="number"
-            disabled={row.isDeleted}
+            disabled={row.isDeleted || !canUpdate}
             {...register(`rows.${index}.alertThreshold`, {
               valueAsNumber: true,
             })}
@@ -370,10 +374,9 @@ const InventoryPage = () => {
   if (pageLoading || apiLoading) return <ClientLoading />;
 
   return (
-    <>
+    <div className="flex flex-col h-screen overflow-hidden">
       {/* BULK TOOLS */}
-
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap shrink-0">
         <InventoryExcelTools
           rows={tableRows}
           selectedIds={selectedIds}
@@ -415,7 +418,7 @@ const InventoryPage = () => {
           onClick={updateSelected}
           disabled={!hasSelection}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer
-          ${hasSelection ? "bg-primary text-white" : "bg-gray-200 text-gray-400"}`}
+          ${hasSelection && canUpdate ? "bg-primary text-white" : "bg-gray-200 text-gray-400"}`}
         >
           <Save size={16} />
           Update Selected {hasSelection && `(${selectedIds.length})`}
@@ -455,63 +458,70 @@ const InventoryPage = () => {
           </div>{" "}
         </div>
       )}
-      <CRUDPageTemplate
-        title="Quản lý tồn kho"
-        data={paginatedRows}
-        columns={columns}
-        currentPage={page}
-        pageSize={pageSize}
-        totalItems={tableRows.length}
-        onPageChange={setPage}
-        onPageSizeChange={setPageSize}
-        isTableLoading={loading}
-        onSearch={handleSearch}
-        selectedRowId={selectedItem?.id}
-        onRowClick={(item) => setSelectedItem(item)}
-        onRefresh={async () => {
-          setPage(1);
-          setKeyword("");
-          await fetchAll();
-        }}
-        onAdd={() => setCreateOpen(true)}
-        onEdit={(row) =>
-          setAdjustItem({
-            id: row.id,
-            product_franchise_id: row.product_franchise_id,
-            quantity: row.quantity,
-            alert_threshold: row.alertThreshold,
-          })
-        }
-        onDelete={(row) => setDeleteItem(row)}
-        onView={(row) => setLogInventoryId(row.id)}
-        onRestore={async (row) => {
-          setApiLoading(true);
-
-          await restore(row.id);
-          await fetchAll();
-
-          setApiLoading(false);
-        }}
-        searchRight={
-          <button
-            onClick={() => setLowOnly((v) => !v)}
-            className={`px-3 py-2 border rounded-lg text-sm
+      <div className="flex-1 min-h-0 flex flex-col">
+        <CRUDPageTemplate
+          title="Quản lý tồn kho"
+          data={paginatedRows}
+          columns={columns}
+          currentPage={page}
+          pageSize={pageSize}
+          totalItems={tableRows.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          tableMaxHeightClass="flex-1 overflow-auto"
+          isTableLoading={loading}
+          onSearch={handleSearch}
+          selectedRowId={selectedItem?.id}
+          onRowClick={(item) => setSelectedItem(item)}
+          onRefresh={async () => {
+            setPage(1);
+            setKeyword("");
+            await fetchAll();
+          }}
+          onAdd={canUpdate ? () => setCreateOpen(true) : undefined}
+          onEdit={
+            canUpdate
+              ? (row) =>
+                  setAdjustItem({
+                    id: row.id,
+                    product_franchise_id: row.product_franchise_id,
+                    quantity: row.quantity,
+                    alert_threshold: row.alertThreshold,
+                  })
+              : undefined
+          }
+          onDelete={canUpdate ? (row) => setDeleteItem(row) : undefined}
+          onView={(row) => setLogInventoryId(row.id)}
+          onRestore={
+            canUpdate
+              ? async (row) => {
+                  setApiLoading(true);
+                  await restore(row.id);
+                  await fetchAll();
+                  setApiLoading(false);
+                }
+              : undefined
+          }
+          searchRight={
+            <button
+              onClick={() => setLowOnly((v) => !v)}
+              className={`px-3 py-2 border rounded-lg text-sm
             ${
               lowOnly
                 ? "bg-red-50 border-red-300 text-red-600"
                 : "bg-white border-gray-200"
             }`}
-          >
-            {lowOnly ? "Đang lọc sắp hết" : "Lọc sắp hết"}
-          </button>
-        }
-      />
-
+            >
+              {lowOnly ? "Đang lọc sắp hết" : "Lọc sắp hết"}
+            </button>
+          }
+        />
+      </div>
       <AdjustInventoryModal
         isOpen={!!adjustItem}
         inventory={adjustItem}
         onClose={() => setAdjustItem(null)}
-        onSubmit={async (data) => {
+        onSubmit={async (data: any) => {
           setApiLoading(true);
 
           await adjust(data);
@@ -565,7 +575,7 @@ const InventoryPage = () => {
         inventoryId={logInventoryId}
         onClose={() => setLogInventoryId(null)}
       />
-    </>
+    </div>
   );
 };
 

@@ -3,7 +3,7 @@ import { axiosAdminClient } from "@/api"
 export const getCartByCustomer = async (customerId: string, status?: string) => {
     try{
         const response = await axiosAdminClient.get(
-            `/api/carts/customer/${customerId}?status=${status || "ACTIVE"}`
+            `/api/carts/customer/${customerId}?status=${status}`
         )
         if (response){
             return response.data

@@ -98,7 +98,7 @@ const ToggleSwitch = ({
 );
 
 // --- Main Template ---
-export function CRUDPageTemplate<T extends { id?: string | number }>({
+export function CRUDPageTemplate<T extends { id?: string | number, _id?: string}>({
   title,
   data,
   columns,

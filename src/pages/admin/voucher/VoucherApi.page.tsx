@@ -19,7 +19,22 @@ import {
 import { toastError, toastSuccess } from "@/utils/toast.util";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 
-type VoucherRow = Voucher & { is_deleted: boolean };
+type VoucherRow = Voucher & {
+  is_deleted: boolean;
+  /** Tên chi nhánh để hiển thị / sort / search */
+  franchiseDisplay: string;
+};
+
+/** Badge loại voucher — cùng phong cách Loại đơn (Order page) */
+const voucherTypeColor: Record<VoucherType, string> = {
+  PERCENT: "bg-indigo-100 text-indigo-800",
+  FIXED: "bg-emerald-100 text-emerald-800",
+};
+
+const voucherTypeLabel: Record<VoucherType, string> = {
+  PERCENT: "Giảm %",
+  FIXED: "Giảm tiền",
+};
 
 const formatDate = (value?: string) => {
   if (!value) return "--";
@@ -74,6 +89,9 @@ const VoucherApiPage = () => {
   const [confirmType, setConfirmType] = useState<"delete" | "restore">("delete");
   const [confirmItem, setConfirmItem] = useState<VoucherRow | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
+
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const franchiseLabelById = useMemo(() => {
     const m = new Map<string, string>();
@@ -161,16 +179,42 @@ const VoucherApiPage = () => {
   }, [isAdminMode, selectedFranchiseId]);
 
   const tableData: VoucherRow[] = useMemo(
-    () => vouchers.map((v) => ({ ...v, is_deleted: v.isDeleted })),
-    [vouchers],
+    () =>
+      vouchers.map((v) => ({
+        ...v,
+        is_deleted: v.isDeleted,
+        franchiseDisplay:
+          v.franchiseName ||
+          franchiseLabelById.get(String(v.franchiseId)) ||
+          `#${v.franchiseId}`,
+      })),
+    [vouchers, franchiseLabelById],
   );
+
+  /** Lọc theo khoảng ngày (theo ngày bắt đầu hiệu lực), giống Order page */
+  const filteredTableData = useMemo(() => {
+    if (!fromDate && !toDate) return tableData;
+    return tableData.filter((row) => {
+      const d = new Date(row.startTime);
+      if (Number.isNaN(d.getTime())) return false;
+      if (fromDate) {
+        const f = new Date(`${fromDate}T00:00:00`);
+        if (d < f) return false;
+      }
+      if (toDate) {
+        const t = new Date(`${toDate}T23:59:59.999`);
+        if (d > t) return false;
+      }
+      return true;
+    });
+  }, [tableData, fromDate, toDate]);
 
   const columns: Column<VoucherRow>[] = useMemo(
     () => [
       {
-        header: "Mã",
+        header: "Mã voucher",
         accessor: "code",
-        className: "min-w-[120px]",
+        className: "min-w-[140px]",
         sortable: true,
       },
       {
@@ -181,41 +225,54 @@ const VoucherApiPage = () => {
       },
       {
         header: "Chi nhánh",
-        accessor: "franchiseId",
+        accessor: "franchiseDisplay",
+        className: "min-w-[200px]",
         sortable: true,
-        render: (it) => getFranchiseName(it),
       },
       {
         header: "Loại",
         accessor: "type",
-        render: (it) => (it.type === "PERCENT" ? "Giảm %" : "Giảm tiền"),
+        sortable: true,
+        render: (it) => (
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${voucherTypeColor[it.type]}`}
+          >
+            {voucherTypeLabel[it.type]}
+          </span>
+        ),
       },
       {
         header: "Giá trị",
         accessor: "value",
         sortable: true,
-        render: (it) =>
-          it.type === "PERCENT"
-            ? `${it.value}%`
-            : `${Number(it.value).toLocaleString("vi-VN")}₫`,
+        render: (it) => (
+          <span className="font-semibold text-primary">
+            {it.type === "PERCENT"
+              ? `${it.value}%`
+              : `${Number(it.value).toLocaleString("vi-VN")} đ`}
+          </span>
+        ),
       },
       {
         header: "Đã dùng / Tổng",
         accessor: "quotaUsed",
+        sortable: true,
         render: (it) => `${it.quotaUsed} / ${it.quotaTotal}`,
       },
       {
         header: "Từ ngày",
         accessor: "startTime",
+        sortable: true,
         render: (it) => formatDate(it.startTime),
       },
       {
         header: "Đến ngày",
         accessor: "endTime",
+        sortable: true,
         render: (it) => formatDate(it.endTime),
       },
     ],
-    [franchiseLabelById],
+    [],
   );
 
   const handleOpenCreate = () => {
@@ -350,41 +407,71 @@ const VoucherApiPage = () => {
 
   if (error) {
     return (
-      <div className="p-6">
-        <h1 className="text-xl font-semibold text-red-600">{error}</h1>
-        <button
-          type="button"
-          className="mt-4 px-4 py-2 bg-primary text-white rounded-lg"
-          onClick={() => void fetchVoucherList()}
-        >
-          Thử lại
-        </button>
+      <div className="p-6 transition-all animate-fade-in">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800">
+          <p className="font-medium">{error}</p>
+          <button
+            type="button"
+            className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
+            onClick={() => void fetchVoucherList()}
+          >
+            Thử lại
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="p-6 transition-all animate-fade-in">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">
-        Quản lý Voucher
-      </h1>
-
+      {/*
+        Layout giống Order page: một khối CRUDTable (tiêu đề IN HOA trong card),
+        thanh tìm kiếm + lọc ngày trái, dropdown lọc phải, badge loại, giá trị màu primary.
+      */}
       <CRUDTable<VoucherRow>
         title="Danh sách voucher"
-        data={tableData}
+        data={filteredTableData}
         columns={columns}
-        pageSize={10}
+        pageSize={5}
         onAdd={handleOpenCreate}
         onView={handleView}
         onDelete={(item) => openConfirm("delete", item)}
         onRestore={(item) => openConfirm("restore", item)}
         statusField="isActive"
         onStatusChange={handleChangeStatus}
-        searchKeys={["code", "name", "type"]}
+        searchKeys={["code", "name", "franchiseDisplay", "type"]}
+        searchRight={
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              aria-label="Lọc từ ngày"
+            />
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              aria-label="Lọc đến ngày"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setFromDate("");
+                setToDate("");
+              }}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Xóa ngày
+            </button>
+          </div>
+        }
         filters={[
           {
             key: "type",
-            label: "Loại",
+            label: "Loại voucher",
             options: [
               { value: "PERCENT", label: "Giảm %" },
               { value: "FIXED", label: "Giảm tiền" },

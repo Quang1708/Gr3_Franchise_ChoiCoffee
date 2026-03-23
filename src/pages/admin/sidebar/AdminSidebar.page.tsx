@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import React from "react";
+import React, { useState } from "react";
 import {
   LayoutDashboard,
   Store,
@@ -16,128 +16,245 @@ import {
   BadgePercent,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  CalendarCheck,
 } from "lucide-react";
 
 import { useAuthStore } from "@/stores/auth.store";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import { isMenuVisible } from "@/auth/menu.guard";
 
-export type MenuItem = {
+/* ================= TYPES ================= */
+type MenuItem = {
   icon: React.ReactNode;
   label: string;
-  path: string;
+  path?: string;
+  children?: MenuItem[];
 };
 
-const menuItems: MenuItem[] = [
+type MenuSection = {
+  title: string;
+  items: MenuItem[];
+};
+
+/* ================= MENU ================= */
+const menuSections: MenuSection[] = [
   {
-    icon: <LayoutDashboard size={20} />,
-    label: "Dashboard",
-    path: "dashboard",
-  },
-  { icon: <Store size={20} />, label: "Franchise", path: "franchise" },
-  {
-    icon: <Package size={20} />,
-    label: "Category Franchise",
-    path: "category-franchise",
-  },
-  {
-    icon: <Package size={20} />,
-    label: "Product Franchise",
-    path: "product-franchise",
-  },
-  {
-    icon: <Package size={20} />,
-    label: "Product Category Franchise",
-    path: "product-category",
+    title: "Overview",
+    items: [
+      {
+        icon: <LayoutDashboard size={18} />,
+        label: "Dashboard",
+        path: "dashboard",
+      },
+    ],
   },
 
-  { icon: <ShoppingCart size={20} />, label: "Orders", path: "order" },
-  { icon: <CreditCard size={20} />, label: "Payments", path: "payment" },
-  { icon: <Users size={20} />, label: "Customers", path: "customer" },
-  { icon: <ShoppingBag size={20} />, label: "Products", path: "product" },
-  { icon: <Boxes size={20} />, label: "Inventory", path: "inventory" },
-  { icon: <Menu size={20} />, label: "Menu", path: "menu" },
-  { icon: <Ticket size={20} />, label: "Voucher", path: "voucher" },
-  { icon: <BadgePercent size={20} />, label: "Promotion", path: "promotion" },
-  { icon: <Gift size={20} />, label: "Loyalty", path: "loyalty" },
-  { icon: <Package size={20} />, label: "Categories", path: "category" },
+  {
+    title: "Catalog",
+    items: [
+      {
+        icon: <Store size={18} />,
+        label: "Franchise",
+        children: [
+          { label: "Franchise", path: "franchise", icon: <Store size={16} /> },
+          {
+            label: "Category Franchise",
+            path: "category-franchise",
+            icon: <Package size={16} />,
+          },
+          {
+            label: "Product Franchise",
+            path: "product-franchise",
+            icon: <Package size={16} />,
+          },
+          {
+            label: "Product Category",
+            path: "product-category",
+            icon: <Package size={16} />,
+          },
+        ],
+      },
 
-  { icon: <User size={20} />, label: "Users", path: "user" },
-  // { icon:  }
-  { icon: <User size={20} />, label: "Shift", path: "shift" },
-  { icon: <ShoppingCart size={20} />, label: "Cart", path: "cart" },
+      { icon: <ShoppingBag size={18} />, label: "Products", path: "product" },
+      { icon: <Package size={18} />, label: "Categories", path: "category" },
+      { icon: <Menu size={18} />, label: "Menu", path: "menu" },
+    ],
+  },
+
+  {
+    title: "Operations",
+    items: [
+      { icon: <ShoppingCart size={18} />, label: "Orders", path: "order" },
+      { icon: <Users size={18} />, label: "Customers", path: "customer" },
+      { icon: <Boxes size={18} />, label: "Inventory", path: "inventory" },
+      { icon: <ShoppingCart size={18} />, label: "Cart", path: "cart" },
+      {
+        icon: <CalendarCheck size={18} />,
+        label: "Shift Assignment",
+        path: "shift-assignment",
+      },
+      { icon: <User size={18} />, label: "Shift", path: "shift" },
+    ],
+  },
+
+  {
+    title: "Finance & Marketing",
+    items: [
+      { icon: <CreditCard size={18} />, label: "Payments", path: "payment" },
+      { icon: <Ticket size={18} />, label: "Voucher", path: "voucher" },
+      {
+        icon: <BadgePercent size={18} />,
+        label: "Promotion",
+        path: "promotion",
+      },
+      { icon: <Gift size={18} />, label: "Loyalty", path: "loyalty" },
+    ],
+  },
+
+  {
+    title: "System",
+    items: [{ icon: <User size={18} />, label: "Users", path: "user" }],
+  },
 ];
 
-type AdminSidebarProps = {
-  collapsed?: boolean;
-  onToggle?: () => void;
-};
+/* ================= COMPONENT ================= */
 
-const AdminSidebar = ({ collapsed = false, onToggle }: AdminSidebarProps) => {
+const AdminSidebar = ({ collapsed = false, onToggle }: any) => {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
-  const franchiseIdStr = useAdminContextStore((s) => s.selectedFranchiseId);
-  const franchiseId = franchiseIdStr ?? null;
+  const franchiseId =
+    useAdminContextStore((s) => s.selectedFranchiseId) ?? null;
 
-  const visibleItems = menuItems.filter((it) =>
-    isMenuVisible(user, franchiseId, it.path),
-  );
+  const [openMenus, setOpenMenus] = useState<string[]>([]);
+
+  const toggleMenu = (label: string) => {
+    setOpenMenus((prev) =>
+      prev.includes(label) ? prev.filter((i) => i !== label) : [...prev, label],
+    );
+  };
+
+  /* ===== RBAC FILTER ===== */
+  const visibleSections = menuSections
+    .map((section) => ({
+      ...section,
+      items: section.items
+        .map((item) => {
+          if (item.children) {
+            const children = item.children.filter((child) =>
+              isMenuVisible(user, franchiseId, child.path!),
+            );
+            if (!children.length) return null;
+            return { ...item, children };
+          }
+
+          return isMenuVisible(user, franchiseId, item.path!) ? item : null;
+        })
+        .filter(Boolean),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <aside
-      className={`fixed left-0 top-0 flex h-screen flex-col overflow-hidden bg-white border-r border-gray-200 transition-all duration-300 ${
+      className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-200 flex flex-col ${
         collapsed ? "w-16" : "w-64"
       }`}
     >
-      {/* ✅ Header + nút toggle nằm TRONG sidebar */}
-      <div className="h-16 flex items-center justify-between px-3 border-b border-gray-200">
-        <div className="min-w-0">
-          {!collapsed ? (
-            <div className="font-extrabold text-gray-900 truncate tracking-tight">
-              ChoiCoffee
-            </div>
-          ) : (
-            <div className="font-extrabold text-gray-900 text-center"></div>
-          )}
-        </div>
+      {/* HEADER */}
+      <div className="h-16 flex items-center justify-between px-3 border-b">
+        {!collapsed && <div className="font-bold">ChoiCoffee</div>}
 
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="shrink-0 inline-flex items-center justify-center rounded-full border border-gray-200 bg-white p-2 shadow-sm hover:shadow-md transition"
-        >
-          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        <button onClick={onToggle}>
+          {collapsed ? <ChevronRight /> : <ChevronLeft />}
         </button>
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto p-2 space-y-1">
-        {visibleItems.map((item) => {
-          const isActive =
-            location.pathname === `/admin/${item.path}` ||
-            (item.path === "dashboard" && location.pathname === "/admin");
+      {/* NAV */}
+      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-4 scrollbar-hide">
+        {visibleSections.map((section) => (
+          <div key={section.title}>
+            {!collapsed && (
+              <div className="text-xs text-gray-400 px-3 mb-2 uppercase">
+                {section.title}
+              </div>
+            )}
 
-          const isLogout = item.path === "logout";
+            <div className="space-y-1">
+              {section.items.map((item: any) => {
+                /* ===== SUB MENU ===== */
+                if (item.children) {
+                  const isOpen = openMenus.includes(item.label);
 
-          return (
-            <NavLink
-              key={item.path}
-              to={`/admin/${item.path}`}
-              className={`flex items-center gap-3 px-3 py-2 rounded-xl transition ${
-                isLogout
-                  ? "text-rose-700 hover:bg-rose-50"
-                  : isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <span className="shrink-0">{item.icon}</span>
-              {!collapsed ? (
-                <span className="text-sm font-medium">{item.label}</span>
-              ) : null}
-            </NavLink>
-          );
-        })}
+                  return (
+                    <div key={item.label}>
+                      <button
+                        onClick={() => toggleMenu(item.label)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-100"
+                      >
+                        <div className="flex items-center gap-3">
+                          {item.icon}
+                          {!collapsed && item.label}
+                        </div>
+
+                        {!collapsed && (
+                          <ChevronDown
+                            className={`transition ${
+                              isOpen ? "rotate-180" : ""
+                            }`}
+                            size={16}
+                          />
+                        )}
+                      </button>
+
+                      {/* CHILDREN */}
+                      {isOpen && !collapsed && (
+                        <div className="ml-6 mt-1 space-y-1">
+                          {item.children.map((child: any) => {
+                            const isActive =
+                              location.pathname === `/admin/${child.path}`;
+
+                            return (
+                              <NavLink
+                                key={child.path}
+                                to={`/admin/${child.path}`}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm
+                                  ${
+                                    isActive
+                                      ? "bg-primary text-white"
+                                      : "hover:bg-gray-100"
+                                  }`}
+                              >
+                                {child.icon}
+                                {child.label}
+                              </NavLink>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                /* ===== NORMAL ITEM ===== */
+                const isActive = location.pathname === `/admin/${item.path}`;
+
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={`/admin/${item.path}`}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg
+                      ${
+                        isActive ? "bg-primary text-white" : "hover:bg-gray-100"
+                      }`}
+                  >
+                    {item.icon}
+                    {!collapsed && item.label}
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
     </aside>
   );

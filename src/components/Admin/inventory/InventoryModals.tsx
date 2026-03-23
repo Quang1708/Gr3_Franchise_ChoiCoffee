@@ -14,7 +14,7 @@ SCHEMA
 ================================ */
 
 const schema = z.object({
-  product_id: z.string().min(1, "Sản phẩm bắt buộc"),
+  id: z.string().min(1, "Sản phẩm bắt buộc"),
   franchise_id: z.string().min(1, "Chi nhánh bắt buộc"),
   quantity: z.number().min(0, "Số lượng phải >= 0"),
   alert_threshold: z.number().min(0, "Ngưỡng cảnh báo phải >= 0"),
@@ -150,7 +150,7 @@ export const CreateInventoryModal: React.FC<Props> = ({
   }, [isOpen]);
 
   const submitHandler = async (data: FormData) => {
-    const selected = products.find((p) => p.product_id === data.product_id);
+    const selected = products.find((p) => p.id === data.id);
     if (!selected) return;
 
     await onSubmit({
@@ -191,12 +191,12 @@ export const CreateInventoryModal: React.FC<Props> = ({
         <div>
           <label>Sản phẩm</label>
           <select
-            {...register("product_id")}
-            className={inputClass(errors.product_id)}
+            {...register("id")}
+            className={inputClass(errors.id)}
           >
             <option value="">Chọn sản phẩm</option>
             {products.map((p) => (
-              <option key={p.id} value={p.product_id}>
+              <option key={p.id} value={p.id}>
                 {p.product_name} ({p.size})
               </option>
             ))}
@@ -236,7 +236,18 @@ export const CreateInventoryModal: React.FC<Props> = ({
           <button type="button" onClick={onClose}>
             Hủy
           </button>
-          <button type="submit" disabled={isSubmitting}>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`
+    px-4 py-2 rounded-lg font-medium text-sm transition-all
+    ${
+      isSubmitting
+        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+        : "bg-primary text-white hover:bg-primary/90 active:scale-95 shadow-sm hover:shadow-md cursor-pointer"
+    }
+  `}
+          >
             {isSubmitting ? "Đang tạo..." : "Tạo"}
           </button>
         </div>
@@ -360,8 +371,16 @@ export const AdjustInventoryModal = ({
           </button>
 
           <button
-            disabled={isSubmitting || (!alertChanged && !quantityChanged)}
             type="submit"
+            disabled={isSubmitting || (!alertChanged && !quantityChanged)}
+            className={`
+    px-4 py-2 rounded-lg font-medium text-sm transition-all
+    ${
+      isSubmitting || (!alertChanged && !quantityChanged)
+        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+        : "bg-green-600 text-white hover:bg-green-700 active:scale-95 shadow-sm hover:shadow-md"
+    }
+  `}
           >
             {isSubmitting ? "Đang cập nhật..." : "Cập nhật"}
           </button>
@@ -394,7 +413,7 @@ export const DeleteInventoryModal: React.FC<DeleteInventoryModalProps> = ({
   if (!inventory) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Xóa tồn kho" size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title="Xóa tồn kho" >
       <div className="space-y-4">
         <div className="flex gap-3">
           <AlertTriangle className="text-red-600" />
@@ -445,7 +464,7 @@ export const InventoryLogModal: React.FC<InventoryLogModalProps> = ({
   }, [inventoryId, fetchLogs]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Inventory Logs" size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Inventory Logs" size="lg">
       <div className="max-h-[500px] overflow-auto">
         {logsLoading ? (
           <div className="text-center py-10 text-gray-500">

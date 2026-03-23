@@ -8,8 +8,9 @@ const AdminLoginPage = React.lazy(
 const ForgotPasswordPage = React.lazy(
   () => import("../../pages/admin/auth/login/pages/ForgotPassword.page"),
 );
-const ResetPasswordPage = React.lazy(
-  () => import("../../pages/admin/auth/login/pages/ResetPassword.page"),
+const AdminRequestNewPasswordPage = React.lazy(
+  () =>
+    import("../../pages/admin/auth/login/pages/AdminRequestNewPassword.page"),
 );
 const AdminVerifyTokenPage = React.lazy(
   () => import("../../pages/admin/auth/login/pages/AdminVerifyTokenPage"),
@@ -34,8 +35,8 @@ const AdminAuthRoutes = (
       element={<AdminVerifyTokenPage />}
     />
     <Route
-      path={ROUTER_URL.ADMIN_ROUTER.CHANGE_PASSWORD}
-      element={<ResetPasswordPage />}
+      path={ROUTER_URL.ADMIN_ROUTER.REQUEST_NEW_PASSWORD}
+      element={<AdminRequestNewPasswordPage />}
     />
   </>
 );

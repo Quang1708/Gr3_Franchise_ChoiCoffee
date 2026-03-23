@@ -15,8 +15,8 @@ const CategoryFranchisePage = React.lazy(
   () => import("../../pages/admin/category/CategoryFranchise.page"),
 );
 const ProductFranchisePage = React.lazy(
-  ()=> import("@/pages/admin/product/ProductFranchise.page")
-)
+  () => import("@/pages/admin/product/ProductFranchise.page"),
+);
 const CustomerPage = React.lazy(() => import("../../pages/admin/customer"));
 const FranchisePage = React.lazy(
   () => import("../../pages/admin/franchise/Franchise.page"),
@@ -31,7 +31,7 @@ const LoyaltyPage = React.lazy(() => import("../../pages/admin/loyalty"));
 const OrderPage = React.lazy(() => import("../../pages/admin/order"));
 const PaymentPage = React.lazy(() => import("../../pages/admin/payment"));
 const VoucherPage = React.lazy(
-  () => import("../../pages/admin/voucher/VoucherApi.page"),
+  () => import("../../pages/admin/voucher"),
 );
 const PromotionPage = React.lazy(
   () => import("../../pages/admin/promotion/Promotion.page"),
@@ -103,12 +103,9 @@ const AdminRoutes = (
         </Route>
 
         <Route
-          element={<RequirePermission perm={PERM.PRODUCT_CATEGORY_READ} />}
+          element={<RequirePermission perm={PERM.PRODUCT_FRANCHISE_READ} />}
         >
-          <Route
-            path="product-franchise"
-            element={<ProductFranchisePage />}
-          />
+          <Route path="product-franchise" element={<ProductFranchisePage />} />
         </Route>
 
         <Route element={<RequirePermission perm={PERM.CUSTOMER_READ} />}>
@@ -153,8 +150,11 @@ const AdminRoutes = (
 
         <Route path="promotion" element={<PromotionPage />} />
 
-        <Route element={<RequirePermission perm={PERM.USER_MANAGE} />}>
+        <Route element={<RequirePermission perm={PERM.USER_READ} />}>
           <Route path="user" element={<UserPage />} />
+        </Route>
+
+        <Route element={<RequirePermission perm={PERM.USER_MANAGE} />}>
           <Route
             path="user-franchise-role"
             element={<UserFranchiseRolePage />}

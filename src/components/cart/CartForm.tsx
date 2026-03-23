@@ -26,6 +26,8 @@ import { deleteItem } from "./usecase/deleteItem.usecase";
 import { updateOptionQuantity } from "./usecase/updateQuantityOption.usecase";
 import { deleteOption } from "./usecase/deleteOption.usecase";
 import type { AddOptionRequest } from "./services/addOption.service";
+import { ActionConfirmModal } from "../Admin/template/ActionConfirmModal";
+import { checkoutCart } from "./usecase/checkoutCart.usecase";
 const MAX_TOPPING_ITEMS = 10;
 
 const CartForm = (props: CartFormProps) => {
@@ -35,11 +37,10 @@ const CartForm = (props: CartFormProps) => {
     initialData ? (initialData as any) : null,
   );
 
-  
-
   const [loading, setLoading] = useState(false);
   const [activePopover, setActivePopover] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isCheckout, setIsCheckout] = useState(false);
   const [tempData, setTempData] = useState({
     phone: initialData?.phone || "",
     address: initialData?.address || "",
@@ -65,30 +66,32 @@ const CartForm = (props: CartFormProps) => {
     cart_item_id: string,
     quantity: number,
   ) => {
-    toast.info("Đang xử lý");
+    const toastId = toast.loading("Đang cập nhật số lượng...");
     try {
       const response = await updateQuantityItem(cart_item_id, quantity);
       if (response.success) {
-        toast.success("Cập nhật số lượng sản phẩm thành công");
-        fetchCartDetailData();
+        await fetchCartDetailData();
+        toast.update(toastId, { render: "Đang cập nhật số lượng...", type: "success", isLoading: false, autoClose:1500 });      
+      }else{
+        toast.update(toastId, { render: "Cập nhật số lượng thất bại", type: "error" , isLoading: false, autoClose:1500});
       }
     } catch (error) {
       console.error("Lỗi khi cập nhật số lượng sản phẩm:", error);
-      toast.error("Có lỗi xảy ra khi cập nhật số lượng sản phẩm");
+      toast.update(toastId, { render: "Có lỗi xảy ra khi cập nhật số lượng sản phẩm", type: "error", isLoading: false, autoClose:1500 });
     }
   };
 
   const handleDeleteItem = async (cart_item_id: string) => {
-    toast.info("Đang xử lý");
+    const toastId = toast.loading("Đang xóa sản phẩm...");
     try {
       const response = await deleteItem(cart_item_id);
       if (response.success) {
-        toast.success("Xóa sản phẩm thành công");
+        toast.update(toastId, { render: "Xóa sản phẩm thành công", type: "success", isLoading: false, autoClose:1500 });
         fetchCartDetailData();
       }
     } catch (error) {
       console.error("Lỗi khi xóa mục giỏ hàng:", error);
-      toast.error("Có lỗi xảy ra khi xóa mục giỏ hàng");
+      toast.update(toastId, { render: "Có lỗi xảy ra khi xóa mục giỏ hàng", type: "error", isLoading: false, autoClose:1500 });
     }
   };
 
@@ -97,7 +100,7 @@ const CartForm = (props: CartFormProps) => {
     option_product_franchise_id: string,
     quantity: number,
   ) => {
-    toast.info("Đang xử lý");
+    const toastId = toast.loading("Đang xử cập nhật số lượng...");
     try {
       const response = await updateOptionQuantity({
         cart_item_id,
@@ -105,12 +108,12 @@ const CartForm = (props: CartFormProps) => {
         quantity,
       });
       if (response.success) {
-        toast.success("Cập nhật số lượng tùy chọn thành công");
+        toast.update(toastId, { render: "Cập nhật số lượng tùy chọn thành công", type: "success", isLoading: false, autoClose:1500 });
         fetchCartDetailData();
       }
     } catch (error) {
       console.error("Lỗi khi cập nhật số lượng tùy chọn:", error);
-      toast.error("Có lỗi xảy ra khi cập nhật số lượng tùy chọn");
+      toast.update(toastId, { render: "Có lỗi xảy ra khi cập nhật số lượng tùy chọn", type: "error", isLoading: false, autoClose:1500 });
     }
   };
 
@@ -118,19 +121,19 @@ const CartForm = (props: CartFormProps) => {
     cart_item_id: string,
     option_product_franchise_id: string,
   ) => {
-    toast.info("Đang xử lý");
+    const toastId = toast.loading("Đang xử lý");
     try {
       const response = await deleteOption(
         cart_item_id,
         option_product_franchise_id,
       );
       if (response.success) {
-        toast.success("Xóa topping thành công");
+        toast.update(toastId, { render: "Xóa topping thành công", type: "success", isLoading: false, autoClose:1500 });
         fetchCartDetailData();
       }
     } catch (error) {
       console.error("Lỗi khi xóa tùy chọn:", error);
-      toast.error("Có lỗi xảy ra khi xóa tùy chọn");
+      toast.update(toastId, { render: "Có lỗi xảy ra khi xóa tùy chọn", type: "error", isLoading: false, autoClose:1500 });
     }
   };
 
@@ -173,15 +176,15 @@ const CartForm = (props: CartFormProps) => {
   // };
 
   const handleUpdateInformation = async () => {
-    toast.info("Đang xử lý");
+    const toastId = toast.loading("Đang xử lý");
     if (!cart?._id) return;
     if (tempData.phone === cart.phone && tempData.address === cart.address) {
-      toast.info("Không có thay đổi nào để cập nhật");
+      toast.update(toastId, { render: "Không có thay đổi nào để cập nhật", type: "info", isLoading: false, autoClose:1500 });
       return;
     }
 
     if (!tempData.phone || !tempData.address) {
-      toast.error("Vui lòng điền đầy đủ thông tin trước khi cập nhật");
+      toast.update(toastId, { render: "Vui lòng điền đầy đủ thông tin trước khi cập nhật", type: "error", isLoading: false, autoClose:1500 });
       return;
     }
     try {
@@ -193,12 +196,44 @@ const CartForm = (props: CartFormProps) => {
       );
       if (response) {
         await fetchCartDetailData();
-        toast.success("Cập nhật thông tin thành công");
+        toast.update(toastId, { render: "Cập nhật thông tin thành công", type: "success", isLoading: false, autoClose:1500 });
         setIsEditing(false);
       }
     } catch (error) {
       console.error("Lỗi khi cập nhật thông tin:", error);
-      toast.error("Có lỗi xảy ra khi cập nhật thông tin");
+      toast.update(toastId, { render: "Có lỗi xảy ra khi cập nhật thông tin", type: "error", isLoading: false, autoClose:1500 });
+    }
+  };
+
+
+  const onSubmitCheckout = async () => {
+    if (!cart?._id) return;
+    const toastId = toast.loading("Đang xử lý thanh toán...");
+    try {
+      const response = await checkoutCart(cart._id, {
+        address: tempData.address,
+        phone: tempData.phone,
+        message: ""
+      });
+
+      if (response.success) {
+        toast.update(toastId, { render: "Thanh toán thành công", type: "success", isLoading: false, autoClose:1500 });
+        setIsCheckout(false);
+      }
+    } catch (error) {
+      console.error("Lỗi khi thanh toán:", error);
+      toast.update(toastId, { render: "Có lỗi xảy ra khi thanh toán", type: "error", isLoading: false, autoClose:1500 });
+    }
+  }
+
+  
+  const handleModalSave = () => {
+    if (props.mode === "edit") {
+      setIsCheckout(true);
+    } else {
+      if (handlers.handleFinalSubmit) {
+        handlers.handleFinalSubmit(); 
+      }
     }
   };
 
@@ -210,12 +245,12 @@ const CartForm = (props: CartFormProps) => {
       isOpen={props.isOpen}
       title="đơn hàng"
       onClose={props.onClose}
-      onSave={handlers.handleFinalSubmit}
+      onSave={handleModalSave}
       mode={props.mode}
       isLoading={props.isLoading}
       maxWidth="max-w-7xl"
     >
-      {props.mode === "create" && (
+      {props.mode === "create" ? (
         <div className="grid grid-cols-12 gap-6 h-[75vh]">
           {/* BÊN TRÁI: FORM CHỌN MÓN */}
           <div className="col-span-12 lg:col-span-7 flex flex-col h-full border-r border-gray-100 pr-4 overflow-hidden ">
@@ -508,445 +543,462 @@ const CartForm = (props: CartFormProps) => {
             </div>
           </div>
         </div>
-      )}
+      ) : (
+        <>
+          {loading ? (
+            <Loader2
+              size={48}
+              className="animate-spin text-primary mx-auto my-20"
+            />
+          ) : (
+            <div className="flex-1 p-6 flex flex-col lg:flex-row gap-8 overflow-hidden h-150 lg:h-[70vh]">
+              {/* CỘT TRÁI: DANH SÁCH SẢN PHẨM - Tự scroll nội bộ */}
+              <div className="flex-[1.5] flex flex-col min-h-0">
+                <div className={`${labelClass} mb-4  flex items-center gap-2`}>
+                  <ShoppingCart size={18} className="text-primary" /> Đơn hàng (
+                  {cart?.cart_items?.length || 0} món)
+                </div>
+                <div className="pt-3 flex-1 overflow-y-auto pr-2 space-y-4 custom-scroll border-r border-gray-50 dark:border-zinc-800/50 ">
+                  {cart?.cart_items?.map((item) => (
+                    <div
+                      key={item.cart_item_id}
+                      className=" group relative flex gap-4 p-4 rounded-xl border border-gray-100 dark:border-zinc-800 hover:shadow-md hover:bg-primary/10 transition-shadow bg-white dark:bg-zinc-900/50"
+                    >
+                      {props.mode === "edit" && (
+                        <button
+                          title="Xóa món khỏi giỏ hàng"
+                          onClick={() => handleDeleteItem(item.cart_item_id)}
+                          className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600"
+                        >
+                          <Trash size={16} />
+                        </button>
+                      )}
 
-      <>
-        {loading ? (
-          <Loader2
-            size={48}
-            className="animate-spin text-primary mx-auto my-20"
-          />
-        ) : (
-          <div className="flex-1 p-6 flex flex-col lg:flex-row gap-8 overflow-hidden h-150 lg:h-[70vh]">
-            {/* CỘT TRÁI: DANH SÁCH SẢN PHẨM - Tự scroll nội bộ */}
-            <div className="flex-[1.5] flex flex-col min-h-0">
-              <div className={`${labelClass} mb-4  flex items-center gap-2`}>
-                <ShoppingCart size={18} className="text-primary" /> Đơn hàng (
-                {cart?.cart_items?.length || 0} món)
-              </div>
-              <div className="pt-3 flex-1 overflow-y-auto pr-2 space-y-4 custom-scroll border-r border-gray-50 dark:border-zinc-800/50 ">
-                {cart?.cart_items?.map((item) => (
-                  <div
-                    key={item.cart_item_id}
-                    className=" group relative flex gap-4 p-4 rounded-xl border border-gray-100 dark:border-zinc-800 hover:shadow-md hover:bg-primary/10 transition-shadow bg-white dark:bg-zinc-900/50"
-                  >
-                    {props.mode === "edit" && (
-                      <button
-                        title="Xóa món khỏi giỏ hàng"
-                        onClick={() => handleDeleteItem(item.cart_item_id)}
-                        className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600"
-                      >
-                        <Trash size={16} />
-                      </button>
-                    )}
-
-                    <img
-                      src={item.product.image_url}
-                      alt={item.product.name}
-                      className="w-20 h-20 rounded-lg object-cover bg-gray-100 shrink-0"
-                    />
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <h4 className="font-bold text-zinc-800 dark:text-zinc-100 leading-tight">
-                          {item.product.name}
-                        </h4>
-                        <p className="font-bold text-primary whitespace-nowrap ml-2">
-                          {item.final_line_total.toLocaleString()}đ
-                        </p>
-                      </div>
-
-                      <div className="mt-3 flex items-center gap-4">
-                        <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden h-8">
-                          <button
-                            title="Giảm số lượng"
-                            disabled={item.quantity <= 1}
-                            onClick={() =>
-                              handleUpdateQuantityItem(
-                                item.cart_item_id,
-                                item.quantity - 1,
-                              )
-                            }
-                            className="px-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30"
-                          >
-                            <Minus size={14} />
-                          </button>
-                          <span className="w-10 text-center text-sm font-bold border-x border-zinc-200 dark:border-zinc-700">
-                            {item.quantity}
-                          </span>
-                          <button
-                            title="Tăng số lượng"
-                            onClick={() =>
-                              handleUpdateQuantityItem(
-                                item.cart_item_id,
-                                item.quantity + 1,
-                              )
-                            }
-                            className="px-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                          >
-                            <Plus size={14} />
-                          </button>
-                        </div>
-                        <span className="text-xs text-zinc-400 italic">
-                          Đơn giá: {item.product_cart_price.toLocaleString()}đ
-                        </span>
-                      </div>
-
-                      {/* OPTIONS/TOPPING */}
-                      {(item.options.length > 0 ||
-                        item.options.length === 0) && (
-                        <div className="mt-4 space-y-2 bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700">
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase">
-                            Topping / Tùy chọn
+                      <img
+                        src={item.product.image_url}
+                        alt={item.product.name}
+                        className="w-20 h-20 rounded-lg object-cover bg-gray-100 shrink-0"
+                      />
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-bold text-zinc-800 dark:text-zinc-100 leading-tight">
+                            {item.product.name}
+                          </h4>
+                          <p className="font-bold text-primary whitespace-nowrap ml-2">
+                            {item.final_line_total.toLocaleString()}đ
                           </p>
-                          {item.options.map((opt, idx) => (
-                            <div
-                              key={idx}
-                              className="flex justify-between items-center group/opt"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                                  {opt.product.name}
-                                </span>
-                              </div>
+                        </div>
 
-                              {/* BỘ TĂNG GIẢM OPTION (API Update Quantity Option) */}
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-zinc-400">
-                                  +
-                                  {(
-                                    opt.final_price * opt.quantity
-                                  ).toLocaleString()}
-                                  đ
-                                </span>
-                                <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 h-6">
-                                  <button
-                                    title="Giảm số lượng topping"
-                                    disabled={opt.quantity <= 1}
-                                    onClick={() =>
-                                      handleUpdateOptionQuantity(
-                                        item.cart_item_id,
-                                        opt.product_franchise_id,
-                                        opt.quantity - 1,
-                                      )
-                                    }
-                                    className="px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                  >
-                                    <Minus size={10} />
-                                  </button>
-                                  <span className="w-6 text-center text-[11px] font-bold">
-                                    {opt.quantity}
-                                  </span>
-                                  <button
-                                    title="Tăng số lượng topping"
-                                    onClick={() =>
-                                      handleUpdateOptionQuantity(
-                                        item.cart_item_id,
-                                        opt.product_franchise_id,
-                                        opt.quantity + 1,
-                                      )
-                                    }
-                                    className="px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                  >
-                                    <Plus size={10} />
-                                  </button>
-                                </div>
-                                {/* Nút Xóa Option (API Remove Option) */}
-                                <button
-                                  title="Xóa topping khỏi món"
-                                  onClick={() =>
-                                    handleRemoveOption(
-                                      item.cart_item_id,
-                                      opt.product_franchise_id,
-                                    )
-                                  }
-                                  className="text-red-300 hover:text-red-600  transition-colors"
-                                >
-                                  <Trash size={12} />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-
-                          {/* Nút Thêm Option */}
-
-                          <div className="relative mt-2">
+                        <div className="mt-3 flex items-center gap-4">
+                          <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden h-8">
                             <button
+                              title="Giảm số lượng"
+                              disabled={item.quantity <= 1}
                               onClick={() =>
-                                setActivePopover(
-                                  activePopover === item.cart_item_id
-                                    ? null
-                                    : item.cart_item_id,
+                                handleUpdateQuantityItem(
+                                  item.cart_item_id,
+                                  item.quantity - 1,
                                 )
                               }
-                              className="w-full py-1.5 border border-dashed border-primary/40 text-primary text-[11px] font-bold rounded hover:bg-primary/5 transition-colors flex items-center justify-center gap-1"
+                              className="px-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30"
                             >
-                              <Plus size={12} /> Thêm Topping
+                              <Minus size={14} />
                             </button>
+                            <span className="w-10 text-center text-sm font-bold border-x border-zinc-200 dark:border-zinc-700">
+                              {item.quantity}
+                            </span>
+                            <button
+                              title="Tăng số lượng"
+                              onClick={() =>
+                                handleUpdateQuantityItem(
+                                  item.cart_item_id,
+                                  item.quantity + 1,
+                                )
+                              }
+                              className="px-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                          <span className="text-xs text-zinc-400 italic">
+                            Đơn giá: {item.product_cart_price.toLocaleString()}đ
+                          </span>
+                        </div>
 
-                            {activePopover === item.cart_item_id && (
-                              <>
-                                <div
-                                  className="fixed inset-0 z-20"
-                                  onClick={() => setActivePopover(null)}
-                                />
+                        {/* OPTIONS/TOPPING */}
+                        {(item.options.length > 0 ||
+                          item.options.length === 0) && (
+                          <div className="mt-4 space-y-2 bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700">
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase">
+                              Topping / Tùy chọn
+                            </p>
+                            {item.options.map((opt, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between items-center group/opt"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                                    {opt.product.name}
+                                  </span>
+                                </div>
 
-                                <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl z-30 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
-                                  <div className="p-3 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center bg-gray-50 dark:bg-zinc-800/50">
-                                    <span className="text-xs font-bold uppercase text-gray-500">
-                                      Chọn Topping thêm
+                                {/* BỘ TĂNG GIẢM OPTION (API Update Quantity Option) */}
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-zinc-400">
+                                    +
+                                    {(
+                                      opt.final_price * opt.quantity
+                                    ).toLocaleString()}
+                                    đ
+                                  </span>
+                                  <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 h-6">
+                                    <button
+                                      title="Giảm số lượng topping"
+                                      disabled={opt.quantity <= 1}
+                                      onClick={() =>
+                                        handleUpdateOptionQuantity(
+                                          item.cart_item_id,
+                                          opt.product_franchise_id,
+                                          opt.quantity - 1,
+                                        )
+                                      }
+                                      className="px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                    >
+                                      <Minus size={10} />
+                                    </button>
+                                    <span className="w-6 text-center text-[11px] font-bold">
+                                      {opt.quantity}
                                     </span>
                                     <button
-                                      title="Đóng"
-                                      onClick={() => setActivePopover(null)}
-                                      className="text-gray-400 hover:text-gray-600"
+                                      title="Tăng số lượng topping"
+                                      onClick={() =>
+                                        handleUpdateOptionQuantity(
+                                          item.cart_item_id,
+                                          opt.product_franchise_id,
+                                          opt.quantity + 1,
+                                        )
+                                      }
+                                      className="px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                                     >
-                                      <Plus size={14} className="rotate-45" />
+                                      <Plus size={10} />
                                     </button>
                                   </div>
-
-                                  <div className="max-h-60 overflow-y-auto p-2 space-y-1 custom-scroll">
-                                    {state.toppingOptions.length > 0 ? (
-                                      state.toppingOptions.map((topping) => (
-                                        <button
-                                          key={topping.value}
-                                          onClick={() => {
-                                            handleUpdateOptionQuantity(
-                                              item.cart_item_id,
-                                              topping.value,
-                                              1,
-                                            );
-                                            setActivePopover(null); // Đóng sau khi chọn hoặc để mở nếu muốn chọn nhiều
-                                          }}
-                                          className="w-full flex items-center gap-3 p-2 hover:bg-primary/5 rounded-lg transition-colors group"
-                                        >
-                                          <img
-                                            src={topping.product_data.image_url}
-                                            className="w-10 h-10 rounded object-cover border border-gray-100"
-                                            alt=""
-                                          />
-                                          <div className="flex-1 text-left">
-                                            <p className="text-xs font-bold text-gray-700 dark:text-gray-200 group-hover:text-primary transition-colors">
-                                              {topping.product_data.name}
-                                            </p>
-                                            <p className="text-[10px] text-gray-400">
-                                              +
-                                              {topping.product_data.price.toLocaleString()}
-                                              đ
-                                            </p>
-                                          </div>
-                                          <Plus
-                                            size={14}
-                                            className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                                          />
-                                        </button>
-                                      ))
-                                    ) : (
-                                      <p className="text-[10px] text-center py-4 text-gray-400 italic">
-                                        Không có topping khả dụng
-                                      </p>
-                                    )}
-                                  </div>
+                                  {/* Nút Xóa Option (API Remove Option) */}
+                                  <button
+                                    title="Xóa topping khỏi món"
+                                    onClick={() =>
+                                      handleRemoveOption(
+                                        item.cart_item_id,
+                                        opt.product_franchise_id,
+                                      )
+                                    }
+                                    className="text-red-300 hover:text-red-600  transition-colors"
+                                  >
+                                    <Trash size={12} />
+                                  </button>
                                 </div>
-                              </>
-                            )}
+                              </div>
+                            ))}
+
+                            {/* Nút Thêm Option */}
+
+                            <div className="relative mt-2">
+                              <button
+                                onClick={() =>
+                                  setActivePopover(
+                                    activePopover === item.cart_item_id
+                                      ? null
+                                      : item.cart_item_id,
+                                  )
+                                }
+                                className="w-full py-1.5 border border-dashed border-primary/40 text-primary text-[11px] font-bold rounded hover:bg-primary/5 transition-colors flex items-center justify-center gap-1"
+                              >
+                                <Plus size={12} /> Thêm Topping
+                              </button>
+
+                              {activePopover === item.cart_item_id && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-20"
+                                    onClick={() => setActivePopover(null)}
+                                  />
+
+                                  <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl z-30 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                    <div className="p-3 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center bg-gray-50 dark:bg-zinc-800/50">
+                                      <span className="text-xs font-bold uppercase text-gray-500">
+                                        Chọn Topping thêm
+                                      </span>
+                                      <button
+                                        title="Đóng"
+                                        onClick={() => setActivePopover(null)}
+                                        className="text-gray-400 hover:text-gray-600"
+                                      >
+                                        <Plus size={14} className="rotate-45" />
+                                      </button>
+                                    </div>
+
+                                    <div className="max-h-60 overflow-y-auto p-2 space-y-1 custom-scroll">
+                                      {state.toppingOptions.length > 0 ? (
+                                        state.toppingOptions.map((topping) => (
+                                          <button
+                                            key={topping.value}
+                                            onClick={() => {
+                                              handleUpdateOptionQuantity(
+                                                item.cart_item_id,
+                                                topping.value,
+                                                1,
+                                              );
+                                              setActivePopover(null); // Đóng sau khi chọn hoặc để mở nếu muốn chọn nhiều
+                                            }}
+                                            className="w-full flex items-center gap-3 p-2 hover:bg-primary/5 rounded-lg transition-colors group"
+                                          >
+                                            <img
+                                              src={
+                                                topping.product_data.image_url
+                                              }
+                                              className="w-10 h-10 rounded object-cover border border-gray-100"
+                                              alt=""
+                                            />
+                                            <div className="flex-1 text-left">
+                                              <p className="text-xs font-bold text-gray-700 dark:text-gray-200 group-hover:text-primary transition-colors">
+                                                {topping.product_data.name}
+                                              </p>
+                                              <p className="text-[10px] text-gray-400">
+                                                +
+                                                {topping.product_data.price.toLocaleString()}
+                                                đ
+                                              </p>
+                                            </div>
+                                            <Plus
+                                              size={14}
+                                              className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                                            />
+                                          </button>
+                                        ))
+                                      ) : (
+                                        <p className="text-[10px] text-center py-4 text-gray-400 italic">
+                                          Không có topping khả dụng
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {item.note && (
-                        <p className="text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-400 p-2 rounded mt-2 italic border border-orange-100 dark:border-orange-900/30">
-                          "{item.note}"
-                        </p>
-                      )}
+                        {item.note && (
+                          <p className="text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-400 p-2 rounded mt-2 italic border border-orange-100 dark:border-orange-900/30">
+                            "{item.note}"
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* CỘT PHẢI: THÔNG TIN KHÁCH HÀNG & THANH TOÁN - Dài hơn và cố định */}
-            <div className="flex-1 flex flex-col gap-6 overflow-y-auto pr-1 custom-scroll">
-              {/* Khách hàng */}
-              <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800 shadow-sm">
-                <div className={`mb-4 flex items-center justify-between`}>
-                  <div
-                    className={`${labelClass} flex items-center gap-2 uppercase tracking-wider text-[11px]`}
-                  >
-                    <User size={18} className="text-primary" /> Khách hàng
-                  </div>
-
-                  {props.mode === "edit" && (
-                    <button
-                      title="Cập nhật sdt và địa chỉ"
-                      type="button"
-                      onClick={() => setIsEditing((prev) => !prev)}
-                      className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors flex items-center gap-1 text-xs font-bold"
+              {/* CỘT PHẢI: THÔNG TIN KHÁCH HÀNG & THANH TOÁN - Dài hơn và cố định */}
+              <div className="flex-1 flex flex-col gap-6 overflow-y-auto pr-1 custom-scroll">
+                {/* Khách hàng */}
+                <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                  <div className={`mb-4 flex items-center justify-between`}>
+                    <div
+                      className={`${labelClass} flex items-center gap-2 uppercase tracking-wider text-[11px]`}
                     >
-                      <PencilLine size={14} />
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-4 text-sm">
-                  <div className="flex items-center gap-3 text-zinc-600 dark:text-zinc-400">
-                    <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm">
-                      <User size={14} />
+                      <User size={18} className="text-primary" /> Khách hàng
                     </div>
-                    <span className="font-medium">{cart?.customer_name}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-zinc-600 dark:text-zinc-400">
-                    <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm">
-                      <Phone size={14} />
-                    </div>
-                    {isEditing ? (
-                      <input
-                        title="Cập nhật số điện thoại"
-                        type="text"
-                        className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 focus:ring-1 focus:ring-primary outline-none"
-                        value={tempData.phone}
-                        onChange={(e) =>
-                          setTempData({ ...tempData, phone: e.target.value })
-                        }
-                      />
-                    ) : (
-                      <span>{cart?.phone}</span>
+
+                    {props.mode === "edit" && (
+                      <button
+                        title="Cập nhật sdt và địa chỉ"
+                        type="button"
+                        onClick={() => setIsEditing((prev) => !prev)}
+                        className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors flex items-center gap-1 text-xs font-bold"
+                      >
+                        <PencilLine size={14} />
+                      </button>
                     )}
                   </div>
-                  <div className="flex items-start gap-3 text-zinc-600 dark:text-zinc-400">
-                    <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm shrink-0">
-                      <MapPin size={14} />
+                  <div className="space-y-4 text-sm">
+                    <div className="flex items-center gap-3 text-zinc-600 dark:text-zinc-400">
+                      <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm">
+                        <User size={14} />
+                      </div>
+                      <span className="font-medium">{cart?.customer_name}</span>
                     </div>
-                    {isEditing ? (
-                      <textarea
-                        title="Cập nhật địa chỉ"
-                        className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 focus:ring-1 focus:ring-primary outline-none min-h-[60px]"
-                        value={tempData.address}
-                        onChange={(e) =>
-                          setTempData({ ...tempData, address: e.target.value })
-                        }
-                      />
-                    ) : (
-                      <span className="leading-relaxed">{cart?.address}</span>
-                    )}
-                  </div>
-                  {isEditing && (
-                    <div className="flex gap-2 pt-2 justify-end">
-                      <button
-                        onClick={() => setIsEditing(false)}
-                        className="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-bold hover:bg-zinc-100 transition-colors"
-                      >
-                        Hủy
-                      </button>
-                      <button
-                        onClick={handleUpdateInformation}
-                        className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors flex items-center gap-1"
-                      >
-                        <Check size={14} /> Cập nhật
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Chi tiết thanh toán */}
-
-              <div className="p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
-                <div className={`${labelClass} mb-4 flex items-center gap-2`}>
-                  <ReceiptText size={18} className="text-primary" /> Thanh toán
-                </div>
-                {/* Voucher */}
-                <div className="p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm mb-6">
-                  <div className={`${labelClass} mb-4 flex items-center gap-2`}>
-                    <Tag size={18} className="text-primary" /> Mã giảm giá
-                  </div>
-
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        placeholder="Nhập mã voucher..."
-                        disabled={!!cart?.voucher_discount} // Khóa nếu đã có voucher
-                        className={`w-full pl-3 pr-10 py-2 border rounded-lg outline-none text-sm transition-all ${
-                          cart?.voucher_discount
-                            ? "bg-green-50 border-green-200 text-green-700 font-bold"
-                            : "border-gray-200 focus:border-primary"
-                        }`}
-                        value={cart?.voucher_discount}
-                        onChange={() => {}}
-                      />
-                      {(cart?.voucher_discount ?? 0) > 0 && (
-                        <Check
-                          size={16}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600"
+                    <div className="flex items-center gap-3 text-zinc-600 dark:text-zinc-400">
+                      <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm">
+                        <Phone size={14} />
+                      </div>
+                      {isEditing ? (
+                        <input
+                          title="Cập nhật số điện thoại"
+                          type="text"
+                          className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 focus:ring-1 focus:ring-primary outline-none"
+                          value={tempData.phone}
+                          onChange={(e) =>
+                            setTempData({ ...tempData, phone: e.target.value })
+                          }
                         />
+                      ) : (
+                        <span>{cart?.phone}</span>
+                      )}
+                    </div>
+                    <div className="flex items-start gap-3 text-zinc-600 dark:text-zinc-400">
+                      <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm shrink-0">
+                        <MapPin size={14} />
+                      </div>
+                      {isEditing ? (
+                        <textarea
+                          title="Cập nhật địa chỉ"
+                          className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 focus:ring-1 focus:ring-primary outline-none min-h-[60px]"
+                          value={tempData.address}
+                          onChange={(e) =>
+                            setTempData({
+                              ...tempData,
+                              address: e.target.value,
+                            })
+                          }
+                        />
+                      ) : (
+                        <span className="leading-relaxed">{cart?.address}</span>
+                      )}
+                    </div>
+                    {isEditing && (
+                      <div className="flex gap-2 pt-2 justify-end">
+                        <button
+                          onClick={() => setIsEditing(false)}
+                          className="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-bold hover:bg-zinc-100 transition-colors"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          onClick={handleUpdateInformation}
+                          className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors flex items-center gap-1"
+                        >
+                          <Check size={14} /> Cập nhật
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Chi tiết thanh toán */}
+
+                <div className="p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
+                  <div className={`${labelClass} mb-4 flex items-center gap-2`}>
+                    <ReceiptText size={18} className="text-primary" /> Thanh
+                    toán
+                  </div>
+                  {/* Voucher */}
+                  <div className="p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm mb-6">
+                    <div
+                      className={`${labelClass} mb-4 flex items-center gap-2`}
+                    >
+                      <Tag size={18} className="text-primary" /> Mã giảm giá
+                    </div>
+
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          placeholder="Nhập mã voucher..."
+                          disabled={!!cart?.voucher_discount} // Khóa nếu đã có voucher
+                          className={`w-full pl-3 pr-10 py-2 border rounded-lg outline-none text-sm transition-all ${
+                            cart?.voucher_discount
+                              ? "bg-green-50 border-green-200 text-green-700 font-bold"
+                              : "border-gray-200 focus:border-primary"
+                          }`}
+                          value={cart?.voucher_discount}
+                          onChange={() => {}}
+                        />
+                        {(cart?.voucher_discount ?? 0) > 0 && (
+                          <Check
+                            size={16}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600"
+                          />
+                        )}
+                      </div>
+
+                      {(cart?.voucher_discount ?? 0) > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {}}
+                          className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors"
+                        >
+                          Xóa
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {}}
+                          className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary-dark transition-all active:scale-95"
+                        >
+                          Áp dụng
+                        </button>
                       )}
                     </div>
 
-                    {(cart?.voucher_discount ?? 0) > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => {}}
-                        className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors"
-                      >
-                        Xóa
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {}}
-                        className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary-dark transition-all active:scale-95"
-                      >
-                        Áp dụng
-                      </button>
+                    {/* Hiển thị tên voucher nếu có */}
+                    {cart && cart.voucher_discount != null && (
+                      <p className="mt-2 text-[10px] text-green-600 font-medium">
+                        Đã áp dụng mã: {cart.voucher_discount}
+                      </p>
                     )}
                   </div>
 
-                  {/* Hiển thị tên voucher nếu có */}
-                  {cart && cart.voucher_discount != null && (
-                    <p className="mt-2 text-[10px] text-green-600 font-medium">
-                      Đã áp dụng mã: {cart.voucher_discount}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between text-zinc-500">
-                    <span>Tạm tính</span>
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                      {(cart?.subtotal_amount ?? 0).toLocaleString()}đ
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-zinc-500 italic">
-                    <div className="flex items-center gap-1">
-                      <Tag size={14} /> Giảm giá Voucher
-                    </div>
-                    <span className="text-red-500">
-                      -{(cart?.voucher_discount ?? 0).toLocaleString()}đ
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-zinc-500 italic border-b pb-3">
-                    <span>Loyalty Points</span>
-                    <span className="text-red-500">
-                      -{(cart?.loyalty_discount ?? 0).toLocaleString()}đ
-                    </span>
-                  </div>
-                  <div className="pt-3 flex flex-col gap-1">
-                    <div className="flex justify-between items-center text-zinc-500">
-                      <span className="text-base font-bold">Tổng cộng</span>
-                      <span className="text-2xl font-black text-primary">
-                        {(cart?.final_amount ?? 0).toLocaleString()}đ
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between text-zinc-500">
+                      <span>Tạm tính</span>
+                      <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                        {(cart?.subtotal_amount ?? 0).toLocaleString()}đ
                       </span>
                     </div>
-                    <p className="text-[10px] text-right text-zinc-400 uppercase tracking-wider">
-                      Đã bao gồm VAT
-                    </p>
+                    <div className="flex justify-between text-zinc-500 italic">
+                      <div className="flex items-center gap-1">
+                        <Tag size={14} /> Giảm giá Voucher
+                      </div>
+                      <span className="text-red-500">
+                        -{(cart?.voucher_discount ?? 0).toLocaleString()}đ
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-zinc-500 italic border-b pb-3">
+                      <span>Loyalty Points</span>
+                      <span className="text-red-500">
+                        -{(cart?.loyalty_discount ?? 0).toLocaleString()}đ
+                      </span>
+                    </div>
+                    <div className="pt-3 flex flex-col gap-1">
+                      <div className="flex justify-between items-center text-zinc-500">
+                        <span className="text-base font-bold">Tổng cộng</span>
+                        <span className="text-2xl font-black text-primary">
+                          {(cart?.final_amount ?? 0).toLocaleString()}đ
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-right text-zinc-400 uppercase tracking-wider">
+                        Đã bao gồm VAT
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-        {/* BODY CONTAINER: Đặt chiều cao cố định tại đây */}
-      </>
+          )}
+          {/* BODY CONTAINER: Đặt chiều cao cố định tại đây */}
+          <ActionConfirmModal
+            isOpen={isCheckout}
+            onClose={() => setIsCheckout(false)}
+            type="confirm" 
+            title="Xác nhận thanh toán"
+            message="Bạn có chắc chắn muốn thanh toán đơn hàng này không? Vui lòng kiểm tra kỹ thông tin trước khi xác nhận."
+            onConfirm={onSubmitCheckout}
+          />
+        </>
+        
+      )}
     </CRUDModalTemplate>
   );
 };

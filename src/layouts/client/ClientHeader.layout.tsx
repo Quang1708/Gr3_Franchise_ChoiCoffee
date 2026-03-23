@@ -27,7 +27,7 @@ const ClientHeader = () => {
   const navigate = useNavigate();
   const [selectedFranchise, setSelectedFranchise] = useState<string>(() => {
     const saved = localStorage.getItem("selectedFranchise");
-    return saved ? saved : franchises[0]?.id || ""; 
+    return saved ? saved : franchises[0]?.id || "";
   });
   const [isFranchiseDropdownOpen, setIsFranchiseDropdownOpen] = useState(false);
   const franchiseDropdownRef = useRef<HTMLDivElement>(null);
@@ -68,7 +68,6 @@ const ClientHeader = () => {
       path: ROUTER_URL.CONTACT,
     },
   ];
-
 
   const fetchFranchise = async () => {
     try {
@@ -190,26 +189,25 @@ const ClientHeader = () => {
     const fetchCartId = async () => {
       try {
         const response = await getCartByCustomerId(customer?.id || "");
-        if(response){
-          
+        if (response) {
           setCartId(response[0]?._id || null);
         }
       } catch (error) {
         console.error("Error fetching cart ID:", error);
       }
-    }
+    };
     fetchCartId();
   }, [customer?.id]);
 
   useEffect(() => {
     const fetchCountItem = async () => {
-      if(!cartId) return;
-      try{
+      if (!cartId) return;
+      try {
         const response = await countItemInCart(cartId);
-        if(response){
+        if (response) {
           setCountItem(response.count);
         }
-      }catch(error){
+      } catch (error) {
         console.error("Error fetching count item in cart:", error);
       }
     };
@@ -220,8 +218,6 @@ const ClientHeader = () => {
       window.removeEventListener("cartUpdated", fetchCountItem);
     };
   }, [cartId]);
-
-
 
   return (
     <>
@@ -370,7 +366,7 @@ const ClientHeader = () => {
 
                     <a
                       onClick={() => {
-                        navigate("/client/history");
+                        navigate("/client/order?tab=completed");
                         setIsProfileOpen(false);
                       }}
                       className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#F27125] cursor-pointer"
@@ -445,7 +441,7 @@ const ClientHeader = () => {
 
                   <a
                     onClick={() => {
-                      navigate("/client/history");
+                      navigate("/client/order?tab=completed");
                       setIsProfileOpen(false);
                     }}
                     className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#F27125] cursor-pointer"

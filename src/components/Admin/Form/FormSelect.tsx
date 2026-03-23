@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ChevronDown, Check, Search, AlertCircle } from "lucide-react"; 
+import { ChevronDown, Check, Search, AlertCircle } from "lucide-react";
 import type { FieldError, UseFormRegisterReturn } from "react-hook-form";
 
 interface FormSelectProps {
   label?: string;
   options: { value: string; label: string; isExisting?: boolean }[];
   register: UseFormRegisterReturn;
-  error?: FieldError | any; 
+  error?: FieldError | any;
   placeholder?: string;
   className?: string;
   value?: string;
@@ -76,7 +76,9 @@ const FormSelect: React.FC<FormSelectProps> = ({
       ref={containerRef}
     >
       {label && (
-        <label className={`block text-[14px] font-medium ml-1 mb-2 ${error ? "text-primary" : "text-gray-500"}`}>
+        <label
+          className={`block text-[14px] font-medium ml-1 mb-2 ${error ? "text-primary" : "text-gray-500"}`}
+        >
           {label}
         </label>
       )}
@@ -84,10 +86,11 @@ const FormSelect: React.FC<FormSelectProps> = ({
       <div
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center justify-between w-full px-3 py-2 text-sm bg-white border rounded-lg cursor-pointer transition-all
-            ${error
-            ? "border-primary ring-2 ring-primary/20 shadow-[0_0_8px_rgba(var(--primary-rgb),0.2)]"
-            : "border-gray-200 hover:border-gray-300"
-          }`}
+            ${
+              error
+                ? "border-primary ring-2 ring-primary/20 shadow-[0_0_8px_rgba(var(--primary-rgb),0.2)]"
+                : "border-gray-200 hover:border-gray-300"
+            }`}
       >
         <span
           className={`${selectedOption ? "text-gray-700" : "text-gray-400"}`}
@@ -118,7 +121,7 @@ const FormSelect: React.FC<FormSelectProps> = ({
                 className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                onClick={(e) => e.stopPropagation()} 
+                onClick={(e) => e.stopPropagation()}
               />
             </div>
           </div>
@@ -131,10 +134,16 @@ const FormSelect: React.FC<FormSelectProps> = ({
                   onClick={() => handleSelect(opt.value)}
                   className={`flex items-center justify-between px-3 py-2 text-sm rounded-md cursor-pointer transition-colors
                     ${opt.value === currentValue ? "bg-primary/10 text-primary font-medium" : "hover:bg-gray-100"}
-                    ${opt.isExisting ? "text-primary font-medium" : ""}`}
+                    ${
+                      opt.isExisting && opt.value !== currentValue
+                        ? "text-amber-600 font-medium"
+                        : ""
+                    }`}
                 >
                   <span className="truncate">{opt.label}</span>
-                  {opt.value === currentValue && <Check className="w-3.5 h-3.5 shrink-0" />}
+                  {opt.value === currentValue && (
+                    <Check className="w-3.5 h-3.5 shrink-0" />
+                  )}
                 </div>
               ))
             ) : (

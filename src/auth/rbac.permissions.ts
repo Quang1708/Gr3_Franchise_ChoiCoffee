@@ -15,6 +15,8 @@ export const PERM = {
   CATEGORY_FRANCHISE_WRITE: "category_franchise.write",
   PRODUCT_FRANCHISE_READ: "product_franchise.read",
   PRODUCT_FRANCHISE_WRITE: "product_franchise.write",
+  PROMOTION_READ: "promotion.read",
+  PROMOTION_WRITE: "promotion.write",
 
   SHIFT_READ: "shift.read",
   SHIFT_WRITE: "shift.write",

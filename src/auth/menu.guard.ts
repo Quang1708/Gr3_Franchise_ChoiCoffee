@@ -19,6 +19,7 @@ export type MenuPath =
   | "shift"
   | "category-franchise"
   | "cart"
+  | "promotion"
   | string;
 
 export function isMenuVisible(
@@ -66,8 +67,10 @@ export function isMenuVisible(
 
   if (path === "loyalty") return can(user, PERM.LOYALTY_READ, fid);
 
-  if (path === "user") return can(user, PERM.USER_MANAGE, fid);
+  if (path === "user") return can(user, PERM.USER_READ, fid);
 
   if (path ==="cart") return can(user, PERM.CART_READ, fid);
+
+  if (path === "promotion") return can(user, PERM.PROMOTION_READ, fid);
   return false;
 }

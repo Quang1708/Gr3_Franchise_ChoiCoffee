@@ -15,8 +15,8 @@ const CategoryFranchisePage = React.lazy(
   () => import("../../pages/admin/category/CategoryFranchise.page"),
 );
 const ProductFranchisePage = React.lazy(
-  ()=> import("@/pages/admin/product/ProductFranchise.page")
-)
+  () => import("@/pages/admin/product/ProductFranchise.page"),
+);
 const CustomerPage = React.lazy(() => import("../../pages/admin/customer"));
 const FranchisePage = React.lazy(
   () => import("../../pages/admin/franchise/Franchise.page"),
@@ -106,12 +106,9 @@ const AdminRoutes = (
         </Route>
 
         <Route
-          element={<RequirePermission perm={PERM.PRODUCT_CATEGORY_READ} />}
+          element={<RequirePermission perm={PERM.PRODUCT_FRANCHISE_READ} />}
         >
-          <Route
-            path="product-franchise"
-            element={<ProductFranchisePage />}
-          />
+          <Route path="product-franchise" element={<ProductFranchisePage />} />
         </Route>
 
         <Route element={<RequirePermission perm={PERM.CUSTOMER_READ} />}>
@@ -164,7 +161,7 @@ const AdminRoutes = (
           />
         </Route>
         <Route element={<RequirePermission perm={PERM.CART_READ} />}>
-          <Route path="cart" element={<CartPage/>} />
+          <Route path="cart" element={<CartPage />} />
         </Route>
 
         {/* PUBLIC IN ADMIN */}

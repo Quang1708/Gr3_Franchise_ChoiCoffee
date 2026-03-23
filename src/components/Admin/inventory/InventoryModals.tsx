@@ -236,7 +236,18 @@ export const CreateInventoryModal: React.FC<Props> = ({
           <button type="button" onClick={onClose}>
             Hủy
           </button>
-          <button type="submit" disabled={isSubmitting}>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`
+    px-4 py-2 rounded-lg font-medium text-sm transition-all
+    ${
+      isSubmitting
+        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+        : "bg-primary text-white hover:bg-primary/90 active:scale-95 shadow-sm hover:shadow-md cursor-pointer"
+    }
+  `}
+          >
             {isSubmitting ? "Đang tạo..." : "Tạo"}
           </button>
         </div>
@@ -360,8 +371,16 @@ export const AdjustInventoryModal = ({
           </button>
 
           <button
-            disabled={isSubmitting || (!alertChanged && !quantityChanged)}
             type="submit"
+            disabled={isSubmitting || (!alertChanged && !quantityChanged)}
+            className={`
+    px-4 py-2 rounded-lg font-medium text-sm transition-all
+    ${
+      isSubmitting || (!alertChanged && !quantityChanged)
+        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+        : "bg-green-600 text-white hover:bg-green-700 active:scale-95 shadow-sm hover:shadow-md"
+    }
+  `}
           >
             {isSubmitting ? "Đang cập nhật..." : "Cập nhật"}
           </button>

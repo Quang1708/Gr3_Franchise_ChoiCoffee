@@ -13,6 +13,14 @@ type AuthState = {
   logout: () => void;
 };
 
+const normalizeRoles = (roles: any[]) => {
+  return roles.map((r) => ({
+    ...r,
+    role: r.role ?? r.role_code,
+    role_code: r.role ?? r.role_code,
+  }));
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -20,13 +28,23 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isInitialized: false,
 
-      login: (user, token) => {
-        set({ user, token, isInitialized: true });
-      },
+login: (user, token) => {
+  const normalizedUser = {
+    ...user,
+    roles: normalizeRoles(user.roles || []),
+  };
 
-      setAuth: (user, token) => {
-        set({ user, token, isInitialized: true });
-      },
+  set({ user: normalizedUser, token, isInitialized: true });
+},
+
+setAuth: (user, token) => {
+  const normalizedUser = {
+    ...user,
+    roles: normalizeRoles(user.roles || []),
+  };
+
+  set({ user: normalizedUser, token, isInitialized: true });
+},
 
       hydrate: () => {
         set((state) => ({ ...state, isInitialized: true }));

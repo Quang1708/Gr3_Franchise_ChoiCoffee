@@ -9,9 +9,6 @@ import { PERM, type PermissionCode } from "./rbac.permissions";
 export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
   ADMIN: [
     PERM.FRANCHISE_MGMT,
-
-    PERM.MENU_READ,
-    PERM.MENU_WRITE,
     PERM.PRODUCT_READ,
     PERM.PRODUCT_WRITE,
     PERM.PRODUCT_CATEGORY_READ,
@@ -70,6 +67,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
 
     PERM.SHIFT_ASSIGNMENT_READ,
     PERM.SHIFT_ASSIGNMENT_WRITE,
+    PERM.CART_READ,
+    PERM.CART_WRITE,
   ],
 
   // ✅ STAFF: chỉ READ + đúng scope bạn yêu cầu
@@ -79,5 +78,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERM.CUSTOMER_READ,
     PERM.ORDER_READ,
     PERM.INVENTORY_READ,
+    PERM.CART_READ,
+    PERM.CART_WRITE,
   ],
 };

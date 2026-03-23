@@ -72,8 +72,13 @@ type ApiErrorLike = {
 
 const ProductCategoryFranchisePage = () => {
   const { user } = useAuthStore();
-  const role = user?.roles?.[0]?.role;
-  const isAdmin = role === "ADMIN";
+  const roleCodes = (user?.roles ?? [])
+    .map((roleItem) => String(roleItem.role ?? "").toUpperCase())
+    .filter(Boolean);
+  const canManageProductCategoryFranchise =
+    roleCodes.includes("ADMIN") || roleCodes.includes("MANAGER");
+  const canReadProductCategoryFranchise =
+    canManageProductCategoryFranchise || roleCodes.includes("STAFF");
 
   const [rows, setRows] = useState<ProductCategoryFranchiseRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -362,6 +367,11 @@ const ProductCategoryFranchisePage = () => {
     mode: "create" | "edit" | "view",
     item: ProductCategoryFranchiseRow | null = null,
   ) => {
+    if (mode !== "view" && !canManageProductCategoryFranchise) {
+      toastError("Bạn không có quyền thực hiện thao tác này");
+      return;
+    }
+
     if (mode === "create") {
       loadExistingMappings();
     }
@@ -409,6 +419,11 @@ const ProductCategoryFranchisePage = () => {
   };
 
   const handleSubmitForm = async (data: ProductCategoryFranchiseFormValues) => {
+    if (!canManageProductCategoryFranchise) {
+      toastError("Bạn không có quyền thực hiện thao tác này");
+      return;
+    }
+
     try {
       if (
         isDuplicateMapping(
@@ -469,6 +484,11 @@ const ProductCategoryFranchisePage = () => {
     item: ProductCategoryFranchiseRow,
     newStatus: boolean,
   ) => {
+    if (!canManageProductCategoryFranchise) {
+      toastError("Bạn không có quyền thực hiện thao tác này");
+      return;
+    }
+
     try {
       setIsProcessing(true);
       const res = await updateProductCategoryFranchiseStatusUsecase(
@@ -500,14 +520,27 @@ const ProductCategoryFranchisePage = () => {
   };
 
   const handleDeleteClick = (item: ProductCategoryFranchiseRow) => {
+    if (!canManageProductCategoryFranchise) {
+      toastError("Bạn không có quyền thực hiện thao tác này");
+      return;
+    }
     setModalConfig({ isOpen: true, type: "delete", item });
   };
 
   const handleRestoreClick = (item: ProductCategoryFranchiseRow) => {
+    if (!canManageProductCategoryFranchise) {
+      toastError("Bạn không có quyền thực hiện thao tác này");
+      return;
+    }
     setModalConfig({ isOpen: true, type: "restore", item });
   };
 
   const handleConfirmAction = async () => {
+    if (!canManageProductCategoryFranchise) {
+      toastError("Bạn không có quyền thực hiện thao tác này");
+      return;
+    }
+
     const { type, item } = modalConfig;
     if (!item) return;
 
@@ -598,6 +631,11 @@ const ProductCategoryFranchisePage = () => {
     item: ProductCategoryFranchiseRow,
     nextPosition: number,
   ) => {
+    if (!canManageProductCategoryFranchise) {
+      toastError("Bạn không có quyền thực hiện thao tác này");
+      return;
+    }
+
     try {
       setIsProcessing(true);
 
@@ -626,6 +664,11 @@ const ProductCategoryFranchisePage = () => {
   };
 
   const openManualReorderForm = (item: ProductCategoryFranchiseRow) => {
+    if (!canManageProductCategoryFranchise) {
+      toastError("Bạn không có quyền thực hiện thao tác này");
+      return;
+    }
+
     const groupRows = getGroupRows(item);
     const maxPosition = groupRows.length;
     if (!maxPosition) return;
@@ -648,6 +691,11 @@ const ProductCategoryFranchisePage = () => {
   };
 
   const submitManualReorderForm = async () => {
+    if (!canManageProductCategoryFranchise) {
+      toastError("Bạn không có quyền thực hiện thao tác này");
+      return;
+    }
+
     const item = reorderForm.item;
     if (!item) return;
 
@@ -701,7 +749,7 @@ const ProductCategoryFranchisePage = () => {
           <span className="text-sm font-medium text-gray-700 min-w-[20px]">
             {item.displayOrder}
           </span>
-          {isAdmin && !item.is_deleted && (
+          {canManageProductCategoryFranchise && !item.is_deleted && (
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -720,6 +768,14 @@ const ProductCategoryFranchisePage = () => {
 
   if (isLoading) {
     return <ClientLoading />;
+  }
+
+  if (!canReadProductCategoryFranchise) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-6 text-sm text-gray-700">
+        Bạn không có quyền truy cập chức năng này.
+      </div>
+    );
   }
 
   return (
@@ -773,12 +829,22 @@ const ProductCategoryFranchisePage = () => {
             ],
           },
         ]}
-        onStatusChange={isAdmin ? handleStatusChange : undefined}
-        onDelete={isAdmin ? handleDeleteClick : undefined}
-        onRestore={isAdmin ? handleRestoreClick : undefined}
+        onStatusChange={
+          canManageProductCategoryFranchise ? handleStatusChange : undefined
+        }
+        onDelete={
+          canManageProductCategoryFranchise ? handleDeleteClick : undefined
+        }
+        onRestore={
+          canManageProductCategoryFranchise ? handleRestoreClick : undefined
+        }
         onRefresh={handleRefresh}
         onSearch={handleSearch}
-        onAdd={isAdmin ? () => handleOpenForm("create") : undefined}
+        onAdd={
+          canManageProductCategoryFranchise
+            ? () => handleOpenForm("create")
+            : undefined
+        }
         onView={(item) => handleOpenForm("view", item)}
       />
 

@@ -13,7 +13,6 @@ import {
   Boxes,
   Gift,
   User,
-  CalendarCheck,
   BadgePercent,
   ChevronLeft,
   ChevronRight,
@@ -67,12 +66,6 @@ const menuItems: MenuItem[] = [
   // { icon:  }
   { icon: <User size={20} />, label: "Shift", path: "shift" },
   { icon: <ShoppingCart size={20} />, label: "Cart", path: "cart" },
-  {
-
-    icon: <CalendarCheck size={20} />,
-    label: "Shift Assignment",
-    path: "shift-assignment",
-  },
 ];
 
 type AdminSidebarProps = {

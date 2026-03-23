@@ -46,8 +46,10 @@ export function isMenuVisible(
   if (path === "product") return can(user, PERM.PRODUCT_READ, fid);
   if (path === "category") return can(user, PERM.CATEGORY_READ, fid);
   if (path === "product-category") return can(user, PERM.CATEGORY_READ, fid);
-  if (path === "category-franchise") return can(user, PERM.CATEGORY_FRANCHISE_READ, fid);
-  if (path === "product-category") return can(user, PERM.PRODUCT_CATEGORY_READ, fid);
+  if (path === "category-franchise")
+    return can(user, PERM.CATEGORY_FRANCHISE_READ, fid);
+  if (path === "product-category")
+    return can(user, PERM.PRODUCT_CATEGORY_READ, fid);
   if (path === "category-franchise")
     return can(user, PERM.CATEGORY_FRANCHISE_READ, fid);
   if (path === "customer") return can(user, PERM.CUSTOMER_READ, fid);
@@ -56,6 +58,11 @@ export function isMenuVisible(
   if (path === "shift-assignment")
     return can(user, PERM.SHIFT_ASSIGNMENT_READ, fid);
   if (path === "loyalty") return can(user, PERM.LOYALTY_READ, fid);
-  if (path === "shift") return can(user, PERM.SHIFT_READ, fid);
+  if (path === "shift") {
+    return (
+      can(user, PERM.SHIFT_READ, fid) ||
+      can(user, PERM.SHIFT_ASSIGNMENT_READ, fid)
+    );
+  }
   return true;
 }

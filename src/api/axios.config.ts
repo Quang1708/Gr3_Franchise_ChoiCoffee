@@ -68,7 +68,7 @@ axiosClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await axiosClient.get("/api/customer-auth/refresh-token");
+        await useCustomerAuthStore.getState().refreshAccessToken();
 
         processQueue();
         isRefreshing = false;
@@ -92,8 +92,6 @@ export const axiosAdminClient = axios.create({
   timeout: 300000,
   withCredentials: true,
 });
-
-
 
 axiosAdminClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
@@ -124,6 +122,33 @@ const processAdminQueue = (error: AxiosError | null = null) => {
   failedAdminQueue = [];
 };
 
+const shouldSkipAdminRefresh = (
+  request: InternalAxiosRequestConfig & { _retry?: boolean },
+): boolean => {
+  const url = request.url ?? "";
+  const method = request.method?.toLowerCase();
+
+  if (url.includes("/refresh-token")) return true;
+
+  const skipPaths = [
+    "/api/auth/logout",
+    "/api/auth/verify-token",
+    "/api/auth/resend-token",
+    "/api/auth/forgot-password",
+  ];
+
+  if (skipPaths.some((path) => url.includes(path))) {
+    return true;
+  }
+
+  // Login endpoint should not trigger refresh flow on 401.
+  if (method === "post" && /\/api\/auth(?:\?|$)/.test(url)) {
+    return true;
+  }
+
+  return false;
+};
+
 // Response interceptor for admin to handle token refresh
 axiosAdminClient.interceptors.response.use(
   (response) => response,
@@ -142,10 +167,9 @@ axiosAdminClient.interceptors.response.use(
 
     // If access token expired (by message or 401 status) and we haven't retried yet
     if ((isAccessTokenExpired || is401) && !originalRequest._retry) {
-      // Don't retry refresh token endpoint itself
-      if (originalRequest.url?.includes("/refresh-token")) {
+      // Skip refresh flow for auth endpoints where 401 is expected.
+      if (shouldSkipAdminRefresh(originalRequest)) {
         // Refresh token expired, clear admin info and redirect to login
-        useAuthStore.getState().logout();
         return Promise.reject(error);
       }
 
@@ -162,8 +186,8 @@ axiosAdminClient.interceptors.response.use(
       isRefreshingAdmin = true;
 
       try {
-        // Call admin refresh token API
-        await axiosAdminClient.get("/api/auth/refresh-token");
+        // Call admin refresh token API via store action
+        await useAuthStore.getState().refreshAccessToken();
 
         // Token refreshed successfully, process queued requests
         processAdminQueue();

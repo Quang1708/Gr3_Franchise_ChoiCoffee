@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Modal } from "../../UI/Modal";
@@ -7,6 +7,7 @@ import type { RequestProduct } from "../../../pages/admin/product/models";
 import type { Product } from "@/models/product.model";
 import { Trash2 } from "lucide-react";
 import { FormInput } from "@/components/Admin/form/FormInput";
+import { TextEditor } from "@/components/UI/TextEditor";
 
 // --- Schema ---
 const productSchema = z
@@ -22,6 +23,7 @@ const productSchema = z
       .min(0, "Giá không được âm"),
     description: z.string().optional(),
     content: z.string().optional(),
+    isActive: z.boolean().default(true),
   })
   .refine((v) => v.maxPrice >= v.minPrice, {
     path: ["maxPrice"],
@@ -38,13 +40,14 @@ const toProductPartial = (data: ProductFormData): RequestProduct => ({
   maxPrice: data.maxPrice,
   description: data.description,
   content: data.content,
+  isActive: data.isActive ?? true,
 });
 
 const submitProductForm = async (
   data: ProductFormData,
   opts: {
     setIsLoading: (value: boolean) => void;
-    onSubmit: (data: Partial<Product>) => Promise<void> | void;
+    onSubmit: (data: RequestProduct) => Promise<void> | void;
     onClose: () => void;
   },
 ) => {
@@ -75,6 +78,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   submitLabel,
 }) => {
   const {
+    control,
     register,
     handleSubmit,
     formState: { errors },
@@ -85,6 +89,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     defaultValues: {
       minPrice: 0,
       maxPrice: 0,
+      isActive: true,
       ...defaultValues,
     },
   });
@@ -94,6 +99,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
       reset({
         minPrice: 0,
         maxPrice: 0,
+        isActive: true,
         ...defaultValues,
       });
     }
@@ -232,18 +238,18 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
       {/* Content */}
       <div>
-        <label
-          htmlFor="product-content"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Nội dung chi tiết
-        </label>
-        <textarea
-          id="product-content"
-          {...register("content")}
-          rows={5}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none"
-          placeholder="Nội dung đầy đủ..."
+        <Controller
+          name="content"
+          control={control}
+          render={({ field }) => (
+            <TextEditor
+              label="Nội dung chi tiết"
+              value={field.value || ""}
+              onChange={field.onChange}
+              placeholder="Nội dung đầy đủ..."
+              minHeight={240}
+            />
+          )}
         />
       </div>
 
@@ -298,7 +304,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Thêm sản phẩm mới"
-      maxWidth="max-w-xl"
+      maxWidth="max-w-5xl"
     >
       <ProductForm
         onSubmit={handleSubmit}
@@ -338,6 +344,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
     maxPrice: product.max_price,
     description: product.description || "",
     content: product.content || "",
+    isActive: Boolean(product.is_active),
   };
 
   return (
@@ -503,9 +510,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Mô tả
                 </label>
-                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded line-clamp-3">
-                  {product.description}
-                </div>
+                <div
+                  className="text-sm text-gray-700 bg-gray-50 p-3 rounded max-h-32 overflow-y-auto prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: product.description }}
+                />
               </div>
             )}
 
@@ -515,9 +523,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Nội dung
                 </label>
-                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded max-h-32 overflow-y-auto line-clamp-4">
-                  {product.content}
-                </div>
+                <div
+                  className="text-sm text-gray-700 bg-gray-50 p-3 rounded max-h-48 overflow-y-auto prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: product.content }}
+                />
               </div>
             )}
 

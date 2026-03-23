@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { AdminLoginUserProfile } from "@/pages/admin/auth/login/models/api.model";
 import { LOCAL_STORAGE } from "@/consts/localstorage.const";
+import { ENV } from "@/config";
+import axios from "axios";
 
 type AuthState = {
   user: AdminLoginUserProfile | null;
@@ -11,6 +13,7 @@ type AuthState = {
   setAuth: (user: AdminLoginUserProfile, token: string) => void;
   hydrate: () => void;
   logout: () => void;
+  refreshAccessToken: () => Promise<void>;
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -34,6 +37,13 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         set({ user: null, token: null, isInitialized: true });
+      },
+
+      refreshAccessToken: async () => {
+        await axios.get(`${ENV.API_URL}/api/auth/refresh-token`, {
+          withCredentials: true,
+          timeout: 300000,
+        });
       },
     }),
     {

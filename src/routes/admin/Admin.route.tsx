@@ -27,9 +27,6 @@ const FranchiseDetailPage = React.lazy(
 const InventoryPage = React.lazy(
   () => import("../../pages/admin/inventory/Inventory.page"),
 );
-const ShiftAssignmentPage = React.lazy(
-  () => import("../../pages/admin/shift_assignment"),
-);
 const LoyaltyPage = React.lazy(() => import("../../pages/admin/loyalty"));
 const OrderPage = React.lazy(() => import("../../pages/admin/order"));
 const PaymentPage = React.lazy(() => import("../../pages/admin/payment"));
@@ -129,7 +126,7 @@ const AdminRoutes = (
         <Route
           element={<RequirePermission perm={PERM.SHIFT_ASSIGNMENT_READ} />}
         >
-          <Route path="shift-assignment" element={<ShiftAssignmentPage />} />
+          <Route path="shift-assignment" element={<ShiftPage />} />
         </Route>
 
         <Route element={<RequirePermission perm={PERM.LOYALTY_READ} />}>
@@ -164,7 +161,7 @@ const AdminRoutes = (
           />
         </Route>
         <Route element={<RequirePermission perm={PERM.CART_READ} />}>
-          <Route path="cart" element={<CartPage/>} />
+          <Route path="cart" element={<CartPage />} />
         </Route>
 
         {/* PUBLIC IN ADMIN */}

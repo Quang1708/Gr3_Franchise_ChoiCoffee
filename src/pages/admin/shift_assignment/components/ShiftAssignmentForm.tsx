@@ -37,6 +37,7 @@ const STATUS_LABEL_MAP: Record<string, string> = {
 type ShiftAssignmentFormProps = {
   mode: "view" | "create" | "edit";
   initialData?: Partial<ShiftAssignmentItem>;
+  defaultWorkDate?: string;
   onSubmit: (
     data: ShiftAssignmentFormValues,
     setError: ReturnType<typeof useForm<ShiftAssignmentFormValues>>["setError"],
@@ -58,6 +59,7 @@ const formatDateTime = (dateString?: string) => {
 const ShiftAssignmentForm = ({
   mode,
   initialData,
+  defaultWorkDate,
   onSubmit,
   isOpen,
   isLoading,
@@ -92,7 +94,7 @@ const ShiftAssignmentForm = ({
       reset({
         user_id: "",
         shift_id: "",
-        work_date: new Date().toISOString().split("T")[0],
+        work_date: defaultWorkDate || new Date().toISOString().split("T")[0],
         note: "",
       });
     } else {
@@ -103,7 +105,7 @@ const ShiftAssignmentForm = ({
         note: initialData?.note || "",
       });
     }
-  }, [isOpen, initialData, mode, reset]);
+  }, [defaultWorkDate, isOpen, initialData, mode, reset]);
 
   const isView = mode === "view";
   const selectedUserId = useWatch({ control, name: "user_id" });

@@ -1,6 +1,6 @@
 const ClientLoading = () => {
   return (
-    <main className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md">
+    <main className="fixed inset-0 z-9999 flex items-center justify-center backdrop-blur-md">
       <section className="relative w-full max-w-sm mx-4 p-10 backdrop-blur-xl text-center flex flex-col items-center">
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-wider text-primary">

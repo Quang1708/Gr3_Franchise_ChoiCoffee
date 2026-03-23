@@ -1,7 +1,4 @@
-import {
-  CRUDPageTemplate,
-  type Column,
-} from "@/components/Admin/template/CRUDPage.template";
+import { CRUDPageTemplate } from "@/components/Admin/template/CRUDPage.template";
 import ClientLoading from "@/components/Client/Client.Loading";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ShiftAssignmentItem } from "./models/shiftAssignment.model";
@@ -16,20 +13,13 @@ import { searchShiftAssignment } from "./usecases/searchShiftAssignment.usecase"
 import { createShiftAssignment } from "./usecases/createShiftAssignment.usecase";
 import { updateShiftAssignmentStatus } from "./usecases/updateShiftAssignmentStatus.usecase";
 import { loadLookupOptions as loadLookupOptionsUsecase } from "./usecases/loadLookupOptions.usecase";
-import { statusBadge } from "./shiftAssignment.utils";
+import { getShiftAssignmentColumns } from "./shiftAssignment.columns";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type SelectOption = {
   value: string;
   label: string;
-};
-
-const STATUS_LABEL_MAP: Record<ShiftAssignmentItem["status"], string> = {
-  ASSIGNED: "Đã phân công",
-  COMPLETED: "Hoàn thành",
-  ABSENT: "Vắng mặt",
-  CANCELED: "Đã hủy",
 };
 
 // ── Page Component ────────────────────────────────────────────────────────────
@@ -53,6 +43,7 @@ const ShiftAssignmentPage = () => {
   const [formMode, setFormMode] = useState<"create" | "view">("create");
   const [selectedShiftAssignment, setSelectedShiftAssignment] =
     useState<ShiftAssignmentItem | null>(null);
+  const [isFormOpening, setIsFormOpening] = useState(false);
 
   // Lookup options
   const [staffOptions, setStaffOptions] = useState<SelectOption[]>([]);
@@ -142,6 +133,10 @@ const ShiftAssignmentPage = () => {
     setFormMode(mode);
     setSelectedShiftAssignment(shiftAssignment);
     setIsFormOpen(true);
+    setIsFormOpening(true);
+    void loadLookupOptions().finally(() => {
+      setIsFormOpening(false);
+    });
   };
 
   const handleSubmitShiftAssignment = async (
@@ -161,8 +156,9 @@ const ShiftAssignmentPage = () => {
         toastSuccess("Phân ca thành công!");
       }
 
-      setIsFormOpen(false);
       await fetchShiftAssignments(page, "table", pageSize);
+      setIsFormOpen(false);
+      setSelectedShiftAssignment(null);
     } catch (error: any) {
       console.error("Error submitting shift assignment:", error);
 
@@ -220,77 +216,15 @@ const ShiftAssignmentPage = () => {
     [fetchShiftAssignments, page, pageSize],
   );
 
-  // ── Columns ───────────────────────────────────────────────────────────────
-
-  const columns: Column<ShiftAssignmentItem>[] = useMemo(
-    () => [
-      {
-        header: "Nhân viên",
-        accessor: "user_id",
-        sortable: true,
-        render: (item) => (
-          <span className="font-medium text-gray-800">
-            {item.user_name ?? item.user_id}
-          </span>
-        ),
-      },
-      {
-        header: "Ca làm",
-        accessor: "shift_id",
-        sortable: true,
-        render: (item) =>
-          item.start_time && item.end_time ? (
-            <span className="text-sm text-gray-700">
-              {item.start_time} – {item.end_time}
-            </span>
-          ) : (
-            <span className="text-sm text-gray-500">{item.shift_id}</span>
-          ),
-      },
-      {
-        header: "Ngày làm",
-        accessor: "work_date",
-        sortable: true,
-      },
-      {
-        header: "Trạng thái",
-        accessor: "status",
-        render: (item) => (
-          <span
-            className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${statusBadge(item.status)}`}
-          >
-            {STATUS_LABEL_MAP[item.status]}
-          </span>
-        ),
-      },
-      {
-        header: "Đổi trạng thái",
-        accessor: "id",
-        render: (item) => (
-          <select
-            value={item.status}
-            disabled={isProcessing || isTableLoading}
-            onChange={(e) => {
-              const newStatus = e.target.value as ShiftAssignmentItem["status"];
-              if (newStatus !== item.status) {
-                void handleChangeStatus(item, newStatus);
-              }
-            }}
-            className={`w-full rounded-full border border-transparent px-2.5 py-1 text-xs font-medium ${statusBadge(item.status)} focus:outline-none focus:ring-2 focus:ring-primary/20`}
-          >
-            <option value="ASSIGNED">Đã phân công</option>
-            <option value="COMPLETED">Hoàn thành</option>
-            <option value="ABSENT">Vắng mặt</option>
-            <option value="CANCELED">Đã hủy</option>
-          </select>
-        ),
-      },
-      {
-        header: "Người phân ca",
-        accessor: "assigned_by",
-        render: (item) => item.assigned_by_name ?? item.assigned_by ?? "--",
-      },
-    ],
+  const columns = useMemo(
+    () =>
+      getShiftAssignmentColumns({
+        isProcessing,
+        isTableLoading,
+        onChangeStatus: (item, newStatus) => {
+          void handleChangeStatus(item, newStatus);
+        },
+      }),
     [handleChangeStatus, isProcessing, isTableLoading],
   );
 
@@ -321,8 +255,12 @@ const ShiftAssignmentPage = () => {
         pageSize={pageSize}
         totalItems={totalItems}
         currentPage={page}
-        onView={(item) => handleOpenForm("view", item)}
-        onAdd={() => handleOpenForm("create")}
+        onView={(item) => {
+          void handleOpenForm("view", item);
+        }}
+        onAdd={() => {
+          void handleOpenForm("create");
+        }}
         onRefresh={() => fetchShiftAssignments(1, "full")}
         onPageChange={(newPage) => fetchShiftAssignments(newPage, "table")}
         onPageSizeChange={(newSize) => {
@@ -349,7 +287,7 @@ const ShiftAssignmentPage = () => {
         isOpen={isFormOpen}
         mode={formMode}
         initialData={selectedShiftAssignment || undefined}
-        isLoading={isProcessing}
+        isLoading={isProcessing || isFormOpening}
         onClose={() => setIsFormOpen(false)}
         onSubmit={(data, setError) => {
           void handleSubmitShiftAssignment(data, setError);

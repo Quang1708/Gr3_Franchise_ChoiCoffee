@@ -13,7 +13,7 @@ import { getLoyaltyDetailUsecase } from "@/pages/admin/loyalty/usecases/getLoyal
 import { createLoyaltyUsecase } from "@/pages/admin/loyalty/usecases/createLoyalty01.usecase";
 import { updateLoyaltyUsecase } from "@/pages/admin/loyalty/usecases/updateLoyalty04.usecase";
 
-import FormSelect from "@/components/Admin/form/FormSelect";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 import { FormInput } from "@/components/Admin/form/FormInput";
 import { LoyaltyForm } from "@/pages/admin/loyalty/components/LoyaltyForm";
 import type { SearchLoyaltyRequest } from "@/pages/admin/loyalty/models/searchLoyalty.model";

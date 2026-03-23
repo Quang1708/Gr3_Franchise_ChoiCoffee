@@ -10,7 +10,7 @@ import {
 } from "@/components/Admin/template/CRUDPage.template";
 import ClientLoading from "@/components/Client/Client.Loading";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
-import FormSelect from "@/components/Admin/form/FormSelect";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 
 import { searchProductFranchiseUsecase } from "@/pages/admin/product/usecases/productFranchise/searchProductFranchise02.usecase";
 import { changeStatusProductFranchiseUsecase } from "@/pages/admin/product/usecases/productFranchise/changeStatusProductFranchise07.usecase";

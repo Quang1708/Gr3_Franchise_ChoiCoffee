@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
+import { CRUDTable, type Column } from "@/components/Admin/template/CRUD.template";
 import ClientLoading from "@/components/Client/Client.Loading";
 import type { Voucher, VoucherType } from "@/models/voucher.model";
 import {
@@ -817,7 +818,7 @@ const VoucherApiPage = () => {
             : undefined
         }
       />
-    </>
+    </div>
   );
 };
 

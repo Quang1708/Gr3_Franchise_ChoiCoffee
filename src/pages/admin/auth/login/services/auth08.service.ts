@@ -1,14 +1,16 @@
 import { axiosAdminClient } from "@/api/axios.config";
-import { getErrorMessage, type AdminAuthResult } from "./auth.util";
+import { getErrorMessage, type AdminAuthResult, type ApiResponse } from "./auth.util";
 
 export const verifyToken = async (token: string): Promise<AdminAuthResult> => {
   try {
-    const res = await axiosAdminClient.post("/api/auth/verify-token", {
+    const { data } = await axiosAdminClient.post<ApiResponse>(
+      "/api/auth/verify-token",
+      {
       token,
-    });
-    const data = res?.data as { success?: boolean; message?: string } | null;
-    if (data?.success === false) {
-      return { success: false, message: data.message };
+      },
+    );
+    if (!data?.success) {
+      return { success: false, message: data?.message ?? undefined, errors: data?.errors };
     }
     return { success: true };
   } catch (error) {

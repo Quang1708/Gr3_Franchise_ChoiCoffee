@@ -4,10 +4,11 @@ import { searchCustomersUsecase } from "../customer/usecases/searchCustomers.use
 
 import type { Customer } from "@/models/customer.model";
 import type { Order } from "./models/searchOrderResponse.model";
-import { searchOrdersByCustomer } from "./services/searchOrder.service";
+import { searchOrderByFranchiseId, searchOrdersByCustomer } from "./services/searchOrder.service";
 import CustomSelect from "@/components/Admin/filters/CustomSelect";
 import ClientLoading from "@/components/Client/Client.Loading";
 import OrderForm from "@/components/order/orderForm";
+import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";
 
 const OrderPage = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -18,6 +19,28 @@ const OrderPage = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [formMode, setFormMode] = useState<"create" | "edit" | "view">("view");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [franchises, setFranchises] = useState<any[]>([]);
+  const [franchiseSelected, setFranchiseSelected] = useState<any>(null);
+
+  useEffect(() => {
+    const loadFranchises = async () => {
+      try {
+        setLoading(true);
+        const data = await getAllFranchises();
+        if (data) setFranchises(data);
+      } catch (error) {
+        console.error("Error fetching franchises:", error);
+      }
+    };
+
+    void loadFranchises();
+  }, []);
+
+  const franchiseOptions =
+    franchises?.map((f: any) => ({
+      label: f.name,
+      value: f.id,
+    })) || [];
 
   const fetchCustomers = async ({ pageNum, pageSize, searchKey }: any) => {
     try {
@@ -59,22 +82,38 @@ const OrderPage = () => {
         fetchCustomers({ pageNum: 1, pageSize: 10, searchKey: "" });
     }, [])
 
-    const searchCartByCustomerId = async (term: string, filters?: any) => {
-      if(!customerSelected?.id) return;
-      setLoading(true);
-      const status = filters?.status;
-        try{
-            const res = await searchOrdersByCustomer(customerSelected?.id, status);
-            if(res){
-              const finalData = Array.isArray(res) ? res : (res?.data || []);
-              setOrders(finalData);
-            }
-        } catch (error) {
-            console.error("Lỗi khi tìm kiếm giỏ hàng:", error);
-        }finally{
-          setLoading(false)
+   const searchCartByCustomerId = async (term: string, filters?: any) => {
+
+    
+    setLoading(true);
+    const status = filters?.status;
+
+    try {
+      if (franchiseSelected?.id) {
+        const res = await searchOrderByFranchiseId(franchiseSelected.id);
+        if (res) {
+          let finalData = Array.isArray(res) ? res : res?.data || [];
+          if (status) {
+            finalData = finalData.filter((item: any) => item.status === status);
+          }
+          
+          setOrders(finalData);
         }
+      } else if (customerSelected?.id) {
+        const res = await searchOrdersByCustomer(customerSelected.id, status);
+        if (res) {
+          const finalData = Array.isArray(res) ? res : res?.data || [];
+          setOrders(finalData);
+        }
+      } else {
+        setOrders([]);
+      }
+    } catch (error) {
+      console.error("Lỗi khi tìm kiếm đơn hàng:", error);
+    } finally {
+      setLoading(false);
     }
+  };
 
     const statusLabels = (status: string) => {
   switch (status) {
@@ -181,12 +220,13 @@ const statusColors = (status: string) => {
         onEdit={(item) => handleOpenForm("edit", item)}
         onRefresh={() => searchCartByCustomerId(orders?.[0]?.customer_id, { status: "" })}
         searchContent={
-          <CustomSelect
-            fetchOptions={fetchCustomers as any}
-            value={customerSelected?.id || ""}
-            options={customers.map((customer) => ({
-              label: customer.name,
-              value: customer.id,
+          <div className="flex gap-4">
+            <CustomSelect
+              fetchOptions={fetchCustomers as any}
+              value={customerSelected?.id || ""}
+              options={customers.map((customer) => ({
+                label: customer.name,
+                value: customer.id,
             }))}
             placeholder="Chọn khách hàng"
             onChange={(id) => {
@@ -194,6 +234,17 @@ const statusColors = (status: string) => {
               setCustomerSelected(selectedCustomer || null);
             }}
           />
+
+          <CustomSelect
+            value={franchiseSelected?.id || ""}
+            options={franchiseOptions}
+            placeholder="Chọn chi nhánh"
+            onChange={(id) => {
+              const selectedFranchise = franchises.find((f: any) => f.id === id);
+              setFranchiseSelected(selectedFranchise || null);
+            }}
+          />
+        </div>
         }
         filters={[
           {

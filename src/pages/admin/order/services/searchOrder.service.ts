@@ -12,10 +12,10 @@ export const searchOrdersByCustomer = async (customerId: string, status?: string
     }
 };
 
-export const searchOrderByCode = async (code: string) => {
+export const searchOrderByFranchiseId= async (franchise_id: string) => {
     try{
         const response = await axiosAdminClient.get(
-            `/api/orders/code?code=${code}`
+            `/api/orders/franchise/${franchise_id}`
         )
         return response.data;
     } catch (error) {

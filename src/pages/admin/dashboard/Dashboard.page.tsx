@@ -204,26 +204,26 @@ const DashboardPage = () => {
     <div className="space-y-6 bg-[#f8f7f6]">
       {isDashboardLoading && <ClientLoading />}
       {/* Welcome Panel */}
-      <div className="bg-linear-to-r from-[#3d2b1f] via-[#e69019] to-[#887863] rounded-xl shadow-lg p-6 text-white">
+      <div className="bg-linear-to-r from-[#f7efe3] via-[#f4e2c4] to-[#efe1cf] rounded-xl shadow-lg p-6 text-[#3d2b1f]">
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-2xl font-bold">Welcome Back {userName}</h2>
             </div>
             {isDashboardLoading && (
-              <p className="text-sm text-[#f8f7f6]">Loading dashboard data...</p>
+              <p className="text-sm text-[#6b5a4b]">Loading dashboard data...</p>
             )}
-            <p className="text-sm text-[#f8f7f6]">
+            <p className="text-sm text-[#6b5a4b]">
               Overview of orders, payments, deliveries, and low stock.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
+              <span className="inline-flex items-center rounded-full bg-[#3d2b1f]/10 px-3 py-1 text-xs font-semibold">
                 {scopeLabel}
               </span>
               <select
                 value={trendRange}
                 onChange={(event) => setTrendRange(event.target.value as TrendRange)}
-                className="h-8 rounded-lg border border-white/30 bg-white/15 px-3 text-xs font-semibold text-white focus:outline-none"
+                className="h-8 rounded-lg border border-[#e5e1dc] bg-white px-3 text-xs font-semibold text-[#3d2b1f] focus:outline-none"
               >
                 <option value="today" className="text-[#333333]">Today</option>
                 <option value="7d" className="text-[#333333]">Last 7 days</option>

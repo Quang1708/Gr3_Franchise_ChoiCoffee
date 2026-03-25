@@ -51,6 +51,7 @@ const ROUTER_URL = {
     VERIFY_TOKEN: "/admin/verify",
     VERIFY_EMAIL: "/verify-email/:token",
     ADMIN_CART: `/admin/cart`,
+    ADMIN_POS: `/admin/pos`,
   },
 };
 

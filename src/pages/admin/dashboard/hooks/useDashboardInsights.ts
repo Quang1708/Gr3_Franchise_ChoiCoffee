@@ -7,7 +7,7 @@ import type {
   TrendMeta,
   TrendRange,
 } from "../models/dashboard.model";
-import { toastError } from "@/utils/toast.util";
+// import { toastError } from "@/utils/toast.util";
 import {
   buildTrendStats,
   formatShortDate,
@@ -113,7 +113,7 @@ export const useDashboardInsights = (
       } catch {
         if (!isActive) return;
         setPayments([]);
-        toastError("Cannot load payment data");
+        // toastError("Cannot load payment data");
       } finally {
         if (isActive) setIsPaymentsLoading(false);
       }

@@ -448,6 +448,10 @@ const PromotionPage = () => {
     return list.slice(start, start + pageSize);
   }, [currentPage, list, pageSize]);
 
+  if (isLoading && list.length === 0) {
+    return <ClientLoading />;
+  }
+
   return (
     <>
       {isFormLoading && <ClientLoading />}

@@ -1,7 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, type SyntheticEvent } from "react";
 import { toast } from "react-toastify";
-import { Mail, Phone, User, Building2, Shield, Loader, Lock } from "lucide-react";
+import {
+  Mail,
+  Phone,
+  User,
+  Building2,
+  Shield,
+  Loader,
+  Lock,
+  Edit3,
+} from "lucide-react";
 import { getAdminProfile } from "../auth/login/services/auth03.service";
 import { changePassword } from "@/pages/admin/auth/login/services/auth06.service";
 import type {
@@ -154,127 +163,181 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="p-6 h-screen overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-hidden">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Admin Profile</h1>
-          <button
-            onClick={handleOpenChangePasswordModal}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-          >
-            <Lock size={18} />
-            <span>Đổi Mật Khẩu</span>
-          </button>
-        </div>
-
-      {/* User Info Card */}
-      <div className="bg-white rounded-lg shadow-md p-8 mb-6">
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Avatar Section */}
-          <div className="flex flex-col items-center">
-            {userData.avatar_url ? (
-              <img
-                src={userData.avatar_url}
-                alt={userData.name}
-                className="w-32 h-32 rounded-full border-4 border-blue-600 shadow-lg object-cover"
-              />
-            ) : (
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-lg">
-                <User className="w-16 h-16 text-white" />
+    <div className="min-h-screen bg-background-light dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+          <div className="px-8 md:px-20 pb-10 pt-10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-6">
+              <div className="shrink-0">
+                {userData.avatar_url ? (
+                  <img
+                    src={userData.avatar_url}
+                    alt={userData.name}
+                    className="w-28 h-28 rounded-full object-cover border-4 border-primary/30"
+                  />
+                ) : (
+                  <div className="w-28 h-28 rounded-full bg-primary/10 flex items-center justify-center border-4 border-primary/30">
+                    <User className="w-12 h-12 text-primary" />
+                  </div>
+                )}
               </div>
-            )}
-            <h2 className="text-2xl font-bold text-gray-800 mt-4">{userData.name}</h2>
-          </div>
-
-          {/* User Details */}
-          <div className="flex-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex items-start gap-4">
-                <Mail className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">Email</p>
-                  <p className="text-lg text-gray-800">{userData.email}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <Phone className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">Phone</p>
-                  <p className="text-lg text-gray-800">{userData.phone || "N/A"}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <User className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
-                <div>
-                  <p className="text-sm font-semibold text-gray-600">ID</p>
-                  <p className="text-lg text-gray-800 font-mono text-sm break-all">{userData.id}</p>
-                </div>
+              <div className="flex-1 mt-4 sm:mt-0 space-y-1">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {userData.name}
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {userData.email || userData.phone || "Chưa cập nhật thông tin"}
+                </p>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Active Context Card */}
-      {activeContext && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg shadow-md p-6 mb-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Shield className="w-6 h-6 text-blue-600" />
-            Active Context
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg p-4">
-              <p className="text-sm font-semibold text-gray-600">Role</p>
-              <p className="text-lg font-semibold text-blue-600 mt-1">{activeContext.role}</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Thông tin cá nhân
+            </h2>
+            <button
+              type="button"
+              className="px-6 py-2 bg-primary hover:bg-[#d17d0f] text-white font-medium rounded-lg transition-colors duration-200 cursor-default flex items-center gap-2"
+            >
+              <Edit3 className="w-4 h-4" />
+              Xem thông tin
+            </button>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Địa chỉ Email
+              </label>
+              <div className="px-4 py-2.5 border border-primary/30 rounded-lg bg-primary/5 dark:bg-primary/10">
+                <p className="text-gray-900 dark:text-white">{userData.email || "N/A"}</p>
+              </div>
             </div>
-            <div className="bg-white rounded-lg p-4">
-              <p className="text-sm font-semibold text-gray-600">Scope</p>
-              <p className="text-lg font-semibold text-blue-600 mt-1">{activeContext.scope}</p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Số điện thoại
+              </label>
+              <div className="px-4 py-2.5 border border-primary/30 rounded-lg bg-primary/5 dark:bg-primary/10">
+                <p className="text-gray-900 dark:text-white">{userData.phone || "N/A"}</p>
+              </div>
             </div>
-            <div className="bg-white rounded-lg p-4">
-              <p className="text-sm font-semibold text-gray-600">Franchise ID</p>
-              <p className="text-lg font-mono text-gray-800 text-sm break-all">
-                {activeContext.franchiseId ?? activeContext.franchiseid}
-              </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                ID người dùng
+              </label>
+              <div className="px-4 py-2.5 border border-primary/30 rounded-lg bg-primary/5 dark:bg-primary/10">
+                <p className="text-gray-900 dark:text-white font-mono text-sm break-all">
+                  {userData.id}
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Roles Card */}
-      {roles && roles.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-blue-600" />
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+            Cài đặt bảo mật
+          </h2>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                  Mật khẩu
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Cập nhật mật khẩu cho tài khoản quản trị
+                </p>
+              </div>
+              <button
+                onClick={handleOpenChangePasswordModal}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-2"
+              >
+                <Lock className="w-4 h-4" />
+                Đổi mật khẩu
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {activeContext && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-primary" />
+              Active Context
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                  Role
+                </p>
+                <p className="text-sm font-semibold text-primary mt-1">
+                  {activeContext.role}
+                </p>
+              </div>
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                  Scope
+                </p>
+                <p className="text-sm font-semibold text-primary mt-1">
+                  {activeContext.scope}
+                </p>
+              </div>
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                  Franchise ID
+                </p>
+                <p className="text-sm font-mono text-gray-800 dark:text-gray-200 break-all mt-1">
+                  {activeContext.franchiseId ?? activeContext.franchiseid ?? "N/A"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-primary" />
             Assigned Roles
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {roles.map((role, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-                <div className="flex items-start justify-between mb-3">
-                  <Shield className="w-5 h-5 text-purple-600 flex-shrink-0" />
-                  <span className="text-xs font-semibold px-3 py-1 bg-purple-100 text-purple-800 rounded-full">
-                    {role.role || role.role_code || "N/A"}
-                  </span>
+          {roles && roles.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {roles.map((role, index) => (
+                <div
+                  key={index}
+                  className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <Shield className="w-5 h-5 text-purple-600 shrink-0" />
+                    <span className="text-xs font-semibold px-3 py-1 bg-purple-100 text-purple-800 rounded-full">
+                      {role.role || role.role_code || "N/A"}
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                    Scope
+                  </p>
+                  <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
+                    {role.scope || "N/A"}
+                  </p>
+                  <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                    Franchise
+                  </p>
+                  <p className="text-sm text-gray-800 dark:text-gray-200 mb-1">
+                    {role.franchise_name || "N/A"}
+                  </p>
+                  <p className="text-xs font-mono text-gray-500 break-all">
+                    {role.franchise_id || "N/A"}
+                  </p>
                 </div>
-                <p className="text-sm font-semibold text-gray-600">Scope</p>
-                <p className="text-sm text-gray-800 mb-3">{role.scope || "N/A"}</p>
-                <p className="text-sm font-semibold text-gray-600">Franchise</p>
-                <p className="text-sm text-gray-800 mb-1">{role.franchise_name || "N/A"}</p>
-                <p className="text-xs font-mono text-gray-500 break-all">{role.franchise_id || "N/A"}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+              <p className="text-yellow-800">No roles assigned</p>
+            </div>
+          )}
         </div>
-      )}
-
-      {(!roles || roles.length === 0) && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <p className="text-yellow-800">No roles assigned</p>
-        </div>
-      )}
       </div>
 
       {/* Change Password Modal */}

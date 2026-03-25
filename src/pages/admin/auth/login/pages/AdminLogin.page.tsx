@@ -61,6 +61,7 @@ const AdminLoginPage: React.FC = () => {
   };
   const handleLoginSuccess = (user: AdminLoginUserProfile) => {
     const primaryRole = user.roles?.[0];
+    const isStaffRole = primaryRole?.role === "STAFF";
     const roleFranchiseId =
       primaryRole?.franchise_id ??
       (primaryRole as { franchiseId?: string | number } | undefined)
@@ -76,7 +77,12 @@ const AdminLoginPage: React.FC = () => {
     useAuthStore.getState().login(user, null);
     toastSuccess?.("Đăng nhập thành công!");
     clearErrors();
-    navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
+    navigate(
+      isStaffRole
+        ? ROUTER_URL.ADMIN_ROUTER.ADMIN_POS
+        : ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD,
+      { replace: true },
+    );
   };
 
   useEffect(() => {
@@ -86,10 +92,13 @@ const AdminLoginPage: React.FC = () => {
         SESSION_STORAGE.ADMIN_CONTEXT_REQUIRED,
       ),
     );
+    const isStaffRole = user.roles?.[0]?.role === "STAFF";
     navigate(
       contextRequired
         ? ROUTER_URL.ADMIN_ROUTER.ADMIN_SELECT_CONTEXT
-        : ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD,
+        : isStaffRole
+          ? ROUTER_URL.ADMIN_ROUTER.ADMIN_POS
+          : ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD,
       { replace: true },
     );
   }, [user, navigate]);

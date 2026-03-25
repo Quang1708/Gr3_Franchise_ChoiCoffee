@@ -276,7 +276,9 @@ const statusColors = (status: string) => {
         canChangeOrderStatus={(item) =>
           item.status === "CONFIRMED" ||
           item.status === "PREPARING" ||
-          item.status === "READY_FOR_PICKUP"
+          item.status === "READY_FOR_PICKUP"||
+          item.status === "OUT_FOR_DELIVERY"||
+          item.status === "COMPLETED"
         }
         onRefresh={() => searchCart(orders?.[0]?.customer_id, { status: "" })}
         searchContent={

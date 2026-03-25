@@ -109,14 +109,31 @@ const mapOrderToOrderDetail = (order: ApiOrder): OrderDetailView => {
   const createdAt =
     order.created_at ?? order.createdAt ?? order.updated_at ?? order.updatedAt ?? new Date().toISOString();
   const orderItems = order.order_items ?? order.cart_items ?? [];
+  const canceledAt = String(
+    order.canceled_at ??
+      order.canceledAt ??
+      order.cancelled_at ??
+      order.cancelledAt ??
+      "",
+  ).trim();
+  const cancelReason = String(
+    order.failed_reason ??
+      order.failedReason ??
+      order.cancel_reason ??
+      order.canceled_reason ??
+      order.cancelled_reason ??
+      "",
+  ).trim();
 
   return {
     id,
     orderCode: String(order.code ?? order.order_code ?? (id.slice(-8).toUpperCase() || "N/A")),
     status: toClientStatus(order.status),
     createdAt,
+    canceledAt,
     franchiseName: String(order.franchise_name ?? "N/A"),
     customerName: String(order.customer_name ?? "Khach hang"),
+    cancelReason,
     subtotal: Number(order.subtotal_amount ?? order.total_amount ?? order.totalAmount ?? 0),
     total: Number(order.total_amount ?? order.totalAmount ?? order.final_amount ?? order.subtotal_amount ?? 0),
     items: orderItems.map((item) => ({

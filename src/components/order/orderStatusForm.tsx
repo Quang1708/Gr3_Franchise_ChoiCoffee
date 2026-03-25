@@ -125,7 +125,7 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
 
     const toastId = toast.loading("Đang cập nhật trạng thái...");
     setIsLoading(true);
-    if (selectedStatus === "OUT_FOR_DELIVERY" && !selectedStaffId) {
+    if (selectedStatus === "READY_FOR_PICKUP" && !selectedStaffId) {
       toast.error("Vui lòng chọn nhân viên giao hàng!");
       return;
     }

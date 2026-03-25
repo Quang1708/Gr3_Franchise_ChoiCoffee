@@ -20,20 +20,26 @@ const getStatusMeta = (status: ClientOrderStatus): StatusMeta => {
     };
   }
 
-  if (status === "confirmed" || status === "preparing") {
+  if (status === "confirmed") {
     return {
       label: "Đã xác nhận",
       className: "bg-blue-500/20 text-blue-500 border-blue-500/30",
     };
   }
+  if (status === "preparing") {
+    return {
+      label: "Đang chuẩn bị",
+      className: "bg-blue-500/20 text-blue-500 border-blue-500/30",
+    };
+  }
 
-  if (status === "ready_for_pickup" ) {
+  if (status === "ready_for_pickup") {
     return {
       label: "Đơn đang chờ shipper lấy",
       className: "bg-orange-500/20 text-orange-500 border-orange-500/30",
     };
   }
-   if (status === "out_for_delivery") {
+  if (status === "out_for_delivery") {
     return {
       label: "Đang giao đến bạn",
       className: "bg-orange-500/20 text-orange-500 border-orange-500/30",
@@ -58,7 +64,7 @@ const getActionLabel = (status: ClientOrderStatus): string | null => {
   if (status === "ready_for_pickup" || status === "out_for_delivery")
     return "Theo dõi đơn";
   if (status === "completed") return "Mua lại";
-  if (status === "canceled") return "Đặt lại";
+  if (status === "canceled") return "Mua lại";
   return null;
 };
 
@@ -140,16 +146,30 @@ const OrderCard = ({ order, onOpen, onAction }: OrderCardProps) => {
         </div>
 
         {actionLabel ? (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onAction(order);
-            }}
-            className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs md:text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            {actionLabel}
-          </button>
+          <div className="flex items-center gap-2">
+            {order.status === "canceled" ? (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpen(order.id);
+                }}
+                className="px-3 py-1.5 rounded-lg border border-primary/30 bg-white text-primary text-xs md:text-sm font-medium hover:bg-primary/5 transition-colors"
+              >
+                Xem đơn hủy
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onAction(order);
+              }}
+              className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs md:text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              {actionLabel}
+            </button>
+          </div>
         ) : null}
       </div>
     </article>

@@ -88,6 +88,9 @@ const OrderDetailPage = () => {
   const badge = ORDER_STATUS_BADGE[orderDetail.status];
   const { orderDate, orderTime } = formatDateTime(orderDetail.createdAt);
   const isCanceled = orderDetail.status === "canceled";
+  const canceledDateTime = orderDetail.canceledAt
+    ? formatDateTime(orderDetail.canceledAt)
+    : null;
   const statusOrder: Array<OrderDetailView["status"]> = [
     "draft",
     "confirmed",
@@ -184,42 +187,62 @@ const OrderDetailPage = () => {
           </div>
         </section>
 
-        <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-5">
-          <div className="relative flex items-start justify-between gap-2 md:gap-4">
-            {timelineSteps.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = step.active;
-              const isLast = index === timelineSteps.length - 1;
-              const lineActive = index < activeStep;
+        {isCanceled ? (
+          <section className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-3 mb-4">
+            <XCircle size={18} className="text-red-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-red-700">Đơn hàng đã bị huỷ</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {orderDetail.cancelReason || "Không có lý do được cung cấp"}
+              </p>
+              {canceledDateTime ? (
+                <p className="text-sm text-gray-600 mt-1">
+                  Thời gian huỷ: {canceledDateTime.orderDate} -{" "}
+                  {canceledDateTime.orderTime}
+                </p>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
-              return (
-                <div key={step.key} className="flex-1 min-w-0">
-                  <div className="flex items-center">
-                    <span
-                      className={`w-8 h-8 rounded-full border-2 inline-flex items-center justify-center ${
-                        isActive
-                          ? "border-primary bg-primary text-white"
-                          : "border-gray-300 bg-white text-gray-400"
-                      }`}
-                    >
-                      <Icon size={15} />
-                    </span>
-                    {!isLast && (
+        {!isCanceled ? (
+          <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-5">
+            <div className="relative flex items-start justify-between gap-2 md:gap-4">
+              {timelineSteps.map((step, index) => {
+                const Icon = step.icon;
+                const isActive = step.active;
+                const isLast = index === timelineSteps.length - 1;
+                const lineActive = index < activeStep;
+
+                return (
+                  <div key={step.key} className="flex-1 min-w-0">
+                    <div className="flex items-center">
                       <span
-                        className={`h-0.5 flex-1 mx-2 ${lineActive ? "bg-primary" : "bg-gray-200"}`}
-                      ></span>
-                    )}
+                        className={`w-8 h-8 rounded-full border-2 inline-flex items-center justify-center ${
+                          isActive
+                            ? "border-primary bg-primary text-white"
+                            : "border-gray-300 bg-white text-gray-400"
+                        }`}
+                      >
+                        <Icon size={15} />
+                      </span>
+                      {!isLast && (
+                        <span
+                          className={`h-0.5 flex-1 mx-2 ${lineActive ? "bg-primary" : "bg-gray-200"}`}
+                        ></span>
+                      )}
+                    </div>
+                    <p
+                      className={`mt-2 text-xs md:text-sm font-medium ${isActive ? "text-charcoal" : "text-gray-400"}`}
+                    >
+                      {step.label}
+                    </p>
                   </div>
-                  <p
-                    className={`mt-2 text-xs md:text-sm font-medium ${isActive ? "text-charcoal" : "text-gray-400"}`}
-                  >
-                    {step.label}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
 
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">

@@ -1,545 +1,500 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import ClientLoading from "@/components/Client/Client.Loading";
 import {
-    Star,
-    Gift,
-    Filter,
-    ArrowUp,
-    Search,
-    CheckCircle2,
-    Clock,
+  ChevronDown,
+  Crown,
+  Gift,
+  Rocket,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react";
-import { LOYALTY_TRANSACTION_SEED_DATA } from "../../../mocks/loyalty_transaction.seed";
-import { CUSTOMER_FRANCHISE_SEED_DATA } from "../../../mocks/customer_franchise.seed";
-import { CUSTOMER_SEED_DATA } from "../../../mocks/customer.seed";
-import { ORDER_SEED_DATA } from "../../../mocks/order.seed";
 import ROUTER_URL from "../../../routes/router.const";
-import type { LoyaltyTransaction } from "../../../models/loyalty_transaction.model";
+import { useCustomerAuthStore } from "@/stores";
+import type {
+  CustomerSummary,
+  FranchiseLoyaltyRule,
+  LoyaltyTierRule,
+} from "./models/loyaltyClient.model";
+import { getLoyaltyOverviewUsecase } from "./usecases/getLoyaltyOverview.usecase";
 
+const FALLBACK_FRANCHISE_ID = "698eab0826ca2b18eb35337e";
 
-// Interface for display
-interface TransactionDisplay {
-    id: string;
-    date: string;
-    time: string;
-    content: string;
-    category: "PURCHASE" | "REDEEM_REWARD" | "REFERRAL" | "SERVICE";
-    points: number;
-    status: "success" | "processing";
-}
+const formatNumber = (value: number): string => value.toLocaleString("vi-VN");
 
-// Helper function to map transaction type to category
-const mapTransactionTypeToCategory = (
-    type: LoyaltyTransaction["type"],
-    reason?: string,
-): TransactionDisplay["category"] => {
-    if (type === "EARN") {
-        if (reason?.includes("giới thiệu") || reason?.includes("referral")) {
-            return "REFERRAL";
-        }
-        if (reason?.includes("dịch vụ") || reason?.includes("phí")) {
-            return "SERVICE";
-        }
-        return "PURCHASE";
-    }
-    if (type === "REDEEM") {
-        return "REDEEM_REWARD";
-    }
-    return "SERVICE";
+const formatCurrency = (value: number): string => `${formatNumber(value)} đ`;
+
+const getTierLabel = (tier: string): string => {
+  const tierMap: Record<string, string> = {
+    BRONZE: "Hạng Đồng",
+    SILVER: "Hạng Bạc",
+    GOLD: "Hạng Vàng",
+    PLATINUM: "Hạng Bạch Kim",
+    DIAMOND: "Hạng Kim Cương",
+  };
+  return tierMap[tier.toUpperCase()] || tier;
 };
 
-// Helper function to map LoyaltyTransaction to TransactionDisplay
-const mapTransactionToDisplay = (
-    transaction: LoyaltyTransaction,
-): TransactionDisplay => {
-    const date = new Date(transaction.createdAt);
-    const transactionDate = date.toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    });
-    const transactionTime = date.toLocaleTimeString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-
-    // Get order info if available
-    const order = transaction.orderId
-        ? ORDER_SEED_DATA.find((o) => o.id === transaction.orderId)
-        : null;
-
-    // Build content string
-    let content = transaction.reason || "";
-    if (order) {
-        content = `${content} Mã ĐH: #${order.code}`;
-    } else if (transaction.id >= 100) {
-        // For mock transactions, add order code if available
-        if (transaction.orderId === 1) {
-            content = `${content} Mã ĐH: #INV-9901`;
-        } else if (transaction.orderId === 2) {
-            content = `${content} Voucher ID: #VC-MAR-22`;
-        }
-    }
-
-    const category = mapTransactionTypeToCategory(
-        transaction.type,
-        transaction.reason,
-    );
-
-    // Determine status (assume all are success for now, except if recent)
-    const isRecent = date.getTime() > Date.now() - 24 * 60 * 60 * 1000;
-    const status: "success" | "processing" = isRecent ? "processing" : "success";
-
-    return {
-        id: transaction.id.toString(),
-        date: transactionDate,
-        time: transactionTime,
-        content,
-        category,
-        points: transaction.pointChange,
-        status,
-    };
+const getTierTone = (tier: string): string => {
+  const toneMap: Record<string, string> = {
+    BRONZE: "from-amber-500 to-orange-500",
+    SILVER: "from-slate-400 to-slate-600",
+    GOLD: "from-yellow-400 to-amber-500",
+    PLATINUM: "from-sky-400 to-blue-500",
+    DIAMOND: "from-cyan-400 to-indigo-500",
+  };
+  return toneMap[tier.toUpperCase()] || "from-gray-400 to-gray-600";
 };
 
-// Get current partner data (assuming partner ID 1 for demo)
-const currentPartnerId = 1;
-const currentCustomerFranchise = CUSTOMER_FRANCHISE_SEED_DATA.find(
-    (cf) => cf.id === currentPartnerId,
-);
-const currentCustomer = currentCustomerFranchise
-    ? CUSTOMER_SEED_DATA.find((c) => c.id === currentCustomerFranchise.customerId)
-    : null;
+const getCurrentTierRule = (
+  tierRules: LoyaltyTierRule[],
+  tierName?: string,
+): LoyaltyTierRule | undefined => {
+  if (!tierName) return undefined;
+  return tierRules.find(
+    (rule) => rule.tier.toUpperCase() === tierName.toUpperCase(),
+  );
+};
 
-// Get all transactions for current partner from mocks
-const partnerTransactions = LOYALTY_TRANSACTION_SEED_DATA.filter(
-    (t) => t.customerFranchiseId === currentPartnerId && !t.isDeleted,
-);
+const getNextTierRule = (
+  tierRules: LoyaltyTierRule[],
+  currentPoints: number,
+): LoyaltyTierRule | undefined => {
+  return [...tierRules]
+    .sort((a, b) => a.min_points - b.min_points)
+    .find((rule) => rule.min_points > currentPoints);
+};
 
 const LoyaltyPage = () => {
-    const navigate = useNavigate();
-    const [searchQuery, setSearchQuery] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 4;
+  const navigate = useNavigate();
+  const customer = useCustomerAuthStore((state) => state.customer);
+  const [franchiseId, setFranchiseId] = useState<string>(() => {
+    return localStorage.getItem("selectedFranchise") || FALLBACK_FRANCHISE_ID;
+  });
+  const [loyaltyRule, setLoyaltyRule] = useState<FranchiseLoyaltyRule | null>(
+    null,
+  );
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
+  const [customerName, setCustomerName] = useState<string>(
+    customer?.name || "Khách hàng",
+  );
+  const [customerLoyalty, setCustomerLoyalty] = useState<{
+    loyalty_points: number;
+    current_tier: string;
+    total_earned_points: number;
+    total_orders: number;
+    total_spent: number;
+  } | null>(null);
+  const [isTierTableOpen, setIsTierTableOpen] = useState<boolean>(false);
 
-    // Calculate statistics
-    const stats = useMemo(() => {
-        const totalEarned = partnerTransactions
-            .filter((t) => t.pointChange > 0)
-            .reduce((sum, t) => sum + t.pointChange, 0);
+  useEffect(() => {
+    const onFranchiseChanged = (event: Event) => {
+      const customEvent = event as CustomEvent<{ franchiseId?: string }>;
+      const newFranchiseId = customEvent.detail?.franchiseId;
+      if (typeof newFranchiseId === "string" && newFranchiseId.trim()) {
+        setFranchiseId(newFranchiseId);
+      }
+    };
 
-        const totalUsed = Math.abs(
-            partnerTransactions
-                .filter((t) => t.pointChange < 0)
-                .reduce((sum, t) => sum + t.pointChange, 0),
-        );
+    window.addEventListener("franchiseChanged", onFranchiseChanged);
+    return () => {
+      window.removeEventListener("franchiseChanged", onFranchiseChanged);
+    };
+  }, []);
 
-        const availablePoints = currentCustomerFranchise?.loyaltyPoint || 0;
-        const totalAccumulated = totalEarned;
+  useEffect(() => {
+    setCustomerName(customer?.name || "Khách hàng");
+  }, [customer?.name]);
 
-        // Calculate points expiring soon (30 days)
-        const expiringSoon = 120; // Mock data
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!franchiseId.trim()) return;
 
-        // Calculate progress to next tier (Diamond = 20000 points)
-        const nextTierPoints = 20000;
-        const currentPoints = totalAccumulated;
-        const progress = Math.min((currentPoints / nextTierPoints) * 100, 100);
-        const pointsToNextTier = Math.max(nextTierPoints - currentPoints, 0);
+      try {
+        setIsLoading(true);
+        setError("");
 
-        // Calculate vouchers that can be redeemed (assuming 800 points per voucher)
-        const vouchersCanRedeem = Math.floor(availablePoints / 800);
+        const overview = await getLoyaltyOverviewUsecase(franchiseId);
 
-        return {
-            totalAccumulated,
-            availablePoints,
-            totalUsed,
-            expiringSoon,
-            progress,
-            pointsToNextTier,
-            vouchersCanRedeem,
-        };
-    }, []);
-
-    // Map transactions to display format
-    const allTransactions: TransactionDisplay[] = partnerTransactions
-        .map(mapTransactionToDisplay)
-        .sort(
-            (a, b) =>
-                new Date(`${b.date} ${b.time}`).getTime() -
-                new Date(`${a.date} ${a.time}`).getTime(),
-        );
-
-    // Filter transactions based on search
-    const filteredTransactions = useMemo(() => {
-        return allTransactions.filter((transaction) => {
-            if (
-                searchQuery &&
-                !transaction.content.toLowerCase().includes(searchQuery.toLowerCase())
-            ) {
-                return false;
+        setLoyaltyRule(overview.loyaltyRule);
+        if (overview.customerLoyalty) {
+          const profile = overview.customerLoyalty.customer_id;
+          if (profile && typeof profile === "object") {
+            const customerProfile = profile as CustomerSummary;
+            if (customerProfile.name) {
+              setCustomerName(customerProfile.name);
             }
-            return true;
-        });
-    }, [searchQuery, allTransactions]);
-
-    // Pagination
-    const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const paginatedTransactions = filteredTransactions.slice(
-        startIndex,
-        startIndex + itemsPerPage,
-    );
-
-    const getCategoryBadge = (category: TransactionDisplay["category"]) => {
-        const categoryConfig = {
-            PURCHASE: {
-                label: "MUA HÀNG",
-                className: "bg-blue-500/20 text-blue-600 border-blue-500/30",
-            },
-            REDEEM_REWARD: {
-                label: "ĐỔI THƯỞNG",
-                className: "bg-purple-500/20 text-purple-600 border-purple-500/30",
-            },
-            REFERRAL: {
-                label: "GIỚI THIỆU",
-                className: "bg-orange-500/20 text-orange-600 border-orange-500/30",
-            },
-            SERVICE: {
-                label: "DỊCH VỤ",
-                className: "bg-blue-500/20 text-blue-600 border-blue-500/30",
-            },
-        };
-
-        const config = categoryConfig[category];
-        return (
-            <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${config.className}`}
-            >
-                {config.label}
-            </span>
+          }
+        }
+        setCustomerLoyalty(
+          overview.customerLoyalty
+            ? {
+                loyalty_points: overview.customerLoyalty.loyalty_points,
+                current_tier: overview.customerLoyalty.current_tier,
+                total_earned_points:
+                  overview.customerLoyalty.total_earned_points,
+                total_orders: overview.customerLoyalty.total_orders,
+                total_spent: overview.customerLoyalty.total_spent,
+              }
+            : null,
         );
+      } catch (err) {
+        const e = err as { message?: string };
+        setError(
+          e?.message || "Không thể tải thông tin loyalty. Vui lòng thử lại.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    const getTierLabel = (tier: string) => {
-        const tierMap: Record<string, string> = {
-            Silver: "Hạng Bạc",
-            Gold: "Hạng Vàng",
-            Platinum: "Hạng Bạch Kim",
-        };
-        return tierMap[tier] || tier;
-    };
+    void fetchData();
+  }, [franchiseId]);
 
+  const view = useMemo(() => {
+    if (!loyaltyRule || !customerLoyalty) {
+      return {
+        points: 0,
+        tier: "BRONZE",
+        totalEarned: 0,
+        totalOrders: 0,
+        totalSpent: 0,
+        currentTierRule: undefined as LoyaltyTierRule | undefined,
+        nextTierRule: undefined as LoyaltyTierRule | undefined,
+        progress: 0,
+        redeemHint: "",
+      };
+    }
+
+    const points = customerLoyalty.loyalty_points;
+    const currentTierRule = getCurrentTierRule(
+      loyaltyRule.tier_rules,
+      customerLoyalty.current_tier,
+    );
+    const nextTierRule = getNextTierRule(loyaltyRule.tier_rules, points);
+
+    const currentFloor = currentTierRule?.min_points ?? 0;
+    const nextTarget = nextTierRule?.min_points ?? currentFloor;
+    const distance = Math.max(nextTarget - currentFloor, 1);
+    const progressed = Math.max(points - currentFloor, 0);
+    const progress = nextTierRule
+      ? Math.min((progressed / distance) * 100, 100)
+      : 100;
+
+    const redeemHint =
+      points < loyaltyRule.min_redeem_points
+        ? `Bạn cần thêm ${formatNumber(loyaltyRule.min_redeem_points - points)} điểm để đổi ưu đãi đầu tiên.`
+        : `Bạn có thể đổi tối đa ${formatNumber(
+            Math.min(points, loyaltyRule.max_redeem_points),
+          )} điểm trong một đơn.`;
+
+    return {
+      points,
+      tier: customerLoyalty.current_tier,
+      totalEarned: customerLoyalty.total_earned_points,
+      totalOrders: customerLoyalty.total_orders,
+      totalSpent: customerLoyalty.total_spent,
+      currentTierRule,
+      nextTierRule,
+      progress,
+      redeemHint,
+    };
+  }, [loyaltyRule, customerLoyalty]);
+
+  const tierTone = getTierTone(view.tier);
+
+  if (isLoading) {
+    return <ClientLoading/>;
+  }
+
+  if (error) {
     return (
-    <div className="min-h-screen bg-white font-sans">
-            <div className="p-4 max-w-6xl mx-auto">               
+      <div className="min-h-screen bg-slate-50 px-4 py-8">
+        <div className="max-w-3xl mx-auto bg-white rounded-2xl border border-red-200 p-6">
+          <h2 className="text-xl font-bold text-red-700 mb-2">
+            Không thể tải dữ liệu loyalty
+          </h2>
+          <p className="text-sm text-slate-600 mb-4">{error}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700"
+          >
+            Tải lại
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-                {/* Header with Tabs */}
-                <div className="mb-4">
-                <div className="flex items-center justify-between mb-3">
-                <div className="mb-6">
-                <h2 className="text-charcoal dark:text-white text-3xl font-black tracking-tight">
-                  Điểm tích lũy của tôi
-                </h2>
-                <p className="text-wood-brown text-sm font-normal">
-                  Theo dõi và quản lý điểm tích lũy của hệ thống
-                  ChoiCoffee
+  return (
+    <div className="min-h-screen bg-slate-50 py-6">
+      <div className="max-w-6xl mx-auto px-4 space-y-5">
+        <section className="rounded-3xl overflow-hidden border border-slate-200 shadow-sm">
+          <div className={`bg-gradient-to-r ${tierTone} p-5 md:p-6 text-white`}>
+            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+              <div>
+                <p className="text-xs opacity-90">ChoiCoffee Membership</p>
+                <h1 className="text-2xl md:text-3xl font-black tracking-tight mt-1">
+                  Điểm tích lũy của bạn
+                </h1>
+                <p className="text-xs mt-2 opacity-95">
+                  Xin chào {customerName}, bạn đang ở {getTierLabel(view.tier)}{" "}
+                  với {formatNumber(view.points)} điểm.
                 </p>
               </div>
-                        <div className="flex items-center gap-4">
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="Tìm kiếm giao dịch..."
-                                    value={searchQuery}
-                                    onChange={(e) => {
-                                        setSearchQuery(e.target.value);
-                                        setCurrentPage(1);
-                                    }}
-                                    className="pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-xs w-64"
-                                />
-                                <Search
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                                    size={18}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Tabs */}
-                    <div className="flex gap-5 border-b border-gray-200">
-                        {["Điểm tích lũy", "Tổng quan", "Kho quà tặng", "Chính sách"].map(
-                            (tab, index) => (
-                                <button
-                                    key={tab}
-                                    className={`pb-3 px-2 font-medium transition-colors relative text-sm ${index === 1
-                                            ? "text-primary"
-                                            : "text-gray-600 hover:text-gray-900"
-                                        }`}
-                                >
-                                    {tab}
-                                    {index === 1 && (
-                                        <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></span>
-                                    )}
-                                </button>
-                            ),
-                        )}
-                    </div>
-                </div>
-
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
-                    {/* Card 1: Partner Member Info */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm relative">
-                        <div className="absolute top-3 right-3">
-                            <Star className="text-yellow-500" size={20} />
-                        </div>
-                        <div className="mb-3">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                                THÀNH VIÊN ĐỐI TÁC
-                            </p>
-                            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                                {getTierLabel(currentCustomerFranchise?.loyaltyTier || "Gold")}
-                            </h2>
-                            <div className="space-y-1">
-                                <div>
-                                    <p className="text-xs text-gray-500">Tên chủ sở hữu</p>
-                                    <p className="text-xs font-bold text-charcoal text-base">
-                                        {currentCustomer?.name}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500">ID ĐỐI TÁC</p>
-                                    <p className="text-xs font-bold text-charcoal text-base">
-                                        CHOI - {currentPartnerId.toString().padStart(4, "0")} - 2024
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <button 
-                            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-primary/90 transition-colors font-medium"
-                            onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.PROFILE)}
-                        >
-                            <Gift size={14} />
-                            Đổi quà ngay
-                        </button>
-                    </div>
-
-                    {/* Card 2: Total Accumulated Points */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                        <p className="text-xs text-gray-600 mb-2">Tổng điểm tích lũy</p>
-                        <p className="text-2xl font-bold text-gray-900 mb-2">
-                            {stats.totalAccumulated.toLocaleString("vi-VN")}
-                        </p>
-                        <div className="flex items-center gap-1 mb-2">
-                            <ArrowUp className="text-green-500" size={12} />
-                            <span className="text-xs text-green-500">+12%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                            <div
-                                className="bg-primary h-1.5 rounded-full transition-all"
-                                style={{ width: `${stats.progress}%` }}
-                            ></div>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                            Còn {stats.pointsToNextTier.toLocaleString("vi-VN")} điểm để lên hạng Kim Cương
-                        </p>
-                    </div>
-
-                    {/* Card 3: Available Points */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                        <p className="text-xs text-gray-600 mb-2">Điểm khả dụng</p>
-                        <p className="text-2xl font-bold text-gray-900 mb-4">
-                            {stats.availablePoints.toLocaleString("vi-VN")}
-                        </p>
-                        <button className="w-full px-3 py-1.5 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 transition-colors">
-                            Có thể đổi {stats.vouchersCanRedeem} voucher
-                        </button>
-                    </div>
-
-                    {/* Card 4: Points Used */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                        <p className="text-xs text-gray-600 mb-1">Điểm đã sử dụng</p>
-                        <p className="text-2xl font-bold text-gray-900">
-                            {stats.totalUsed.toLocaleString("vi-VN")}
-                        </p>
-                    </div>
-
-                    {/* Card 5: Expiring Soon */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                        <p className="text-xs text-gray-600 mb-1">
-                            Sắp hết hạn (30 ngày)
-                        </p>
-                        <p className="text-2xl font-bold text-gray-900">
-                            {stats.expiringSoon.toLocaleString("vi-VN")} điểm
-                        </p>
-                    </div>
-                </div>
-
-                {/* Transaction History Section */}
-                <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-                    {/* Section Header */}
-                    <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                        <h2 className="text-base font-bold text-charcoal">
-                            Lịch sử giao dịch điểm
-                        </h2>
-                        <div className="flex items-center gap-2">
-                            <button className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium text-gray-700">
-                                <Filter size={14} />
-                                Bộ lọc
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Transaction Table */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-gray-200 bg-gray-50">
-                                    <th className="px-4 py-3 text-left text-xs font-bold text-charcoal uppercase tracking-wider bg-gray-50">
-                                        NGÀY GIAO DỊCH
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-bold text-charcoal uppercase tracking-wider bg-gray-50">
-                                        NỘI DUNG
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-bold text-charcoal uppercase tracking-wider bg-gray-50">
-                                        PHÂN LOẠI
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-bold text-charcoal uppercase tracking-wider bg-gray-50">
-                                        SỐ ĐIỂM
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-bold text-charcoal uppercase tracking-wider bg-gray-50">
-                                        TRẠNG THÁI
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {paginatedTransactions.length > 0 ? (
-                                    paginatedTransactions.map((transaction) => (
-                                        <tr
-                                            key={transaction.id}
-                                            className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                                        >
-                                            <td className="px-4 py-4 whitespace-nowrap">
-                                                <span className="text-xs text-gray-600">
-                                                    {transaction.date} {transaction.time}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-4 whitespace-nowrap">
-                                                <span className="text-xs text-gray-900">
-                                                    {transaction.content}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-4 whitespace-nowrap">
-                                                {getCategoryBadge(transaction.category)}
-                                            </td>
-                                            <td className="px-4 py-4 whitespace-nowrap">
-                                                <span
-                                                    className={`text-xs font-semibold ${transaction.points > 0
-                                                            ? "text-green-600"
-                                                            : "text-red-600"
-                                                        }`}
-                                                >
-                                                    {transaction.points > 0 ? "+" : ""}
-                                                    {transaction.points.toLocaleString("vi-VN")}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-4 whitespace-nowrap">
-                                                <div className="flex items-center gap-2">
-                                                    {transaction.status === "success" ? (
-                                                        <>
-                                                            <CheckCircle2 className="text-green-500" size={14} />
-                                                            <span className="text-xs text-gray-600">
-                                                                Thành công
-                                                            </span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Clock className="text-orange-500" size={14} />
-                                                            <span className="text-xs text-gray-600">
-                                                                Đang xử lý
-                                                            </span>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td
-                                            colSpan={5}
-                                            className="px-6 py-12 text-center text-gray-500"
-                                        >
-                                            Không có giao dịch nào
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Pagination */}
-                    <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-                        <div className="text-xs text-gray-600">
-                            Hiển thị {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredTransactions.length)} của{" "}
-                            {filteredTransactions.length} giao dịch
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}
-                                className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs"
-                            >
-                                &lt;
-                            </button>
-
-                            {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => {
-                                const pageNum = i + 1;
-                                return (
-                                    <button
-                                        key={pageNum}
-                                        onClick={() => setCurrentPage(pageNum)}
-                                        className={`px-3 py-1.5 rounded-lg transition-colors text-xs ${currentPage === pageNum
-                                                ? "bg-primary text-white"
-                                                : "border border-gray-300 text-gray-700 hover:bg-gray-50"
-                                            }`}
-                                    >
-                                        {pageNum}
-                                    </button>
-                                );
-                            })}
-
-                            {totalPages > 3 && (
-                                <>
-                                    <span className="px-2 text-gray-500">...</span>
-                                    <button
-                                        onClick={() => setCurrentPage(totalPages)}
-                                        className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs text-gray-700"
-                                    >
-                                        {totalPages}
-                                    </button>
-                                </>
-                            )}
-
-                            <button
-                                onClick={() =>
-                                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                                }
-                                disabled={currentPage === totalPages}
-                                className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs"
-                            >
-                                &gt;
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="mt-4 text-center text-xs text-gray-500">
-                    <p>©2024 ChoiCoffee Franchise Management System. Premium Partner Program.</p>
-                </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsTierTableOpen((prev) => !prev)}
+                  className="inline-flex items-center justify-center gap-1.5 bg-white text-slate-800 hover:bg-slate-100 px-3 py-1.5 rounded text-xs font-medium"
+                >
+                  Bảng hạng thành viên
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform ${isTierTableOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.PROFILE)}
+                  className="inline-flex items-center justify-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-xs font-medium backdrop-blur"
+                >
+                  <Gift size={14} />
+                  Quản lý tài khoản
+                </button>
+              </div>
             </div>
-        </div>
-    );
+          </div>
+          <div className="bg-white p-4 md:p-5 border-t border-slate-200">
+            <div className="flex items-center justify-between mb-2 text-xs text-slate-600">
+              <span>Tiến độ lên hạng tiếp theo</span>
+              <span>{Math.round(view.progress)}%</span>
+            </div>
+            <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-amber-400 to-orange-500"
+                style={{ width: `${view.progress}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-slate-600 mt-2">
+              {view.nextTierRule
+                ? `Cần thêm ${formatNumber(
+                    Math.max(view.nextTierRule.min_points - view.points, 0),
+                  )} điểm để đạt ${getTierLabel(view.nextTierRule.tier)}.`
+                : "Bạn đang ở hạng cao nhất của hệ thống. Tuyệt vời!"}
+            </p>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <article className="bg-white rounded-lg border border-slate-200 p-4">
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">
+              Điểm hiện tại
+            </p>
+            <p className="text-2xl font-black text-slate-900 mt-1.5">
+              {formatNumber(view.points)}
+            </p>
+            <p className="text-[11px] text-slate-500 mt-1.5">
+              Cập nhật theo franchise đã chọn
+            </p>
+          </article>
+
+          <article className="bg-white rounded-lg border border-slate-200 p-4">
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">
+              Tổng điểm đã nhận
+            </p>
+            <p className="text-2xl font-black text-slate-900 mt-1.5">
+              {formatNumber(view.totalEarned)}
+            </p>
+            <p className="text-[11px] text-slate-500 mt-1.5">
+              Từ {formatNumber(view.totalOrders)} đơn hàng
+            </p>
+          </article>
+
+          <article className="bg-white rounded-lg border border-slate-200 p-4">
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">
+              Tổng chi tiêu
+            </p>
+            <p className="text-2xl font-black text-slate-900 mt-1.5">
+              {formatCurrency(view.totalSpent)}
+            </p>
+            <p className="text-[11px] text-slate-500 mt-1.5">
+              Tại franchise hiện tại
+            </p>
+          </article>
+
+          <article className="bg-white rounded-lg border border-slate-200 p-4">
+            <p className="text-[11px] uppercase tracking-wide text-slate-500">
+              Hạng hiện tại
+            </p>
+            <p className="text-xl font-black text-slate-900 mt-1.5">
+              {getTierLabel(view.tier)}
+            </p>
+            <p className="text-[11px] text-slate-500 mt-1.5">
+              Dựa trên tổng điểm đang có
+            </p>
+          </article>
+        </section>
+
+        <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <article className="bg-white rounded-lg border border-slate-200 p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Rocket size={18} className="text-primary" />
+              <h2 className="text-base font-bold text-slate-900">
+                Quy tắc tích và đổi điểm
+              </h2>
+            </div>
+            <div className="space-y-2.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-600">Tích điểm</span>
+                <span className="font-semibold text-slate-900">
+                  {formatCurrency(loyaltyRule?.earn_amount_per_point || 0)} / 1
+                  điểm
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Giá trị đổi điểm</span>
+                <span className="font-semibold text-slate-900">
+                  {formatCurrency(loyaltyRule?.redeem_value_per_point || 0)} /
+                  điểm
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Điểm đổi tối thiểu</span>
+                <span className="font-semibold text-slate-900">
+                  {formatNumber(loyaltyRule?.min_redeem_points || 0)} điểm
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Điểm đổi tối đa / đơn</span>
+                <span className="font-semibold text-slate-900">
+                  {formatNumber(loyaltyRule?.max_redeem_points || 0)} điểm
+                </span>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-slate-600 bg-amber-50 border border-amber-200 rounded px-3 py-1.5">
+              {view.redeemHint}
+            </p>
+          </article>
+
+          <article className="bg-white rounded-lg border border-slate-200 p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <ShieldCheck size={18} className="text-primary" />
+              <h2 className="text-base font-bold text-slate-900">
+                Ưu đãi hạng hiện tại
+              </h2>
+            </div>
+            {view.currentTierRule ? (
+              <div className="space-y-2.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Hạng</span>
+                  <span className="font-semibold text-slate-900">
+                    {getTierLabel(view.currentTierRule.tier)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Giảm giá đơn hàng</span>
+                  <span className="font-semibold text-slate-900">
+                    {view.currentTierRule.benefit.order_discount_percent}%
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Hệ số tích điểm</span>
+                  <span className="font-semibold text-slate-900">
+                    x{view.currentTierRule.benefit.earn_multiplier}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">Miễn phí vận chuyển</span>
+                  <span className="font-semibold text-slate-900">
+                    {view.currentTierRule.benefit.free_shipping
+                      ? "Có"
+                      : "Không"}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-600">
+                Chưa có dữ liệu ưu đãi cho hạng hiện tại.
+              </p>
+            )}
+          </article>
+        </section>
+
+        {isTierTableOpen ? (
+          <section className="bg-white rounded-lg border border-slate-200 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles size={16} className="text-primary" />
+              <h2 className="text-base font-bold text-slate-900">
+                Bảng hạng thành viên
+              </h2>
+            </div>
+
+            <div className="space-y-2.5 mt-3">
+              {(loyaltyRule?.tier_rules || [])
+                .slice()
+                .sort((a, b) => a.min_points - b.min_points)
+                .map((rule) => {
+                  const isCurrent =
+                    rule.tier.toUpperCase() === view.tier.toUpperCase();
+                  return (
+                    <article
+                      key={`${rule.tier}-${rule.min_points}`}
+                      className={`rounded-lg border p-3 ${
+                        isCurrent
+                          ? "border-primary bg-primary/5"
+                          : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                            <Crown size={14} className="text-amber-500" />
+                            {getTierLabel(rule.tier)}
+                            {isCurrent ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-white">
+                                Hiện tại
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {formatNumber(rule.min_points)} -{" "}
+                            {rule.max_points
+                              ? formatNumber(rule.max_points)
+                              : "không giới hạn"}{" "}
+                            điểm
+                          </p>
+                        </div>
+                        <div className="text-[11px] text-slate-600 grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-3">
+                          <span>
+                            Giảm giá:{" "}
+                            <strong>
+                              {rule.benefit.order_discount_percent}%
+                            </strong>
+                          </span>
+                          <span>
+                            Tích điểm:{" "}
+                            <strong>x{rule.benefit.earn_multiplier}</strong>
+                          </span>
+                          <span>
+                            Freeship:{" "}
+                            <strong>
+                              {rule.benefit.free_shipping ? "Có" : "Không"}
+                            </strong>
+                          </span>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+            </div>
+          </section>
+        ) : null}
+      </div>
+    </div>
+  );
 };
 
 export default LoyaltyPage;

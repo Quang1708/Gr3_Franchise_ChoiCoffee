@@ -25,13 +25,5 @@ export const getUserSchema = (mode: "create" | "edit" | "view") => {
     }, {
         message: "Mật khẩu là bắt buộc và tối thiểu 6 ký tự khi tạo mới",
         path: ["password"],
-    }).refine((data) => {
-        if (mode === "edit" || mode === "view") {
-            return !!data.roleCode;
-        }
-        return true;
-    }, {
-        message: "Vai trò là bắt buộc",
-        path: ["roleCode"],
     });
 }

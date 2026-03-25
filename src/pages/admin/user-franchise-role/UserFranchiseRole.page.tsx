@@ -63,6 +63,12 @@ type UserSelectApiItem = {
   is_deleted?: boolean;
 };
 
+type UserSelectPageInfo = {
+  pageNum?: number;
+  pageSize?: number;
+  totalItems?: number;
+};
+
 type DetailUserFranchiseRoleResponse = {
   data?: ApiUserFranchiseRole;
 };
@@ -124,6 +130,28 @@ const resolveUserSelectItems = (payload: unknown): UserSelectApiItem[] => {
   if (Array.isArray(source.rows)) return source.rows as UserSelectApiItem[];
 
   return [];
+};
+
+const resolveUserSelectPageInfo = (payload: unknown): UserSelectPageInfo | undefined => {
+  if (!payload || typeof payload !== "object") return undefined;
+
+  const source = payload as {
+    pageInfo?: unknown;
+    data?: unknown;
+  };
+
+  if (source.pageInfo && typeof source.pageInfo === "object") {
+    return source.pageInfo as UserSelectPageInfo;
+  }
+
+  if (source.data && typeof source.data === "object") {
+    const nested = source.data as { pageInfo?: unknown };
+    if (nested.pageInfo && typeof nested.pageInfo === "object") {
+      return nested.pageInfo as UserSelectPageInfo;
+    }
+  }
+
+  return undefined;
 };
 
 const UserFranchiseRolePage = () => {
@@ -231,14 +259,36 @@ const UserFranchiseRolePage = () => {
   useEffect(() => {
     const loadUserOptions = async () => {
       try {
-        const response = await userApi.search({
-          keyword: "",
-          pageNum: 1,
-          pageSize: 10,
-          is_deleted: false,
-        });
+        const pageSize = 200;
+        const maxPages = 100;
+        const allUsers: UserSelectApiItem[] = [];
 
-        const users = resolveUserSelectItems(response)
+        for (let pageNum = 1; pageNum <= maxPages; pageNum += 1) {
+          const response = await userApi.search({
+            keyword: "",
+            pageNum,
+            pageSize,
+            is_deleted: false,
+          });
+
+          const users = resolveUserSelectItems(response);
+          if (!users.length) {
+            break;
+          }
+
+          allUsers.push(...users);
+
+          const pageInfo = resolveUserSelectPageInfo(response);
+          if (typeof pageInfo?.totalItems === "number" && allUsers.length >= pageInfo.totalItems) {
+            break;
+          }
+
+          if (users.length < pageSize) {
+            break;
+          }
+        }
+
+        const users = allUsers
           .filter((user) => {
             const id = user.id ?? user.user_id;
             return Boolean(id) && !user.is_deleted;
@@ -259,7 +309,8 @@ const UserFranchiseRolePage = () => {
             return { value: id, label };
           });
 
-        setUserOptions(users);
+        const uniqueUsers = Array.from(new Map(users.map((user) => [user.value, user])).values());
+        setUserOptions(uniqueUsers);
       } catch {
         toast.error("Không thể tải danh sách người dùng");
         setUserOptions([]);
@@ -538,18 +589,12 @@ const UserFranchiseRolePage = () => {
           selectedItem
             ? {
                 id: String(selectedItem.id),
-                user_id:
-                  formMode === "edit" || formMode === "view"
-                    ? selectedItem.userName ?? String(selectedItem.userId)
-                    : String(selectedItem.userId),
-                role_id:
-                  formMode === "view"
-                    ? selectedItem.roleName ?? String(selectedItem.roleId)
-                    : String(selectedItem.roleId),
-                franchise_id:
-                  formMode === "edit" || formMode === "view"
-                    ? (selectedItem.franchiseName ?? selectedItem.franchiseId ?? "Hệ thống")
-                    : selectedItem.franchiseId,
+                user_id: String(selectedItem.userId),
+                role_id: String(selectedItem.roleId),
+                franchise_id: selectedItem.franchiseId,
+                user_display_name: selectedItem.userName ?? String(selectedItem.userId),
+                role_display_name: selectedItem.roleName ?? String(selectedItem.roleId),
+                franchise_display_name: selectedItem.franchiseName ?? "Hệ thống (GLOBAL)",
                 note: selectedItem.note ?? "",
                 user_email: selectedItem.userEmail ?? "",
                 role_code: selectedItem.roleCode ?? "",

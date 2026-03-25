@@ -260,13 +260,8 @@ const ProductPage = () => {
         return;
       }
 
-      setData((prev) =>
-        prev.map((p) =>
-          p.id === deletingProduct.id
-            ? { ...p, is_deleted: true }
-            : p,
-        ),
-      );
+      // Keep current list behavior consistent: remove the deleted item from active list immediately.
+      await fetchProducts(currentPage, pageSize);
       toastSuccess("Đã xóa sản phẩm");
     } finally {
       setIsModalLoading(false);
@@ -287,52 +282,10 @@ const ProductPage = () => {
         return;
       }
 
-      setData((prev) =>
-        prev.map((p) =>
-          p.id === item.id ? { ...p, is_deleted: false } : p,
-        ),
-      );
+      // CRUDPageTemplate currently switches filter before restore request resolves,
+      // so fetch again after success to guarantee the restored item appears immediately.
+      await fetchProducts(1, pageSize);
       toastSuccess("Đã khôi phục sản phẩm");
-    } finally {
-      setIsModalLoading(false);
-    }
-  };
-
-  const handleStatusChange = async (item: Product, newStatus: boolean) => {
-    if (item.id === "") {
-      toastError("ID sản phẩm không hợp lệ");
-      return;
-    }
-    const prevStatus = item.is_active;
-    const prevUpdatedAt = item.updated_at;
-    const nextUpdatedAt = new Date().toISOString();
-
-    setData((prev) =>
-      prev.map((p) =>
-        p.id === item.id
-          ? { ...p, is_active: newStatus, updated_at: nextUpdatedAt }
-          : p,
-      ),
-    );
-
-    try {
-      setIsModalLoading(true);
-      const result = await updateProductUsecase(item.id, { isActive: newStatus });
-      if (!result.ok) {
-        setData((prev) =>
-          prev.map((p) =>
-            p.id === item.id
-              ? { ...p, is_active: prevStatus, updated_at: prevUpdatedAt }
-              : p,
-          ),
-        );
-        toastError(result.message);
-        return;
-      }
-
-      toastSuccess(
-        `Đã cập nhật trạng thái: ${newStatus ? "Hoạt động" : "Ngưng hoạt động"}`,
-      );
     } finally {
       setIsModalLoading(false);
     }
@@ -434,17 +387,7 @@ const ProductPage = () => {
           fetchProducts(1, size);
         }}
         tableMaxHeightClass="max-h-[60vh]"
-        statusField="is_active"
-        onStatusChange={handleStatusChange}
         filters={[
-          {
-            key: "is_active",
-            label: "Trạng thái",
-            options: [
-              { value: "true", label: "Hoạt động" },
-              { value: "false", label: "Ngưng hoạt động" },
-            ],
-          },
           {
             key: "is_deleted",
             label: "Trạng thái xóa",

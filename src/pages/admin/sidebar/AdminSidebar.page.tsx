@@ -88,6 +88,7 @@ const menuSections: MenuSection[] = [
       { icon: <ShoppingCart size={18} />, label: "Orders", path: "order" },
       { icon: <Users size={18} />, label: "Customers", path: "customer" },
       { icon: <Boxes size={18} />, label: "Inventory", path: "inventory" },
+      { icon: <ShoppingCart size={18} />, label: "Pos", path: "pos" },
       { icon: <ShoppingCart size={18} />, label: "Cart", path: "cart" },
       {
         icon: <CalendarCheck size={18} />,

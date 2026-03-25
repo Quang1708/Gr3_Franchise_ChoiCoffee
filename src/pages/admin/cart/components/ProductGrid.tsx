@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Plus, Coffee, Star, Package } from "lucide-react";
 import AdminToppingModal from "./AdminToppingModal";
 
-const ProductGrid = ({ products, onAdd, loading }: any) => {
+
+const ProductGrid = ({ products, onAdd, loading, franchiseId, toppingId }: any) => {
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
     const handleOpenModal = (p: any) => {
@@ -135,6 +136,7 @@ const ProductGrid = ({ products, onAdd, loading }: any) => {
                                             </p>
                                         </div>
                                         <button
+                                            title="Thêm vào giỏ"
                                             disabled={!isAvailable}
                                             className={`w-8 h-8 rounded-full transition-all duration-300 flex items-center justify-center shadow-sm
                                                 ${isAvailable
@@ -159,6 +161,8 @@ const ProductGrid = ({ products, onAdd, loading }: any) => {
 
             {selectedProduct && (
                 <AdminToppingModal
+                    toppingId = {toppingId} 
+                    franchiseId={franchiseId}
                     isOpen={!!selectedProduct}
                     product={selectedProduct}
                     onClose={() => setSelectedProduct(null)}

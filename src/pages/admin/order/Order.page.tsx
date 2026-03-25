@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
 import { searchCustomersUsecase } from "../customer/usecases/searchCustomers.usecase";
 
@@ -9,6 +9,9 @@ import CustomSelect from "@/components/Admin/filters/CustomSelect";
 import ClientLoading from "@/components/Client/Client.Loading";
 import OrderForm from "@/components/order/orderForm";
 import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";
+import type { Franchise } from "@/components/categoryFranchise/models/franchise08.model";
+import { useAdminContextStore } from "@/stores";
+import OrderStatusForm from "@/components/order/orderStatusForm";
 
 const OrderPage = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -16,31 +19,40 @@ const OrderPage = () => {
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [customerSelected, setCustomerSelected] = useState<Customer | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [formMode, setFormMode] = useState<"create" | "edit" | "view">("view");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [franchises, setFranchises] = useState<any[]>([]);
-  const [franchiseSelected, setFranchiseSelected] = useState<any>(null);
+  const [franchises, setFranchises] = useState<Franchise[]>([]);
+  const [franchiseSelected, setFranchiseSelected] = useState<Franchise | null>(null);
+  const franchise_id = useAdminContextStore((s) => s.selectedFranchiseId) ;
+  const isAdmin = !franchise_id;
+
+  const getFranchiseKey = (franchise?: Franchise | null): string => {
+    if (!franchise) return "";
+    return String(franchise.value ?? franchise.id ?? franchise.code ?? "");
+  };
+
+  
 
   useEffect(() => {
+    if (!isAdmin) return;
     const loadFranchises = async () => {
       try {
-        setLoading(true);
         const data = await getAllFranchises();
         if (data) setFranchises(data);
       } catch (error) {
         console.error("Error fetching franchises:", error);
       }
     };
-
     void loadFranchises();
-  }, []);
+  }, [isAdmin]);
 
   const franchiseOptions =
-    franchises?.map((f: any) => ({
-      label: f.name,
-      value: f.id,
-    })) || [];
+    franchises
+      ?.map((f: Franchise) => ({
+        label: f.name,
+        value: getFranchiseKey(f),
+      }))
+      .filter((option) => Boolean(option.value)) || [];
 
   const fetchCustomers = async ({ pageNum, pageSize, searchKey }: any) => {
     try {
@@ -82,21 +94,20 @@ const OrderPage = () => {
         fetchCustomers({ pageNum: 1, pageSize: 10, searchKey: "" });
     }, [])
 
-   const searchCartByCustomerId = async (term: string, filters?: any) => {
-
-    
+  
+  const searchCart = useCallback(async (term: string, filters?: any) => {
     setLoading(true);
     const status = filters?.status;
-
     try {
-      if (franchiseSelected?.id) {
-        const res = await searchOrderByFranchiseId(franchiseSelected.id);
+      const targetFranchiseId = isAdmin ? getFranchiseKey(franchiseSelected) : franchise_id; 
+      if (targetFranchiseId) {
+        const res = await searchOrderByFranchiseId(targetFranchiseId, status);
+        console.log(res);
         if (res) {
           let finalData = Array.isArray(res) ? res : res?.data || [];
           if (status) {
             finalData = finalData.filter((item: any) => item.status === status);
           }
-          
           setOrders(finalData);
         }
       } else if (customerSelected?.id) {
@@ -106,6 +117,7 @@ const OrderPage = () => {
           setOrders(finalData);
         }
       } else {
+    
         setOrders([]);
       }
     } catch (error) {
@@ -113,7 +125,43 @@ const OrderPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAdmin, franchiseSelected, franchise_id, customerSelected]); 
+
+  
+useEffect(() => {
+  const searchCart = async (term: string, filters?: any) => {
+    setLoading(true);
+    const status = filters?.status;
+    try {
+      const targetFranchiseId = isAdmin ? getFranchiseKey(franchiseSelected) : franchise_id; 
+      if (targetFranchiseId) {
+        const res = await searchOrderByFranchiseId(targetFranchiseId, status);
+        console.log(res);
+        if (res) {
+          let finalData = Array.isArray(res) ? res : res?.data || [];
+          if (status) {
+            finalData = finalData.filter((item: any) => item.status === status);
+          }
+          setOrders(finalData);
+        }
+      } else if (customerSelected?.id) {
+        const res = await searchOrdersByCustomer(customerSelected.id, status);
+        if (res) {
+          const finalData = Array.isArray(res) ? res : res?.data || [];
+          setOrders(finalData);
+        }
+      } else {
+    
+        setOrders([]);
+      }
+    } catch (error) {
+      console.error("Lỗi khi tìm kiếm đơn hàng:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+  searchCart(franchise_id || "", { status: "" });
+}, [franchise_id, isAdmin]);
 
     const statusLabels = (status: string) => {
   switch (status) {
@@ -202,11 +250,12 @@ const statusColors = (status: string) => {
     setIsModalOpen(true);
   };
 
-    if(loading){
-      return(
-        <ClientLoading />
-      )
-    }
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [orderForStatus, setOrderForStatus] = useState<Order | null>(null);
+
+  if(loading) {
+    return <ClientLoading />;
+  }
   return (
     <>
       <CRUDPageTemplate
@@ -214,37 +263,47 @@ const statusColors = (status: string) => {
         data={orders}
         columns={columns}
         pageSize={5}
-        onView={() => {}}
+        onView={(item) => handleOpenForm("view", item)}
+        isTableLoading={loading}
         searchKeys={["status"]}
-        onSearch={searchCartByCustomerId}
+        onSearch={searchCart}
         onEdit={(item) => handleOpenForm("edit", item)}
-        onRefresh={() => searchCartByCustomerId(orders?.[0]?.customer_id, { status: "" })}
+        canEdit={(item) => item.status === "DRAFT"}
+        onChangeOrderStatus={(item) => {
+          setOrderForStatus(item);
+          setIsStatusModalOpen(true);
+        }}
+        canChangeOrderStatus={(item) =>
+          item.status === "CONFIRMED" ||
+          item.status === "PREPARING" ||
+          item.status === "READY_FOR_PICKUP"
+        }
+        onRefresh={() => searchCart(orders?.[0]?.customer_id, { status: "" })}
         searchContent={
           <div className="flex gap-4">
             <CustomSelect
               fetchOptions={fetchCustomers as any}
               value={customerSelected?.id || ""}
-              options={customers.map((customer) => ({
-                label: customer.name,
-                value: customer.id,
-            }))}
-            placeholder="Chọn khách hàng"
-            onChange={(id) => {
-              const selectedCustomer = customerCache.find((c) => c.id === id);
-              setCustomerSelected(selectedCustomer || null);
-            }}
-          />
-
-          <CustomSelect
-            value={franchiseSelected?.id || ""}
-            options={franchiseOptions}
-            placeholder="Chọn chi nhánh"
-            onChange={(id) => {
-              const selectedFranchise = franchises.find((f: any) => f.id === id);
-              setFranchiseSelected(selectedFranchise || null);
-            }}
-          />
-        </div>
+              placeholder="Chọn khách hàng"
+              onChange={(id) => {
+                const selectedCustomer = customerCache.find((c) => c.id === id);
+                setCustomerSelected(selectedCustomer || null);
+              }}
+            />
+            {isAdmin && (
+              <CustomSelect
+                value={getFranchiseKey(franchiseSelected)}
+                options={franchiseOptions}
+                placeholder="Chọn chi nhánh"
+                onChange={(id) => {
+                  const selectedFranchise = franchises.find(
+                    (f) => getFranchiseKey(f) === id,
+                  );
+                  setFranchiseSelected(selectedFranchise || null);
+                }}
+              />
+            )}
+          </div>
         }
         filters={[
           {
@@ -270,6 +329,13 @@ const statusColors = (status: string) => {
         onSubmit={() => {}}
         onClose={() => setIsModalOpen(false)}
       />
+
+      <OrderStatusForm
+      isOpen={isStatusModalOpen}
+      onClose={() => setIsStatusModalOpen(false)}
+      order={orderForStatus}
+      onSuccess={() => searchCart("", { status: "" })} 
+    />
     </>
   );
 };

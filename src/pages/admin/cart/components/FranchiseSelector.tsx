@@ -60,6 +60,7 @@ const FranchiseSelector = ({ data, onSelect, loading, onRefresh }: Props) => {
 
                     {/* REFRESH */}
                     <button
+                        title="Làm mới"
                         type="button"
                         onClick={handleRefresh}
                         className="p-2 border border-gray-200 rounded-lg hover:bg-gray-100 transition"

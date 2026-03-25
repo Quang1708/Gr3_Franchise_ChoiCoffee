@@ -1,151 +1,72 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  Calendar,
-} from "lucide-react";
+import { useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Calendar, Search } from "lucide-react";
 // import ClientHeader from "../../../layouts/client/ClientHeader.layout";
 // import ClientFooter from "../../../layouts/client/ClientFooter.layout";
 import ROUTER_URL from "../../../routes/router.const";
-import { ORDER_SEED_DATA } from "../../../mocks/order.seed";
-import type { Order as OrderModel } from "../../../models/order.model";
-
-// Interface for display
-interface Order {
-  id: string;
-  orderCode: string;
-  orderDate: string;
-  orderTime: string;
-  totalAmount: number;
-  status: "processing" | "delivering" | "completed" | "cancelled";
-}
-
-type OrderStatus = "all" | "processing" | "delivering" | "completed" | "cancelled";
-
-// Helper function to map OrderModel to Order
-const mapOrderDataToOrder = (orderData: OrderModel): Order => {
-  const date = new Date(orderData.createdAt);
-  const orderDate = date.toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-  const orderTime = date.toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  // Map status from OrderModel to display status
-  let status: "processing" | "delivering" | "completed" | "cancelled";
-  if (orderData.status === "COMPLETED") {
-    status = "completed";
-  } else if (orderData.status === "PREPARING") {
-    status = "delivering";
-  } else if (orderData.status === "CANCELLED") {
-    status = "cancelled";
-  } else {
-    // DRAFT, CONFIRMED -> processing
-    status = "processing";
-  }
-
-  return {
-    id: orderData.id.toString(),
-    orderCode: orderData.code,
-    orderDate,
-    orderTime,
-    totalAmount: orderData.totalAmount,
-    status,
-  };
-};
-
-// Filter out deleted orders, then map to display format
-const orders: Order[] = ORDER_SEED_DATA.filter(
-  (order) => !order.isDeleted,
-).map(mapOrderDataToOrder);
+import { ORDER_TABS } from "./constants";
+import type { OrderListRow, OrderTab } from "./models";
+import { useUserOrder } from "./hooks/userOrder";
+import { OrderList } from "./components";
 
 const OrderPage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<OrderStatus>("all");
-  const [searchQuery] = useState("");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [searchParams] = useSearchParams();
+  const {
+    activeTab,
+    handleTabChange,
+    fromDate,
+    setFromDate,
+    toDate,
+    setToDate,
+    orderCode,
+    setOrderCode,
+    currentPage,
+    setCurrentPage,
+    paginatedOrders,
+    totalPages,
+    isLoading,
+    errorMessage,
+    canSearchByCode,
+    refreshOrders,
+    searchByOrderCode,
+  } = useUserOrder();
 
-  const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      if (activeTab !== "all" && order.status !== activeTab) {
-        return false;
-      }
-      if (
-        searchQuery &&
-        !order.orderCode.toLowerCase().includes(searchQuery.toLowerCase())
-      ) {
-        return false;
-      }
-      return true;
-    });
-  }, [activeTab, searchQuery]);
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+    if (!requestedTab) return;
 
-  // Pagination
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedOrders = filteredOrders.slice(
-    startIndex,
-    startIndex + itemsPerPage,
-  );
+    const matched = ORDER_TABS.find((tab) => tab.key === requestedTab);
+    if (!matched) return;
 
-  // Calculate statistics
-  const stats = useMemo(() => {
-    return {
-      processing: orders.filter((o) => o.status === "processing").length,
-      delivering: orders.filter((o) => o.status === "delivering").length,
-      completed: orders.filter((o) => o.status === "completed").length,
-      monthlySpending: orders.reduce((sum, o) => sum + o.totalAmount, 0),
-    };
-  }, []);
+    if (activeTab !== requestedTab) {
+      void handleTabChange(requestedTab as OrderTab);
+    }
+  }, [activeTab, handleTabChange, searchParams]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    })
-      .format(amount)
-      .replace("₫", "₫");
+  const openOrderDetail = (orderId: string) => {
+    navigate(
+      ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER_DETAIL.replace(":orderId", orderId),
+    );
   };
 
-  const getStatusBadge = (status: Order["status"]) => {
-    const statusConfig = {
-      processing: {
-        label: "Đang xử lý",
-        className: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-        dot: "bg-blue-500",
-      },
-      delivering: {
-        label: "Đang giao",
-        className: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-        dot: "bg-orange-500",
-      },
-      completed: {
-        label: "Hoàn thành",
-        className: "bg-green-500/20 text-green-400 border-green-500/30",
-        dot: "bg-green-500",
-      },
-      cancelled: {
-        label: "Đã hủy",
-        className: "bg-red-500/20 text-red-400 border-red-500/30",
-        dot: "bg-red-500",
-      },
-    };
+  const handleOrderAction = (order: OrderListRow) => {
+    if (order.status === "draft") {
+      navigate(ROUTER_URL.CLIENT_ROUTER.CART);
+      return;
+    }
 
-    const config = statusConfig[status];
-    return (
-      <span
-        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${config.className}`}
-      >
-        <span className={`w-2 h-2 rounded-full ${config.dot}`}></span>
-        {config.label}
-      </span>
-    );
+    if (
+      order.status === "ready_for_pickup" ||
+      order.status === "out_for_delivery"
+    ) {
+      openOrderDetail(order.id);
+      return;
+    }
+
+    if (order.status === "completed" || order.status === "canceled") {
+      navigate(ROUTER_URL.MENU);
+    }
   };
 
   return (
@@ -161,7 +82,7 @@ const OrderPage = () => {
             <div className="max-w-6xl mx-auto">
               {/* Page Title */}
               <div className="mb-6">
-                <h2 className="text-charcoal dark:text-white text-3xl font-black tracking-tight">
+                <h2 className="text-charcoal dark:text-white text-2xl font-black tracking-tight">
                   Danh sách Đơn hàng của tôi
                 </h2>
                 <p className="text-wood-brown text-sm font-normal">
@@ -169,74 +90,22 @@ const OrderPage = () => {
                   ChoiCoffee
                 </p>
               </div>
-
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pb-4">
-                {/* Processing Card */}
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Đang xử lý</p>
-                    <p className="text-2xl font-bold text-charcoal">
-                      {stats.processing}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Delivering Card */}
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Đang giao</p>
-                    <p className="text-2xl font-bold text-charcoal">
-                      {stats.delivering}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Completed Card */}
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Đã hoàn thành</p>
-                    <p className="text-2xl font-bold text-charcoal">
-                      {stats.completed}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Monthly Spending Card */}
-                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">
-                      Tổng chi tiêu tháng này
-                    </p>
-                    <p className="text-xl font-bold text-charcoal">
-                      {formatCurrency(stats.monthlySpending)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               {/* Orders Section Frame */}
               <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6 border border-gray-200">
                 {/* Status Tabs */}
                 <div className="p-4 border-b border-gray-200">
                   <div className="flex gap-5">
-                    {[
-                      { key: "all", label: "Tất cả" },
-                      { key: "processing", label: "Đang xử lý" },
-                      { key: "delivering", label: "Đang giao" },
-                      { key: "completed", label: "Đã hoàn thành" },
-                      { key: "cancelled", label: "Đã hủy" },
-                    ].map((tab) => (
+                    {ORDER_TABS.map((tab) => (
                       <button
                         key={tab.key}
                         onClick={() => {
-                          setActiveTab(tab.key as OrderStatus);
-                          setCurrentPage(1);
+                          void handleTabChange(tab.key);
                         }}
-                        className={`pb-3 px-2 text-sm font-medium transition-colors relative ${activeTab === tab.key
-                          ? "text-primary"
-                          : "text-gray-600 hover:text-charcoal"
-                          }`}
+                        className={`pb-3 px-2 text-sm font-medium transition-colors relative ${
+                          activeTab === tab.key
+                            ? "text-primary"
+                            : "text-gray-600 hover:text-charcoal"
+                        }`}
                       >
                         {tab.label}
                         {activeTab === tab.key && (
@@ -284,97 +153,52 @@ const OrderPage = () => {
                       </div>
                     </div>
 
-                    <button className="px-4 py-1.5 bg-primary text-white rounded text-xs hover:bg-primary/90 transition-colors font-medium">
+                    <button
+                      onClick={() => {
+                        setCurrentPage(1);
+                        void refreshOrders();
+                      }}
+                      className="px-4 py-1.5 bg-primary text-white rounded text-xs hover:bg-primary/90 transition-colors font-medium"
+                    >
                       Lọc kết quả
                     </button>
 
-                    <div className="ml-auto text-xs text-gray-600">
-                      Hiển thị {startIndex + 1} –{" "}
-                      {Math.min(startIndex + itemsPerPage, filteredOrders.length)}{" "}
-                      của {filteredOrders.length} đơn hàng
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={orderCode}
+                        onChange={(e) => setOrderCode(e.target.value)}
+                        disabled={!canSearchByCode}
+                        placeholder="Nhập mã đơn hàng"
+                        className="w-44 px-3 py-1.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-charcoal disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                      />
+                      <button
+                        onClick={() => {
+                          setCurrentPage(1);
+                          void searchByOrderCode();
+                        }}
+                        disabled={!canSearchByCode}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Search size={14} />
+                        Tìm mã
+                      </button>
                     </div>
                   </div>
+
+                  {errorMessage ? (
+                    <p className="mt-3 text-sm text-red-600">{errorMessage}</p>
+                  ) : null}
                 </div>
 
-                {/* Order Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
-                          MÃ ĐƠN HÀNG
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
-                          NGÀY ĐẶT
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
-                          TỔNG TIỀN
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
-                          TRẠNG THÁI
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-charcoal text-base uppercase tracking-wider bg-gray-50">
-                          THAO TÁC
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {paginatedOrders.length > 0 ? (
-                        paginatedOrders.map((order) => (
-                          <tr
-                            key={order.id}
-                            className="transition-colors border-b border-gray-200 hover:bg-gray-50"
-                          >
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="text-sm font-bold text-charcoal text-base text-charcoal">
-                                #{order.orderCode}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="text-sm text-gray-600">
-                                {order.orderDate} - {order.orderTime}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="text-sm font-bold text-charcoal text-base text-charcoal">
-                                {formatCurrency(order.totalAmount)}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {getStatusBadge(order.status)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center ">
-                                <button
-                                  onClick={() =>
-                                    navigate(
-                                      ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER_DETAIL.replace(
-                                        ":orderId",
-                                        order.id,
-                                      ),
-                                    )
-                                  }
-                                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
-                                >
-                                  Xem chi tiết
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan={5}
-                            className="px-6 py-12 text-center text-gray-500"
-                          >
-                            Không có đơn hàng nào
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                <div className="p-4 md:p-5">
+                  <OrderList
+                    orders={paginatedOrders}
+                    isLoading={isLoading}
+                    onOpenOrder={openOrderDetail}
+                    onActionOrder={handleOrderAction}
+                    onBuyNow={() => navigate(ROUTER_URL.MENU)}
+                  />
                 </div>
 
                 {/* Pagination */}
@@ -395,10 +219,11 @@ const OrderPage = () => {
                         <button
                           key={page}
                           onClick={() => setCurrentPage(page)}
-                          className={`px-4 py-2 rounded-lg transition-colors ${currentPage === page
-                            ? "bg-primary text-white"
-                            : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-                            }`}
+                          className={`px-4 py-2 rounded-lg transition-colors ${
+                            currentPage === page
+                              ? "bg-primary text-white"
+                              : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                          }`}
                         >
                           {page}
                         </button>

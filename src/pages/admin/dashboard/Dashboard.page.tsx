@@ -1,9 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   PieChart,
   Pie,
   Cell,
@@ -11,56 +9,103 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 import {
-  TrendingUp,
-  TrendingDown,
   Package,
   Users,
   ShoppingCart,
-  Store,
   AlertTriangle,
   Building2,
   Heart,
   Target,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
   DollarSign,
+  ClipboardList,
 } from "lucide-react";
 import { useAuthStore } from "../../../stores/auth.store";
+import { useAdminContextStore } from "../../../stores/adminContext.store";
+import type { TrendRange } from "./models/dashboard.model";
 import {
-  revenueForecastData,
-  customerData,
-  salesOverviewData,
-  productRevenueData,
-  inventoryAlerts,
-  orderStatusData,
-  settlementsData,
-  dashboardStats,
-  budgetData,
-} from "../../../mocks/Dashboard.mock";
+  buildDeliveryChartData,
+  buildOrderChartData,
+  buildOrderCompletionSummary,
+  buildOrderStatusItems,
+  buildPaymentChartData,
+  buildPerformancePercentage,
+  buildSummaryData,
+} from "./usecases";
+import ClientLoading from "../../../components/Client/Client.Loading";
+import { useDashboardInfo } from "./hooks/useDashboardInfo";
+import { useDashboardInsights } from "./hooks/useDashboardInsights";
+import { useFranchiseOptions } from "./hooks/useFranchiseOptions";
+import {
+  currency,
+  formatTrendLabel,
+  getOrderStatusBadge,
+  getOrderStatusLabel,
+} from "./utils/dashboard.utils";
 
 const DashboardPage = () => {
   const { user } = useAuthStore();
+  const selectedFranchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
+  const normalizedFranchiseId =
+    selectedFranchiseId === "ALL" ? null : selectedFranchiseId;
+  const isGlobalContext = normalizedFranchiseId == null;
+  const [trendRange, setTrendRange] = useState<TrendRange>("7d");
+  const [lowStockFranchiseId, setLowStockFranchiseId] = useState<string | null>(null);
+  const currentRole = useMemo(() => {
+    if (!user?.roles?.length) return null;
+
+    return user.roles.find((role) => {
+      if (isGlobalContext) {
+        return role.scope === "GLOBAL";
+      }
+
+      const roleFranchiseId = role.franchise_id ?? (role as { franchiseId?: string }).franchiseId;
+      return String(roleFranchiseId ?? "") === String(normalizedFranchiseId);
+    });
+  }, [user, isGlobalContext, normalizedFranchiseId]);
+  const useFranchiseCounts = !isGlobalContext;
 
   const userName = useMemo(() => {
     return user?.name || "Admin";
   }, [user]);
+  const scopeLabel = useMemo(() => {
+    if (isGlobalContext) return "Global";
+    if (currentRole?.franchise_name) return currentRole.franchise_name;
+    if (normalizedFranchiseId) return `Franchise ${normalizedFranchiseId}`;
+    return "Franchise";
+  }, [isGlobalContext, currentRole, normalizedFranchiseId]);
+  const summaryScopeLabel = useMemo(
+    () => (isGlobalContext ? "Global" : "Franchise"),
+    [isGlobalContext],
+  );
+  const lowStockTargetId = isGlobalContext ? lowStockFranchiseId : normalizedFranchiseId;
+  const { options: franchiseOptions, isLoading: isFranchiseLoading } = useFranchiseOptions(
+    isGlobalContext,
+  );
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "Very High":
-        return "bg-blue-100 text-blue-800";
-      case "High":
-        return "bg-pink-100 text-pink-800";
-      case "Medium":
-        return "bg-yellow-100 text-yellow-800";
-      case "Low":
-        return "bg-green-100 text-green-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  const {
+    dashboardInfo,
+    isDashboardLoading,
+    lowStockItems,
+    isLowStockLoading,
+  } = useDashboardInfo(normalizedFranchiseId, lowStockTargetId);
+  const {
+    isPaymentsLoading,
+    recentOrders,
+    topProducts,
+    isInsightsLoading,
+    trendMeta,
+  } = useDashboardInsights(
+    normalizedFranchiseId,
+    isGlobalContext,
+    scopeLabel,
+    trendRange,
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -88,34 +133,106 @@ const DashboardPage = () => {
     }
   };
 
-  const COLORS = ["#8B5CF6", "#EC4899", "#14B8A6", "#94A3B8"];
+  const renderTrendBadge = (trend: { pct: number | null; direction: "up" | "down" | "flat" }) => {
+    if (trend.pct === null) {
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+          <ArrowUpRight className="h-3.5 w-3.5" />
+          {formatTrendLabel(trend)}
+        </span>
+      );
+    }
 
-  // Calculate performance percentage (mock calculation)
-  const performancePercentage = 75;
+    const color =
+      trend.direction === "up"
+        ? "text-emerald-600"
+        : trend.direction === "down"
+          ? "text-red-600"
+          : "text-gray-500";
+    const Icon = trend.direction === "down" ? ArrowDownRight : ArrowUpRight;
+    const label = formatTrendLabel(trend);
+
+    return (
+      <span className={`inline-flex items-center gap-1 text-xs font-semibold ${color}`}>
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </span>
+    );
+  };
+
+  const COLORS = ["#e69019", "#3d2b1f", "#887863", "#333333"];
+
+  const summaryData = useMemo(
+    () => buildSummaryData(dashboardInfo, { useFranchiseCounts }),
+    [dashboardInfo, useFranchiseCounts],
+  );
+  const orderStatusItems = useMemo(
+    () => buildOrderStatusItems(dashboardInfo),
+    [dashboardInfo],
+  );
+  const orderChartData = useMemo(
+    () => buildOrderChartData(orderStatusItems),
+    [orderStatusItems],
+  );
+  const paymentChartData = useMemo(
+    () => buildPaymentChartData(dashboardInfo),
+    [dashboardInfo],
+  );
+  const deliveryChartData = useMemo(
+    () => buildDeliveryChartData(dashboardInfo),
+    [dashboardInfo],
+  );
+  const performancePercentage = useMemo(
+    () => buildPerformancePercentage(dashboardInfo),
+    [dashboardInfo],
+  );
+  const completionSummary = useMemo(
+    () => buildOrderCompletionSummary(dashboardInfo),
+    [dashboardInfo],
+  );
+  const lastCheckLabel = useMemo(() => {
+    const now = new Date();
+    return now.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }, []);
+  const visibleOrderStatusItems = useMemo(() => orderStatusItems, [orderStatusItems]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-[#f8f7f6]">
+      {isDashboardLoading && <ClientLoading />}
       {/* Welcome Panel */}
-      <div className="bg-linear-to-r from-purple-600 to-purple-700 rounded-xl shadow-lg p-6 text-white">
+      <div className="bg-linear-to-r from-[#f7efe3] via-[#f4e2c4] to-[#efe1cf] rounded-xl shadow-lg p-6 text-[#3d2b1f]">
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-2xl font-bold">Welcome Back {userName}</h2>
-              <span className="text-2xl">👋</span>
             </div>
-            <div className="grid grid-cols-2 gap-6 mt-6">
-              <div>
-                <p className="text-purple-200 text-sm mb-1">Budget</p>
-                <p className="text-3xl font-bold">${budgetData.budget.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-purple-200 text-sm mb-1">Expense</p>
-                <p className="text-3xl font-bold">${budgetData.expense.toLocaleString()}</p>
-              </div>
+            {isDashboardLoading && (
+              <p className="text-sm text-[#6b5a4b]">Loading dashboard data...</p>
+            )}
+            <p className="text-sm text-[#6b5a4b]">
+              Overview of orders, payments, deliveries, and low stock.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center rounded-full bg-[#3d2b1f]/10 px-3 py-1 text-xs font-semibold">
+                {scopeLabel}
+              </span>
+              <select
+                value={trendRange}
+                onChange={(event) => setTrendRange(event.target.value as TrendRange)}
+                className="h-8 rounded-lg border border-[#e5e1dc] bg-white px-3 text-xs font-semibold text-[#3d2b1f] focus:outline-none"
+              >
+                <option value="today" className="text-[#333333]">Today</option>
+                <option value="7d" className="text-[#333333]">Last 7 days</option>
+                <option value="30d" className="text-[#333333]">Last 30 days</option>
+              </select>
             </div>
           </div>
           <div className="hidden lg:block">
-            <div className="w-32 h-32 bg-white/10 rounded-full flex items-center justify-center">
+            <div className="w-32 h-32 bg-white/15 rounded-full flex items-center justify-center">
               <Target className="w-16 h-16 text-white" />
             </div>
           </div>
@@ -124,227 +241,105 @@ const DashboardPage = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Customers Card */}
-        <div className="bg-linear-to-br from-teal-50 to-teal-100 rounded-lg shadow-sm p-6">
+        {/* Users Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-700 font-semibold">Customers</h3>
-            <Users className="w-5 h-5 text-teal-600" />
+            <h3 className="text-[#333333] font-semibold">Users</h3>
+            <Users className="w-5 h-5 text-[#e69019]" />
           </div>
-          <p className="text-3xl font-bold text-gray-800 mb-2">
-            {dashboardStats.totalCustomers.toLocaleString()}
+          <p className="text-3xl font-bold text-[#333333] mb-2">
+            {summaryData.users.toLocaleString()}
           </p>
-          <div className="flex items-center gap-2">
-            {dashboardStats.customersChange < 0 ? (
-              <TrendingDown className="w-4 h-4 text-red-500" />
-            ) : (
-              <TrendingUp className="w-4 h-4 text-green-500" />
-            )}
-            <span
-              className={`text-sm font-medium ${
-                dashboardStats.customersChange < 0 ? "text-red-500" : "text-green-500"
-              }`}
-            >
-              {Math.abs(dashboardStats.customersChange)}%
-            </span>
+          <p className="text-sm text-[#887863]">Total users · {summaryScopeLabel}</p>
+        </div>
+
+        {/* Customers Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[#333333] font-semibold">Customers</h3>
+            <Heart className="w-5 h-5 text-[#e69019]" />
           </div>
-          <div className="mt-4 h-12 min-h-[48px] w-full relative">
-            <div style={{ width: "100%", height: "48px", minHeight: "48px" }}>
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={48}>
-                <AreaChart data={customerData.slice(-5)}>
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#14B8A6"
-                    fill="#14B8A6"
-                    fillOpacity={0.3}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+          <p className="text-3xl font-bold text-[#333333] mb-2">
+            {summaryData.customers.toLocaleString()}
+          </p>
+          <p className="text-sm text-[#887863]">Total customers · {summaryScopeLabel}</p>
+        </div>
+
+        {/* Products Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[#333333] font-semibold">Products</h3>
+            <Package className="w-5 h-5 text-[#e69019]" />
           </div>
+          <p className="text-3xl font-bold text-[#333333] mb-2">
+            {summaryData.products.toLocaleString()}
+          </p>
+          <p className="text-sm text-[#887863]">Total products · {summaryScopeLabel}</p>
         </div>
 
         {/* Orders Card */}
-        <div className="bg-linear-to-br from-pink-50 to-pink-100 rounded-lg shadow-sm p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-700 font-semibold">Orders</h3>
-            <ShoppingCart className="w-5 h-5 text-pink-600" />
+            <h3 className="text-[#333333] font-semibold">Orders</h3>
+            <ShoppingCart className="w-5 h-5 text-[#e69019]" />
           </div>
-          <p className="text-3xl font-bold text-gray-800 mb-2">
-            {dashboardStats.totalOrders.toLocaleString()}
+          <p className="text-3xl font-bold text-[#333333] mb-2">
+            {summaryData.totalOrders.toLocaleString()}
           </p>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-green-500" />
-            <span className="text-sm font-medium text-green-500">
-              +{dashboardStats.ordersChange}%
-            </span>
-          </div>
-          <div className="mt-4 h-12 min-h-[48px] w-full">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={48}>
-              <AreaChart data={customerData.slice(-5)}>
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#EC4899"
-                  fill="#EC4899"
-                  fillOpacity={0.3}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Revenue Card */}
-        <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-700 font-semibold">Revenue</h3>
-            <DollarSign className="w-5 h-5 text-blue-600" />
-          </div>
-          <p className="text-3xl font-bold text-gray-800 mb-2">
-            ${dashboardStats.totalRevenue.toLocaleString()}
-          </p>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-green-500" />
-            <span className="text-sm font-medium text-green-500">
-              +{dashboardStats.revenueChange}%
-            </span>
-          </div>
-          <div className="mt-4 h-12 min-h-[48px] w-full">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={48}>
-              <AreaChart data={customerData.slice(-5)}>
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#3B82F6"
-                  fill="#3B82F6"
-                  fillOpacity={0.3}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Franchises Card */}
-        <div className="bg-linear-to-br from-purple-50 to-purple-100 rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-700 font-semibold">Franchises</h3>
-            <Store className="w-5 h-5 text-purple-600" />
-          </div>
-          <p className="text-3xl font-bold text-gray-800 mb-2">
-            {dashboardStats.totalFranchises}
-          </p>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-green-500" />
-            <span className="text-sm font-medium text-green-500">
-              +{dashboardStats.franchisesChange}%
-            </span>
-          </div>
-          <div className="mt-4 h-12 min-h-[48px] w-full">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={48}>
-              <AreaChart data={customerData.slice(-5)}>
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#8B5CF6"
-                  fill="#8B5CF6"
-                  fillOpacity={0.3}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          <p className="text-sm text-[#887863]">Total orders · {summaryScopeLabel}</p>
         </div>
       </div>
 
       {/* Main Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Forecast */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        {/* Orders by Status */}
+        <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <span>📊</span> Revenue Forecast
+              <h3 className="text-lg font-semibold text-[#333333] flex items-center gap-2">
+                Orders by Status
               </h3>
-              <p className="text-sm text-gray-500">Overview of Profit</p>
+              <p className="text-sm text-[#887863]">Current totals</p>
             </div>
           </div>
           <div className="h-64 mt-4 min-h-[256px] w-full relative">
             <div style={{ width: "100%", height: "256px", minHeight: "256px" }}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={256}>
-                <LineChart data={revenueForecastData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="month" stroke="#6B7280" />
-                <YAxis stroke="#6B7280" />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="value2024"
-                  stroke="#3B82F6"
-                  strokeWidth={2}
-                  name="2024"
-                  dot={{ fill: "#3B82F6", r: 4 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value2023"
-                  stroke="#EF4444"
-                  strokeWidth={2}
-                  name="2023"
-                  dot={{ fill: "#EF4444", r: 4 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value2022"
-                  stroke="#10B981"
-                  strokeWidth={2}
-                  name="2022"
-                  dot={{ fill: "#10B981", r: 4 }}
-                />
-              </LineChart>
+                <BarChart data={orderChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis dataKey="name" stroke="#6B7280" />
+                  <YAxis stroke="#6B7280" allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#e69019" radius={[6, 6, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         </div>
 
-        {/* Customers Chart */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        {/* Payments by Status */}
+        <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-semibold text-gray-800">Customers</h3>
-              <p className="text-sm text-gray-500">Last 7 days</p>
+              <h3 className="text-lg font-semibold text-[#333333]">Payments by Status</h3>
+              <p className="text-sm text-[#887863]">Current totals</p>
             </div>
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-green-500" />
-              <span className="text-sm font-medium text-green-500">+26.5%</span>
+              <span className="text-sm font-medium text-green-500">Updated</span>
             </div>
           </div>
           <div className="h-64 mt-4 min-h-[256px] w-full relative">
             <div style={{ width: "100%", height: "256px", minHeight: "256px" }}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={256}>
-                <AreaChart data={customerData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="date" stroke="#6B7280" />
-                <YAxis stroke="#6B7280" />
-                <Tooltip />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#8B5CF6"
-                  fill="#8B5CF6"
-                  fillOpacity={0.2}
-                />
-              </AreaChart>
+                <BarChart data={paymentChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis dataKey="name" stroke="#6B7280" />
+                  <YAxis stroke="#6B7280" allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#3d2b1f" radius={[6, 6, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-4">
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500 mb-1">Apr 07 - Apr 14</p>
-              <p className="text-lg font-semibold text-gray-800">6,380</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-xs text-gray-500 mb-1">Last Week</p>
-              <p className="text-lg font-semibold text-gray-800">4,298</p>
             </div>
           </div>
         </div>
@@ -352,24 +347,33 @@ const DashboardPage = () => {
 
       {/* Performance and Sales Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Your Performance */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Your Performance</h3>
-            <p className="text-sm text-gray-500">Last check on 25 February</p>
+        {/* Order Status Summary */}
+        <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-[#333333]">Order Status Summary</h3>
+              <p className="text-sm text-[#887863]">Checked {lastCheckLabel}</p>
+            </div>
+            <span className="text-xs text-[#887863]">
+              Completed {completionSummary.completed}/{completionSummary.totalOrders}
+            </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-4">
-              {orderStatusData.map((order, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {visibleOrderStatusItems.length === 0 && (
+                <div className="text-sm text-gray-500">No order activity yet.</div>
+              )}
+              {visibleOrderStatusItems.map((order) => (
+                <div
+                  key={order.key}
+                  className="flex items-center gap-3 p-2.5 bg-[#f8f7f6] rounded-lg"
+                >
+                  <div className="w-8 h-8 bg-[#f3ece2] rounded-lg flex items-center justify-center text-[#3d2b1f]">
                     {getStatusIcon(order.icon)}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-800">
-                      {order.count} {order.status === "On hold" ? "orders" : "new orders"}
-                    </p>
-                    <p className="text-xs text-gray-500">{order.status}</p>
+                    <p className="text-sm font-semibold text-[#333333]">{order.count}</p>
+                    <p className="text-xs text-[#887863]">{order.label}</p>
                   </div>
                 </div>
               ))}
@@ -389,7 +393,7 @@ const DashboardPage = () => {
                     cx="64"
                     cy="64"
                     r="56"
-                    stroke="#8B5CF6"
+                    stroke="#e69019"
                     strokeWidth="12"
                     fill="none"
                     strokeDasharray={`${(performancePercentage / 100) * 351.86} 351.86`}
@@ -397,144 +401,56 @@ const DashboardPage = () => {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-800">{performancePercentage}</span>
-                  <span className="text-xs text-gray-500">Performance</span>
+                  <span className="text-2xl font-bold text-[#333333]">
+                    {performancePercentage}%
+                  </span>
+                  <span className="text-xs text-[#887863]">Completed</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Sales Overview */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Sales Overview</h3>
-            <p className="text-sm text-gray-500">Last 7 days</p>
-          </div>
-          <div className="h-64 min-h-[256px] w-full relative">
-            <div style={{ width: "100%", height: "256px", minHeight: "256px" }}>
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={256}>
-                <PieChart>
-                <Pie
-                  data={salesOverviewData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) =>
-                    `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`
-                  }
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {salesOverviewData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Revenue by Product and Inventory Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Revenue by Product */}
-        <div className="lg:col-span-2 bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Revenue by Product</h3>
-            <select className="text-sm border border-gray-300 rounded-lg px-3 py-1.5">
-              <option>Sept 2024</option>
-            </select>
-          </div>
-          <div className="flex gap-2 mb-4">
-            {["App", "Mobile", "Sass", "Others"].map((filter) => (
-              <button
-                key={filter}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  filter === "App"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                    Assigned
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                    Progress
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                    Priority
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                    Budget
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {productRevenueData.map((product) => (
-                  <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={product.assignedAvatar}
-                          alt={product.assigned}
-                          className="w-8 h-8 rounded-full"
-                        />
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">{product.name}</p>
-                          <p className="text-xs text-gray-500">{product.assigned}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[100px]">
-                          <div
-                            className="bg-purple-600 h-2 rounded-full"
-                            style={{ width: `${product.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-sm text-gray-700">{product.progress}%</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
-                          product.priority
-                        )}`}
-                      >
-                        {product.priority}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="text-sm font-medium text-gray-800">{product.budget}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
         {/* Inventory Alerts - US-2.3 */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="w-5 h-5 text-orange-500" />
-            <h3 className="text-lg font-semibold text-gray-800">Inventory Alerts</h3>
+        <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-orange-500" />
+              <h3 className="text-lg font-semibold text-[#333333]">Inventory Alerts</h3>
+            </div>
+            {isGlobalContext && (
+              <select
+                value={lowStockFranchiseId ?? ""}
+                onChange={(event) =>
+                  setLowStockFranchiseId(event.target.value || null)
+                }
+                className="h-8 rounded-lg border border-[#e5e1dc] bg-white px-3 text-xs font-semibold text-[#333333]"
+              >
+                <option value="">Select franchise</option>
+                {franchiseOptions.map((franchise) => (
+                  <option key={franchise.id} value={franchise.id}>
+                    {franchise.code} - {franchise.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="space-y-3 max-h-96 overflow-y-auto">
-            {inventoryAlerts.map((alert) => (
+            {isLowStockLoading && (
+              <div className="text-sm text-[#887863]">Loading low stock items...</div>
+            )}
+              {isGlobalContext && isFranchiseLoading && (
+                <div className="text-sm text-[#887863]">Loading franchises...</div>
+              )}
+              {!isLowStockLoading && isGlobalContext && !lowStockTargetId && (
+              <div className="text-sm text-[#887863]">
+                Select a franchise to view low stock items.
+              </div>
+            )}
+              {!isLowStockLoading && lowStockTargetId && lowStockItems.length === 0 && (
+              <div className="text-sm text-[#887863]">No low stock items.</div>
+            )}
+            {lowStockItems.map((alert) => (
               <div
                 key={alert.id}
                 className={`p-3 rounded-lg border-2 ${getStatusColor(alert.status)}`}
@@ -545,7 +461,7 @@ const DashboardPage = () => {
                     {alert.status.toUpperCase()}
                   </span>
                 </div>
-                <p className="text-xs text-gray-600 mb-1">{alert.category}</p>
+                  <p className="text-xs text-gray-600 mb-1">{alert.category}</p>
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-xs text-gray-600">
                     Stock: <span className="font-semibold">{alert.currentStock}</span>
@@ -564,7 +480,11 @@ const DashboardPage = () => {
                         : "bg-yellow-500"
                     }`}
                     style={{
-                      width: `${Math.min((alert.currentStock / alert.minStock) * 100, 100)}%`,
+                      width: `${
+                        alert.minStock > 0
+                          ? Math.min((alert.currentStock / alert.minStock) * 100, 100)
+                          : 0
+                      }%`,
                     }}
                   />
                 </div>
@@ -574,47 +494,172 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Total Settlements */}
-      <div className="bg-linear-to-br from-purple-50 to-purple-100 rounded-lg shadow-sm p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Package className="w-5 h-5 text-purple-600" />
-            <h3 className="text-lg font-semibold text-gray-800">Total Settlements</h3>
+      {/* Revenue and Recent Orders */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6 lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-[#333333]">Revenue & Orders</h3>
+              <p className="text-sm text-[#887863]">
+                {trendMeta.label} · {trendMeta.compareLabel}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f3ece2] text-[#3d2b1f]">
+                {scopeLabel}
+              </span>
+              {isPaymentsLoading && (
+                <span className="text-xs text-[#887863]">Loading...</span>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div>
-            <p className="text-3xl font-bold text-gray-800 mb-2">$122,580</p>
-            <p className="text-sm text-gray-600">Total settlements</p>
-          </div>
-          <div className="lg:col-span-2 h-48 min-h-[192px] w-full relative">
-            <div style={{ width: "100%", height: "192px", minHeight: "192px" }}>
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={192}>
-                <AreaChart data={settlementsData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="week" stroke="#6B7280" />
-                  <YAxis stroke="#6B7280" />
-                  <Tooltip />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#8B5CF6"
-                    fill="#8B5CF6"
-                    fillOpacity={0.3}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-lg bg-[#f8f7f6] p-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#887863]">
+                <DollarSign className="w-4 h-4 text-[#e69019]" />
+                Revenue
+              </div>
+              <div className="mt-2 text-2xl font-bold text-[#333333]">
+                {currency.format(trendMeta.currentRevenue)}
+              </div>
+              <div className="mt-1 flex items-center gap-2 text-xs text-[#887863]">
+                {renderTrendBadge(trendMeta.revenueChange)}
+                <span>{trendMeta.compareLabel}</span>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-[#f8f7f6] p-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#887863]">
+                <ClipboardList className="w-4 h-4 text-[#e69019]" />
+                Paid Orders
+              </div>
+              <div className="mt-2 text-2xl font-bold text-[#333333]">
+                {trendMeta.currentOrders.toLocaleString()}
+              </div>
+              <div className="mt-1 flex items-center gap-2 text-xs text-[#887863]">
+                {renderTrendBadge(trendMeta.ordersChange)}
+                <span>{trendMeta.compareLabel}</span>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-[#f8f7f6] p-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#887863]">
+                <TrendingUp className="w-4 h-4 text-[#e69019]" />
+                Avg Order Value
+              </div>
+              <div className="mt-2 text-2xl font-bold text-[#333333]">
+                {currency.format(trendMeta.avgOrderValue)}
+              </div>
+              <div className="mt-1 text-xs text-[#887863]">Based on paid orders</div>
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div className="bg-white/50 rounded-lg p-4">
-            <p className="text-sm text-gray-600 mb-1">Total balance</p>
-            <p className="text-xl font-semibold text-gray-800">$122,580</p>
+
+        <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <ClipboardList className="w-5 h-5 text-[#e69019]" />
+            <h3 className="text-lg font-semibold text-[#333333]">Recent Orders</h3>
           </div>
-          <div className="bg-white/50 rounded-lg p-4">
-            <p className="text-sm text-gray-600 mb-1">Withdrawals</p>
-            <p className="text-xl font-semibold text-gray-800">$31,640</p>
+          <div className="space-y-3">
+            {isInsightsLoading && (
+              <div className="text-sm text-[#887863]">Loading recent orders...</div>
+            )}
+            {!isInsightsLoading && recentOrders.length === 0 && (
+              <div className="text-sm text-[#887863]">No recent orders yet.</div>
+            )}
+            {recentOrders.map((order) => (
+              <div
+                key={order.id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-[#f0ede9] p-3"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-[#333333] truncate">
+                    {order.code}
+                  </div>
+                  <div className="text-xs text-[#887863] truncate">
+                    {order.customerName} · {order.franchiseName}
+                  </div>
+                  <div className="text-xs text-[#887863]">{order.dateLabel}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-[#333333]">
+                    {currency.format(order.amount)}
+                  </div>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${getOrderStatusBadge(order.status)}`}
+                  >
+                    {getOrderStatusLabel(order.status)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Top Products */}
+      <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Package className="w-5 h-5 text-[#e69019]" />
+          <h3 className="text-lg font-semibold text-[#333333]">Top Products</h3>
+        </div>
+        <div className="space-y-3">
+          {isInsightsLoading && (
+            <div className="text-sm text-[#887863]">Loading top products...</div>
+          )}
+          {!isInsightsLoading && topProducts.length === 0 && (
+            <div className="text-sm text-[#887863]">No product data yet.</div>
+          )}
+          {topProducts.map((item) => (
+            <div
+              key={item.name}
+              className="flex items-center justify-between rounded-lg border border-[#f0ede9] p-3"
+            >
+              <div>
+                <div className="text-sm font-semibold text-[#333333]">
+                  {item.name}
+                </div>
+                <div className="text-xs text-[#887863]">
+                  Sold {item.quantity} items
+                </div>
+              </div>
+              <div className="text-sm font-semibold text-[#333333]">
+                {currency.format(item.revenue)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Deliveries Overview */}
+      <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-[#333333]">Deliveries Overview</h3>
+          <p className="text-sm text-[#887863]">Current totals</p>
+        </div>
+        <div className="h-64 min-h-[256px] w-full relative">
+          <div style={{ width: "100%", height: "256px", minHeight: "256px" }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={256}>
+              <PieChart>
+              <Pie
+                data={deliveryChartData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) =>
+                  `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`
+                }
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {deliveryChartData.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>

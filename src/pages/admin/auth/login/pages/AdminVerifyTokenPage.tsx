@@ -60,11 +60,7 @@ const AdminVerifyTokenPage: React.FC = () => {
         }
 
         setStatus("success");
-        setMessage(
-          type === "reset"
-            ? "Xác thực thành công. Đang chuyển đến trang nhập email."
-            : "Xác thực thành công. Đang chuyển đến trang nhập email...",
-        );
+        setMessage("Xác thực thành công. Đang chuyển đến trang đăng nhập...");
 
         setIsRedirecting(true);
         setRedirectSeconds(5);
@@ -81,9 +77,7 @@ const AdminVerifyTokenPage: React.FC = () => {
         }, 1000);
 
         redirectTimeoutRef.current = window.setTimeout(() => {
-          navigate(ROUTER_URL.ADMIN_ROUTER.FORGOT_PASSWORD, {
-            replace: true,
-          });
+          navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_LOGIN, { replace: true });
         }, 5000);
       } catch (error) {
         setStatus("error");
@@ -216,7 +210,7 @@ const AdminVerifyTokenPage: React.FC = () => {
                 <button
                   className="h-11 w-full rounded-xl bg-primary text-sm font-semibold uppercase tracking-wide text-white shadow-md transition hover:bg-[#d48315] cursor-pointer"
                   onClick={() =>
-                    navigate(ROUTER_URL.ADMIN_ROUTER.FORGOT_PASSWORD)
+                    navigate(ROUTER_URL.ADMIN_ROUTER.REQUEST_NEW_PASSWORD)
                   }
                 >
                   Nhập email nhận mật khẩu

@@ -8,12 +8,13 @@ import { useEffect, useState } from "react";
 import { axiosAdminClient } from "@/api";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import { useInventoryStore } from "@/pages/admin/inventory/stores/useInventoryStore";
+
 /* ===============================
 SCHEMA
 ================================ */
 
 const schema = z.object({
-  product_id: z.string().min(1, "Sản phẩm bắt buộc"),
+  id: z.string().min(1, "Sản phẩm bắt buộc"),
   franchise_id: z.string().min(1, "Chi nhánh bắt buộc"),
   quantity: z.number().min(0, "Số lượng phải >= 0"),
   alert_threshold: z.number().min(0, "Ngưỡng cảnh báo phải >= 0"),
@@ -24,14 +25,13 @@ const adjustInventorySchema = z.object({
   alert_threshold: z.number().min(0, "Ngưỡng cảnh báo phải >= 0"),
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* ===============================
+COMMON
+================================ */
+
 const inputClass = (error?: any) =>
   `w-full px-3 py-2 rounded-lg border outline-none transition
    ${error ? "border-red-500 bg-red-50 focus:ring-red-200" : "border-gray-300"}`;
-
-/* ===============================
-TYPES
-================================ */
 
 type FormData = z.infer<typeof schema>;
 type AdjustInventoryForm = z.infer<typeof adjustInventorySchema>;
@@ -85,6 +85,13 @@ export const CreateInventoryModal: React.FC<Props> = ({
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
+    mode: "onChange", // 🔥 realtime validate
+    defaultValues: {
+      franchise_id: "",
+      product_id: "",
+      quantity: 0,
+      alert_threshold: 0,
+    },
   });
 
   const franchiseId = isAdminGlobal
@@ -93,24 +100,13 @@ export const CreateInventoryModal: React.FC<Props> = ({
 
   const [franchises, setFranchises] = useState<FranchiseSelect[]>([]);
   const [products, setProducts] = useState<ProductFranchise[]>([]);
-  const [loadingFranchises, setLoadingFranchises] = useState(false);
-  const [loadingProducts, setLoadingProducts] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !isAdminGlobal) return;
 
     const fetchFranchises = async () => {
-      try {
-        setLoadingFranchises(true);
-
-        const res = await axiosAdminClient.get("/api/franchises/select");
-
-        if (res.data?.success) setFranchises(res.data.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoadingFranchises(false);
-      }
+      const res = await axiosAdminClient.get("/api/franchises/select");
+      if (res.data?.success) setFranchises(res.data.data);
     };
 
     fetchFranchises();
@@ -120,29 +116,21 @@ export const CreateInventoryModal: React.FC<Props> = ({
     if (!isOpen || !franchiseId) return;
 
     const fetchProducts = async () => {
-      try {
-        setLoadingProducts(true);
-
-        const res = await axiosAdminClient.post(
-          "/api/product-franchises/search",
-          {
-            searchCondition: {
-              franchise_id: franchiseId,
-              is_deleted: false,
-            },
-            pageInfo: {
-              pageNum: 1,
-              pageSize: 50,
-            },
+      const res = await axiosAdminClient.post(
+        "/api/product-franchises/search",
+        {
+          searchCondition: {
+            franchise_id: franchiseId,
+            is_deleted: false,
           },
-        );
+          pageInfo: {
+            pageNum: 1,
+            pageSize: 50,
+          },
+        },
+      );
 
-        if (res.data?.success) setProducts(res.data.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoadingProducts(false);
-      }
+      if (res.data?.success) setProducts(res.data.data);
     };
 
     fetchProducts();
@@ -153,6 +141,7 @@ export const CreateInventoryModal: React.FC<Props> = ({
 
     reset({
       franchise_id: isAdminGlobal ? "" : String(selectedFranchiseId),
+      product_id: "",
       quantity: 0,
       alert_threshold: 0,
     });
@@ -161,7 +150,7 @@ export const CreateInventoryModal: React.FC<Props> = ({
   }, [isOpen]);
 
   const submitHandler = async (data: FormData) => {
-    const selected = products.find((p) => p.product_id === data.product_id);
+    const selected = products.find((p) => p.id === data.id);
     if (!selected) return;
 
     await onSubmit({
@@ -179,73 +168,85 @@ export const CreateInventoryModal: React.FC<Props> = ({
       <form onSubmit={handleSubmit(submitHandler)} className="space-y-4">
         {isAdminGlobal && (
           <div>
-            <label className="text-sm font-medium">Chi nhánh</label>
-
+            <label>Chi nhánh</label>
             <select
               {...register("franchise_id")}
               className={inputClass(errors.franchise_id)}
             >
               <option value="">Chọn chi nhánh</option>
-
               {franchises.map((f) => (
                 <option key={f.value} value={f.value}>
                   {f.name}
                 </option>
               ))}
             </select>
+            {errors.franchise_id && (
+              <p className="text-red-500 text-sm">
+                {errors.franchise_id.message}
+              </p>
+            )}
           </div>
         )}
 
         <div>
-          <label className="text-sm font-medium">Sản phẩm</label>
-
+          <label>Sản phẩm</label>
           <select
-            {...register("product_id")}
-            className={inputClass(errors.product_id)}
+            {...register("id")}
+            className={inputClass(errors.id)}
           >
             <option value="">Chọn sản phẩm</option>
-
             {products.map((p) => (
-              <option key={p.id} value={p.product_id}>
+              <option key={p.id} value={p.id}>
                 {p.product_name} ({p.size})
               </option>
             ))}
           </select>
+          {errors.product_id && (
+            <p className="text-red-500 text-sm">{errors.product_id.message}</p>
+          )}
         </div>
 
         <div>
-          <label className="text-sm font-medium">Số lượng</label>
-
+          <label>Số lượng</label>
           <input
             type="number"
             {...register("quantity", { valueAsNumber: true })}
             className={inputClass(errors.quantity)}
           />
+          {errors.quantity && (
+            <p className="text-red-500 text-sm">{errors.quantity.message}</p>
+          )}
         </div>
 
         <div>
-          <label className="text-sm font-medium">Ngưỡng cảnh báo</label>
-
+          <label>Ngưỡng cảnh báo</label>
           <input
             type="number"
             {...register("alert_threshold", { valueAsNumber: true })}
             className={inputClass(errors.alert_threshold)}
           />
+          {errors.alert_threshold && (
+            <p className="text-red-500 text-sm">
+              {errors.alert_threshold.message}
+            </p>
+          )}
         </div>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="border px-4 py-2 rounded-lg"
-          >
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={onClose}>
             Hủy
           </button>
-
           <button
             type="submit"
             disabled={isSubmitting}
-            className="bg-primary text-white px-4 py-2 rounded-lg"
+            className={`
+    px-4 py-2 rounded-lg font-medium text-sm transition-all
+    ${
+      isSubmitting
+        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+        : "bg-primary text-white hover:bg-primary/90 active:scale-95 shadow-sm hover:shadow-md cursor-pointer"
+    }
+  `}
           >
             {isSubmitting ? "Đang tạo..." : "Tạo"}
           </button>
@@ -259,30 +260,12 @@ export const CreateInventoryModal: React.FC<Props> = ({
 ADJUST INVENTORY MODAL
 ================================ */
 
-interface AdjustInventoryModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  inventory: {
-    id: string;
-    product_franchise_id: string;
-    quantity: number;
-    alert_threshold: number;
-  } | null;
-
-  onSubmit: (data: {
-    product_franchise_id: string;
-    change: number;
-    alert_threshold: number;
-    reason?: string;
-  }) => Promise<void>;
-}
-
-export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
+export const AdjustInventoryModal = ({
   isOpen,
   onClose,
   inventory,
   onSubmit,
-}) => {
+}: any) => {
   const {
     register,
     handleSubmit,
@@ -291,9 +274,20 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
     formState: { errors, isSubmitting },
   } = useForm<AdjustInventoryForm>({
     resolver: zodResolver(adjustInventorySchema),
+    mode: "onChange",
+    defaultValues: {
+      quantity: 0,
+      alert_threshold: 0,
+    },
   });
 
+  // ✅ luôn gọi hook trước
   const newQuantity = watch("quantity", inventory?.quantity ?? 0);
+  const newAlert = watch("alert_threshold", inventory?.alert_threshold ?? 0);
+
+  const changePreview = (newQuantity ?? 0) - (inventory?.quantity ?? 0);
+  const alertChanged = newAlert !== inventory?.alert_threshold;
+  const quantityChanged = changePreview !== 0;
 
   useEffect(() => {
     if (inventory && isOpen) {
@@ -304,28 +298,21 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
     }
   }, [inventory, isOpen, reset]);
 
-  const submitHandler = async (data: AdjustInventoryForm) => {
-    if (!inventory) return;
+  // ✅ return sau khi đã gọi hook
+  if (!inventory) return null;
 
+  const submitHandler = async (data: AdjustInventoryForm) => {
     const change = data.quantity - inventory.quantity;
 
     await onSubmit({
       product_franchise_id: inventory.product_franchise_id,
       change,
       alert_threshold: data.alert_threshold,
-      reason: "",
     });
 
     reset();
     onClose();
   };
-
-  if (!inventory) return null;
-
-  const changePreview = newQuantity - inventory.quantity;
-  const newAlert = watch("alert_threshold", inventory?.alert_threshold ?? 0);
-  const alertChanged = newAlert !== inventory.alert_threshold;
-  const quantityChanged = changePreview !== 0;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Điều chỉnh tồn kho">
@@ -337,22 +324,30 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
 
         <div>
           <label className="text-sm font-medium">Số lượng mới</label>
-
           <input
             type="number"
             {...register("quantity", { valueAsNumber: true })}
             className={inputClass(errors.quantity)}
           />
+          {errors.quantity && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.quantity.message}
+            </p>
+          )}
         </div>
 
         <div>
           <label className="text-sm font-medium">Ngưỡng cảnh báo</label>
-
           <input
             type="number"
             {...register("alert_threshold", { valueAsNumber: true })}
             className={inputClass(errors.alert_threshold)}
           />
+          {errors.alert_threshold && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.alert_threshold.message}
+            </p>
+          )}
         </div>
 
         <div className="text-sm">
@@ -371,18 +366,21 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
         </div>
 
         <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="border px-4 py-2 rounded-lg cursor-pointer"
-          >
+          <button type="button" onClick={onClose}>
             Hủy
           </button>
 
           <button
-            disabled={isSubmitting || (!alertChanged && !quantityChanged)}
             type="submit"
-            className="bg-primary text-white px-4 py-2 rounded-lg disabled:bg-gray-400 cursor-pointer disabled:cursor-not-allowed"
+            disabled={isSubmitting || (!alertChanged && !quantityChanged)}
+            className={`
+    px-4 py-2 rounded-lg font-medium text-sm transition-all
+    ${
+      isSubmitting || (!alertChanged && !quantityChanged)
+        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+        : "bg-green-600 text-white hover:bg-green-700 active:scale-95 shadow-sm hover:shadow-md"
+    }
+  `}
           >
             {isSubmitting ? "Đang cập nhật..." : "Cập nhật"}
           </button>
@@ -415,7 +413,7 @@ export const DeleteInventoryModal: React.FC<DeleteInventoryModalProps> = ({
   if (!inventory) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Xóa tồn kho" size="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title="Xóa tồn kho" >
       <div className="space-y-4">
         <div className="flex gap-3">
           <AlertTriangle className="text-red-600" />
@@ -466,7 +464,7 @@ export const InventoryLogModal: React.FC<InventoryLogModalProps> = ({
   }, [inventoryId, fetchLogs]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Inventory Logs" size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Inventory Logs" size="lg">
       <div className="max-h-[500px] overflow-auto">
         {logsLoading ? (
           <div className="text-center py-10 text-gray-500">

@@ -1,217 +1,264 @@
-import CustomSelect from "@/components/Admin/filters/CustomSelect"
-import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template"
-import { useEffect, useState } from "react"
-import { searchCustomersUsecase } from "../customer/usecases/searchCustomers.usecase";
-import type { Customer } from "@/models/customer.model";
-import { getCustomerCart } from "./usecases/GetCustomerCart.usecase";
-import type { Cart } from "./models/getCartResponse.model";
-import CartForm from "@/components/cart/CartForm";
-import { createCart } from "@/components/cart/usecase/createCart.usecase";
-import { toast } from "react-toastify";
+/* eslint-disable react-hooks/exhaustive-deps */
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useAdminContextStore } from "@/stores";
 
+import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";
+import { getCategoryFranchise } from "@/components/Client/Product/services/category.service";
+import { getPublicProducts } from "@/components/Client/Product/services/product.service";
+
+import FranchiseSelector from "./components/FranchiseSelector";
+import CategoryTabs from "./components/CategoryTabs";
+import ProductGrid from "./components/ProductGrid";
+import CartPanel from "./components/CartPanel";
+import AdminToppingModal from "./components/AdminToppingModal";
 
 const CartAdminPage = () => {
-    const [carts, setCarts] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [customers, setCustomers] = useState<Customer[]>([]);
-    const [customerSelected, setCustomerSelected] = useState<Customer | null>(null);
-    const [customerCache, setCustomerCache] = useState<Customer[]>([]);
-    const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
-    const [selectedCart, setSelectedCart] = useState<Cart | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    const fetchCustomers = async ({ pageNum, pageSize, searchKey }: any) => {
+  const selectedFranchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
+  const isAdmin = !selectedFranchiseId;
+
+  const [posFranchise, setPosFranchise] = useState<any>(null);
+  const [franchises, setFranchises] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [activeCategory, setActiveCategory] = useState("");
+
+  const [cart, setCart] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const [editingItem, setEditingItem] = useState<any>(null);
+
+  // ================= FETCH =================
+  const fetchFranchises = async () => {
     try {
-
-      const res = await searchCustomersUsecase({
-        searchCondition: {
-          keyword: searchKey || "",
-          is_active: "",
-          is_deleted: false
-        },
-        pageInfo: {
-          pageNum,
-          pageSize, // lấy nhiều hơn để dễ test
-        }
-      });
-
-      if (res.success) {
-        setCustomerCache((prev) => {
-        const newItems = res.data.filter(
-          (newItem: Customer) => !prev.some((oldItem) => oldItem.id === newItem.id)
-        );
-        return [...prev, ...newItems];
-      });
-
-      return {
-        data: res.data.map((c: Customer) => ({ label: c.name, value: c.id })),
-        pageInfo: res.pageInfo, // Trả về pageNum, pageSize, totalPages... cho component
-      };
-    }
-    return { data: [], pageInfo: { pageNum: 1, pageSize: 10, totalItems: 0, totalPages: 0 } };
+      setLoading(true);
+      const res = await getAllFranchises();
+      setFranchises(res || []);
     } catch {
-      console.log("Lỗi khi tải customer");
+      toast.error("Lỗi load chi nhánh");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
-    useEffect(() => {
-        fetchCustomers({ pageNum: 1, pageSize: 10, searchKey: "" });
-    }, [])
-
-    const handleSearchCart = async (term: string, filters?: any) => {        
-        if (!customerSelected) {
-        console.warn("Vui lòng chọn khách hàng trước");
-        return;
+  const fetchCategories = async (fid: string) => {
+    try {
+      setLoading(true);
+      const res = await getCategoryFranchise(fid);
+      if (res?.length) {
+        setCategories(res);
+        setActiveCategory(res[0].category_id);
+      } else {
+        setCategories([]);
+        setProducts([]);
+      }
+    } catch {
+      toast.error("Lỗi load danh mục");
+    } finally {
+      setLoading(false);
     }
-    setLoading(true);
-    const status = filters?.status || "ACTIVE";
-        try {
-            const res = await getCustomerCart(customerSelected?.id, status );
-            if(res){
-              const finalData = Array.isArray(res) ? res : (res?.data || []);
-              setCarts(finalData);
+  };
+
+  const fetchProducts = async (fid: string, cid: string) => {
+    try {
+      setLoading(true);
+      const res = await getPublicProducts(fid, cid);
+      setProducts(res || []);
+    } catch {
+      toast.error("Lỗi load sản phẩm");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ================= EFFECT =================
+  useEffect(() => {
+    fetchFranchises();
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin && selectedFranchiseId && franchises.length) {
+      const f = franchises.find((x) => x.value === selectedFranchiseId);
+      setPosFranchise({
+        id: selectedFranchiseId,
+        name: f?.name || "Chi nhánh hiện tại",
+      });
+    }
+  }, [selectedFranchiseId, franchises]);
+
+  useEffect(() => {
+    if (posFranchise?.id) {
+      fetchCategories(posFranchise.id);
+      setCart([]);
+    }
+  }, [posFranchise]);
+
+  useEffect(() => {
+    if (posFranchise?.id && activeCategory) {
+      fetchProducts(posFranchise.id, activeCategory);
+    }
+  }, [activeCategory]);
+
+  // ================= CART =================
+  const add = (cartItem: any) => {
+    setCart((prev) => {
+      const toppingsKey = cartItem.toppings?.length
+        ? cartItem.toppings.map((t: any) => `${t.id}_${t.quantity}`).sort().join(",")
+        : "no_topping";
+
+      const key = `${cartItem.product_id}_${cartItem.size_id}_${toppingsKey}`;
+
+      const exist = prev.find((i) => i.key === key);
+
+      if (exist) {
+        return prev.map((i) =>
+          i.key === key
+            ? {
+              ...i,
+              quantity: i.quantity + cartItem.quantity,
+              total_price: i.total_price + cartItem.total_price,
             }
-            
-        } catch (error) {
-            console.error("Lỗi khi tải giỏ hàng:", error);
-        } finally {
-            setLoading(false);
-        }
-    }
+            : i
+        );
+      }
 
-    // console.log("cảt", carts);
+      return [...prev, { ...cartItem, key }];
+    });
+  };
 
-    useEffect(() => {
+  const updateQty = (key: string, delta: number) => {
+    setCart((prev) => {
+      if (delta === -Infinity) return prev.filter((i) => i.key !== key);
 
-    }, [customerSelected])
+      return prev
+        .map((i) => {
+          if (i.key !== key) return i;
 
-    const handleOpenForm = (mode: "create" | "edit" | "view", data?: Cart) => {
-        setFormMode(mode);
-        setSelectedCart(data || null);
-        setIsModalOpen(true);
+          const newQty = i.quantity + delta;
+          if (newQty <= 0) return null;
+
+          const unit = i.total_price / i.quantity;
+
+          return {
+            ...i,
+            quantity: newQty,
+            total_price: unit * newQty,
+          };
+        })
+        .filter(Boolean);
+    });
+  };
+
+  const total = cart.reduce((sum, i) => sum + i.total_price, 0);
+
+  // ================= EDIT =================
+  const handleEditItem = (item: any) => {
+    const productToEdit = {
+      product_id: item.product_id,
+      name: item.name,
+      image_url: item.image_url,
+      description: item.description || "",
+      sizes: [{
+        product_franchise_id: item.size_id,
+        size: item.size,
+        price: item.price,
+        is_available: true
+      }],
+      is_have_topping: item.is_have_topping || false
     };
 
-
-
-    const columns: Column<Cart>[] = [
-      {
-        header: "Tên khách hàng",
-        accessor: "customer_name",
-      },
-      {
-        header: "Tên chi nhánh",
-        accessor: "franchise_name",
-      },
-      {
-        header: "Số lượng sản phẩm",
-        accessor: "cart_items",
-        render(item) {
-          const totalItems = item.cart_items.length;
-
-          return <span className="ml-14">{totalItems}</span>;
-        },
-      },
-      {
-        header: "Tổng tiền",
-        accessor: "final_amount",
-        render(item) {
-          return <span>{item.final_amount?.toLocaleString()} đ</span>;
-        },
-      },
-
-      {
-        header: "Trạng thái",
-        accessor: "status",
-        render(item) {
-
-
-          return (
-            (item.status === "ACTIVE" && <span className="px-2 py-1 text-[10px] rounded-xl bg-yellow-200 text-yellow-500">Đang chờ</span>) ||
-            (item.status === "CANCELLED" && <span className="px-2 py-1 text-[10px] bg-red-200 text-red-500">Đã hủy</span>) ||
-            (item.status === "CHECKED_OUT" && <span className="px-2 py-1 text-[10px] bg-green-200 text-green-500">Đã hoàn thành</span>)
-          );
-        }
-      }
-    ];
-
-    const hanldeSubmit = async (data: any, setError: any) => {
-        // Implementation for form submission
-        if(formMode === "create") {
-            setIsSubmitting(true);
-        try{
-          const response = await createCart(data);
-          if(response){
-            toast.success("Tạo giỏ hàng thành công");
-            setIsModalOpen(false);
-            
-          }
-        }catch(error){
-          console.error("Lỗi khi tạo giỏ hàng:", error);
-          toast.error("Lỗi khi tạo giỏ hàng");
-        }finally{
-          setIsSubmitting(false);
-        } 
-    }
+    setEditingItem({
+      ...item,
+      product: productToEdit
+    });
   };
 
+  const handleConfirmEdit = (updated: any) => {
+    setCart((prev) =>
+      prev.map((i) => (i.key === editingItem.key ? { ...updated, key: i.key } : i))
+    );
+    setEditingItem(null);
+  };
+
+  // ================= UI =================
+  if (isAdmin && !posFranchise) {
+    return (
+      <FranchiseSelector
+        data={franchises}
+        loading={loading}
+        onSelect={(id) => {
+          const f = franchises.find((x) => x.value === id);
+          setPosFranchise({ id, name: f?.name });
+        }}
+      />
+    );
+  }
 
   return (
-    <>
-        <CRUDPageTemplate
-            title="Quản lý giỏ hàng"
-            columns={columns}
-            data={carts}
-            isTableLoading={loading}
-            pageSize={10}
-            totalItems={0}
-            onSearch={handleSearchCart}
-            onAdd={() => handleOpenForm("create")}
-            onEdit={(item) => handleOpenForm("edit", item)}
-            onView={(item) => handleOpenForm("view", item)}
-            searchContent={
-                <CustomSelect
-                    fetchOptions={fetchCustomers as any}
-                    value={customerSelected?.id || ""}
-                    options={ customers.map((customer) => ({
-                        label: customer.name,
-                        value: customer.id
-                    })) }
-                    placeholder="Chọn khách hàng"
-                    onChange={(id) => {
-                        const selectedCustomer = customerCache.find((c) => c.id === id);
-                        setCustomerSelected(selectedCustomer || null);
-                    }}
+    <div className="flex flex-col h-full">
+      {/* HEADER TOP (phần trên cùng) */}
+      <div className="bg-white border-b px-4 py-3 shrink-0">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">{posFranchise?.name}</h2>
+          {isAdmin && (
+            <button onClick={() => setPosFranchise(null)} className="text-sm hover:text-primary cursor-pointer">
+              Đổi chi nhánh
+            </button>
+          )}
+        </div>
+      </div>
 
+      {/* MAIN CONTENT - chiếm phần còn lại */}
+      <div className="flex-1 flex min-h-0">
+        {/* LEFT */}
+        <div className="flex-1 flex flex-col min-w-0 bg-gray-50">
+          {/* CONTENT */}
+          <div className="flex-1 flex flex-col min-h-0">
+            {categories.length === 0 && !loading ? (
+              <div className="flex-1 flex items-center justify-center text-gray-400">
+                Không có danh mục
+              </div>
+            ) : (
+              <>
+                <CategoryTabs
+                  categories={categories}
+                  active={activeCategory}
+                  onChange={setActiveCategory}
                 />
-            }
 
-            filters={[
-                {
-                    label: "Trạng thái",
-                    key: "status",
-                    options: [
-                        { label: "Đang hoạt động", value: "ACTIVE" },
-                        { label: "Đã hủy", value: "CANCELLED" },
-                        { label: "Đã hoàn thành", value: "CHECKED_OUT" },
-                    ],
-                },
-            ]}
+                <div className="flex-1 min-h-0">
+                  <ProductGrid
+                    products={products}
+                    onAdd={add}
+                    loading={loading}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT */}
+        <CartPanel
+          cart={cart}
+          updateQty={updateQty}
+          total={total}
+          onEditItem={handleEditItem}
         />
+      </div>
 
-        <CartForm
-          isOpen={isModalOpen}
-          mode={formMode}
-          initialData={selectedCart || undefined}
-          onSubmit={hanldeSubmit}
-          onClose={() => setIsModalOpen(false)}
+      {/* MODAL */}
+      {editingItem && (
+        <AdminToppingModal
+          isOpen={!!editingItem}
+          product={editingItem.product}
+          initialData={editingItem}
+          onClose={() => setEditingItem(null)}
+          onConfirm={handleConfirmEdit}
         />
-    </>
-  )
-}
+      )}
+    </div>
+  );
+};
 
-
-
-export default CartAdminPage
+export default CartAdminPage;

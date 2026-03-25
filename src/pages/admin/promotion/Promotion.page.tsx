@@ -11,13 +11,15 @@ import {
   type PromotionApiItem,
 } from "@/services/promotion.service";
 import { searchProductFranchisesService } from "@/pages/admin/product_category_franchise/services/searchProductFranchises.service";
-import { toastError, toastSuccess } from "@/utils/toast.util";
+import { toastError } from "@/utils/toast.util";
 import type { ProductFranchise } from "@/models/product_franchise.model";
 import {
   PromotionForm,
   type PromotionFormInitialData,
   type PromotionFormValues,
 } from "./components/PromotionForm";
+import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
+import ClientLoading from "@/components/Client/Client.Loading";
 
 type PromotionRow = {
   id: string;
@@ -158,7 +160,7 @@ const PromotionPage = () => {
         });
 
       setList(rows);
-      toastSuccess(`Gọi API OK`);
+
     } catch {
       setError("Không thể tải danh sách promotion");
       setList([]);

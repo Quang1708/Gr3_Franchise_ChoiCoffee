@@ -6,7 +6,7 @@ import type { Franchise } from "../models/franchise.model"
 type FranchiseState = {
   items: Franchise[]
   loading: boolean
-
+  actionLoading: boolean
   fetchAll: () => Promise<void>
 
   create: (payload: any) => Promise<void>
@@ -21,104 +21,98 @@ type FranchiseState = {
 }
 
 export const useFranchiseStore = create<FranchiseState>((set) => ({
-
   items: [],
   loading: false,
+  actionLoading: false, 
 
   fetchAll: async () => {
-
-    set({ loading: true })
-
+    set({ loading: true });
     try {
-
-      const data = await franchiseService.search()
-
-      set({
-        items: data
-      })
-
+      const data = await franchiseService.search();
+      set({ items: data });
     } finally {
-
-      set({ loading: false })
-
+      set({ loading: false });
     }
   },
 
   create: async (payload) => {
-
-    const newItem = await franchiseService.create(payload)
-
-    set((state) => ({
-      items: [newItem, ...state.items]
-    }))
+    set({ actionLoading: true });
+    try {
+      const newItem = await franchiseService.create(payload);
+      set((state) => ({
+        items: [newItem, ...state.items],
+      }));
+    } finally {
+      set({ actionLoading: false });
+    }
   },
 
   update: async (id, payload) => {
-
-    const updated = await franchiseService.update(id, payload)
-
-    set((state) => ({
-      items: state.items.map((i) =>
-        i.id === id ? updated : i
-      )
-    }))
+    set({ actionLoading: true });
+    try {
+      const updated = await franchiseService.update(id, payload);
+      set((state) => ({
+        items: state.items.map((i) => (i.id === id ? updated : i)),
+      }));
+    } finally {
+      set({ actionLoading: false });
+    }
   },
 
-delete: async (id) => {
+  delete: async (id) => {
+    set({ actionLoading: true });
+    try {
+      await franchiseService.delete(id);
+      set((state) => ({
+        items: state.items.map((i) =>
+          i.id === id
+            ? { ...i, is_deleted: true, isActive: false }
+            : i,
+        ),
+      }));
+    } finally {
+      set({ actionLoading: false });
+    }
+  },
 
-  await franchiseService.delete(id)
-
-  set((state) => ({
-    items: state.items.map((i) =>
-      i.id === id
-        ? { ...i, is_deleted: true, isActive: false }
-        : i
-    )
-  }))
-},
-
-restore: async (id) => {
-
-  await franchiseService.restore(id)
-
-  set((state) => ({
-    items: state.items.map((i) =>
-      i.id === id
-        ? { ...i, is_deleted: false, isActive: true }
-        : i
-    )
-  }))
-},
+  restore: async (id) => {
+    set({ actionLoading: true });
+    try {
+      await franchiseService.restore(id);
+      set((state) => ({
+        items: state.items.map((i) =>
+          i.id === id
+            ? { ...i, is_deleted: false, isActive: true }
+            : i,
+        ),
+      }));
+    } finally {
+      set({ actionLoading: false });
+    }
+  },
 
   changeStatus: async (id, active) => {
-
-    await franchiseService.changeStatus(id, active)
-
-    set((state) => ({
-      items: state.items.map((i) =>
-        i.id === id ? { ...i, isActive: active } : i
-      )
-    }))
+    set({ actionLoading: true });
+    try {
+      await franchiseService.changeStatus(id, active);
+      set((state) => ({
+        items: state.items.map((i) =>
+          i.id === id ? { ...i, isActive: active } : i,
+        ),
+      }));
+    } finally {
+      set({ actionLoading: false });
+    }
   },
 
   search: async (keyword: string) => {
-  set({ loading: true });
-
-try {
-
-    const data = await franchiseService.searchFranchiseApi(keyword)
-
-    set({
-      items: data
-    })
-
-    return data  
-
-  } finally {
-
-    set({ loading: false })
-
-  }
-},
-
-}))
+    set({ loading: true });
+    try {
+      const data = await franchiseService.searchFranchiseApi(keyword);
+      set({ items: data });
+      return data;
+    } finally {
+      set({ loading: false });
+    }
+  },
+}));

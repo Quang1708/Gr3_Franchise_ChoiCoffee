@@ -17,12 +17,13 @@ import { updateStatusCategoryFranchsie } from "./services/categoryFranchise06.se
 import { restoreCategoryFranchise } from "./services/categoryFranchise05.service";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import { deleteCategoryFranchise } from "./services/categoryFranchise04.service";
-import FormSelect from "@/components/Admin/form/FormSelect";
+
 import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";
 import type { FieldError } from "node_modules/react-hook-form/dist/types/errors";
 import { useForm} from "react-hook-form";
 import type { CategorySelectItem } from "@/models/category.model";
 import { getCategorySelectUsecase } from "./usecases";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 
 
 const CategoryPage = () => {
@@ -30,11 +31,11 @@ const CategoryPage = () => {
   const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId) || "";
   const isAdmin = franchiseId === ""; // Nếu không chọn chi nhánh nào, tức là đang ở chế độ Admin 
   const canWrite = useMemo(
-    () => can(user, PERM.CATEGORY_WRITE, franchiseId || undefined),
+    () => can(user, PERM.CATEGORY_FRANCHISE_WRITE, franchiseId || undefined),
     [user, franchiseId],
   );
   const canChooseFranchise = useMemo(
-    () => !franchiseId && can(user, PERM.CATEGORY_WRITE, undefined),
+    () => !franchiseId && can(user, PERM.CATEGORY_FRANCHISE_WRITE, undefined),
     [user, franchiseId],
   );
   const [categoryFranchiseList, setCategoryFranchiseList] = useState<CategoryItem[]>([]);

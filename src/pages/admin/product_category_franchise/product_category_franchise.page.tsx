@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CRUDPageTemplate,
   type Column,
@@ -45,7 +45,7 @@ type SearchFormValues = {
   category_id: string;
 };
 
-const DEFAULT_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 20;
 
 const DEFAULT_SEARCH_PAYLOAD: ProductCategoryFranchiseSearchInput = {
   searchCondition: {
@@ -81,6 +81,9 @@ const ProductCategoryFranchisePage = () => {
     canManageProductCategoryFranchise || roleCodes.includes("STAFF");
 
   const [rows, setRows] = useState<ProductCategoryFranchiseRow[]>([]);
+  const [filterOptionRows, setFilterOptionRows] = useState<
+    ProductCategoryFranchiseRow[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -133,15 +136,61 @@ const ProductCategoryFranchisePage = () => {
     },
   });
 
+  const loadingRequestCountRef = useRef(0);
+
+  const beginFullScreenLoading = () => {
+    loadingRequestCountRef.current += 1;
+    setIsLoading(true);
+  };
+
+  const endFullScreenLoading = () => {
+    loadingRequestCountRef.current = Math.max(
+      0,
+      loadingRequestCountRef.current - 1,
+    );
+    if (loadingRequestCountRef.current === 0) {
+      setIsLoading(false);
+    }
+  };
+
+  const mapApiItemToRow = (
+    item: ProductCategoryFranchise & Record<string, unknown>,
+  ): ProductCategoryFranchiseRow => ({
+    ...item,
+    franchiseName: (item.franchiseName ??
+      item.franchise_name ??
+      item.franchise_id ??
+      "N/A") as string,
+    categoryName: (item.categoryName ??
+      item.category_name ??
+      item.category_id ??
+      "N/A") as string,
+    productName: (item.productName ??
+      item.product_name ??
+      item.product_id ??
+      "N/A") as string,
+    franchise_id: (item.franchise_id ?? item.franchiseId ?? "") as string,
+    category_id: (item.category_id ?? item.categoryId ?? "") as string,
+    product_id: (item.product_id ?? item.productId ?? "") as string,
+    category_franchise_id: (item.category_franchise_id ??
+      item.categoryFranchiseId ??
+      "") as string,
+    product_franchise_id: (item.product_franchise_id ??
+      item.productFranchiseId ??
+      "") as string,
+    displayOrder: (item.display_order ?? item.displayOrder ?? 0) as number,
+    isActive: (item.is_active ?? item.isActive ?? false) as boolean,
+    is_deleted: (item.is_deleted ?? item.isDeleted ?? false) as boolean,
+  });
+
   const fetchData = useCallback(
     async (
       payload: ProductCategoryFranchiseSearchInput,
       type: "full" | "table" = "table",
     ) => {
+      beginFullScreenLoading();
       try {
-        if (type === "full") {
-          setIsLoading(true);
-        } else {
+        if (type === "table") {
           setIsTableLoading(true);
         }
 
@@ -154,40 +203,7 @@ const ProductCategoryFranchisePage = () => {
 
           const mappedData: ProductCategoryFranchiseRow[] = (
             rawData as (ProductCategoryFranchise & Record<string, unknown>)[]
-          ).map((item) => ({
-            ...item,
-
-            // map name fallback nếu API không trả
-            franchiseName: (item.franchiseName ??
-              item.franchise_name ??
-              item.franchise_id ??
-              "N/A") as string,
-            categoryName: (item.categoryName ??
-              item.category_name ??
-              item.category_id ??
-              "N/A") as string,
-            productName: (item.productName ??
-              item.product_name ??
-              item.product_id ??
-              "N/A") as string,
-            franchise_id: (item.franchise_id ??
-              item.franchiseId ??
-              "") as string,
-            category_id: (item.category_id ?? item.categoryId ?? "") as string,
-            product_id: (item.product_id ?? item.productId ?? "") as string,
-            category_franchise_id: (item.category_franchise_id ??
-              item.categoryFranchiseId ??
-              "") as string,
-            product_franchise_id: (item.product_franchise_id ??
-              item.productFranchiseId ??
-              "") as string,
-
-            displayOrder: (item.display_order ??
-              item.displayOrder ??
-              0) as number,
-            isActive: (item.is_active ?? item.isActive ?? false) as boolean,
-            is_deleted: (item.is_deleted ?? item.isDeleted ?? false) as boolean,
-          }));
+          ).map(mapApiItemToRow);
 
           setRows(mappedData);
           setPage(response.pageInfo?.pageNum ?? payload.pageInfo.pageNum);
@@ -203,8 +219,8 @@ const ProductCategoryFranchisePage = () => {
         setRows([]);
         setTotalItems(0);
       } finally {
-        setIsLoading(false);
         setIsTableLoading(false);
+        endFullScreenLoading();
       }
     },
     [],
@@ -214,7 +230,49 @@ const ProductCategoryFranchisePage = () => {
     fetchData(DEFAULT_SEARCH_PAYLOAD, "full");
   }, [fetchData]);
 
+  const loadFilterOptions = useCallback(async () => {
+    beginFullScreenLoading();
+    try {
+      const response = await searchProductCategoryFranchisesService({
+        searchCondition: {
+          franchise_id: "",
+          category_id: "",
+          product_id: "",
+          is_active: "",
+          is_deleted: false,
+        },
+        pageInfo: {
+          pageNum: 1,
+          pageSize: 10000,
+        },
+      });
+
+      if (!response?.success || !Array.isArray(response.data)) {
+        setFilterOptionRows([]);
+        return;
+      }
+
+      setFilterOptionRows(
+        response.data.map((item) =>
+          mapApiItemToRow(
+            item as ProductCategoryFranchise & Record<string, unknown>,
+          ),
+        ),
+      );
+    } catch (error) {
+      console.error("Lỗi khi tải danh sách filter:", error);
+      setFilterOptionRows([]);
+    } finally {
+      endFullScreenLoading();
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFilterOptions();
+  }, [loadFilterOptions]);
+
   const loadExistingMappings = useCallback(async () => {
+    beginFullScreenLoading();
     try {
       const response = await searchProductCategoryFranchisesService({
         searchCondition: {
@@ -254,6 +312,8 @@ const ProductCategoryFranchisePage = () => {
     } catch (error) {
       console.error("Lỗi khi tải mapping đã tồn tại:", error);
       setExistingMappings([]);
+    } finally {
+      endFullScreenLoading();
     }
   }, []);
 
@@ -262,14 +322,16 @@ const ProductCategoryFranchisePage = () => {
   }, [loadExistingMappings]);
 
   const handleSearch = (
-    _term: string,
+    term: string,
     filters?: Partial<Record<keyof ProductCategoryFranchiseRow, string>>,
   ) => {
+    const normalizedProductId = term.trim();
+
     const nextPayload: ProductCategoryFranchiseSearchInput = {
       searchCondition: {
         franchise_id: getValues("franchise_id") || "",
         category_id: getValues("category_id") || "",
-        product_id: "",
+        product_id: normalizedProductId,
         is_active:
           filters?.isActive === "true"
             ? true
@@ -339,7 +401,7 @@ const ProductCategoryFranchisePage = () => {
     { label: "Tất cả chi nhánh", value: "" },
     ...Array.from(
       new Map(
-        rows
+        filterOptionRows
           .filter((row) => row.franchise_id)
           .map((row) => [String(row.franchise_id), row.franchiseName]),
       ).entries(),
@@ -353,7 +415,7 @@ const ProductCategoryFranchisePage = () => {
     { label: "Tất cả danh mục", value: "" },
     ...Array.from(
       new Map(
-        rows
+        filterOptionRows
           .filter((row) => row.category_id)
           .map((row) => [String(row.category_id), row.categoryName]),
       ).entries(),
@@ -425,6 +487,8 @@ const ProductCategoryFranchisePage = () => {
     }
 
     try {
+      beginFullScreenLoading();
+
       if (
         isDuplicateMapping(
           data.category_franchise_id,
@@ -468,6 +532,7 @@ const ProductCategoryFranchisePage = () => {
             "full",
           ),
           loadExistingMappings(),
+          loadFilterOptions(),
         ]);
       } else {
         toastError("Thêm mới sản phẩm vào danh mục thất bại");
@@ -477,6 +542,7 @@ const ProductCategoryFranchisePage = () => {
       toastError(getCreateErrorMessage(error));
     } finally {
       setIsProcessing(false);
+      endFullScreenLoading();
     }
   };
 
@@ -490,6 +556,7 @@ const ProductCategoryFranchisePage = () => {
     }
 
     try {
+      beginFullScreenLoading();
       setIsProcessing(true);
       const res = await updateProductCategoryFranchiseStatusUsecase(
         String(item.id),
@@ -516,6 +583,7 @@ const ProductCategoryFranchisePage = () => {
       toastError("Cập nhật trạng thái thất bại");
     } finally {
       setIsProcessing(false);
+      endFullScreenLoading();
     }
   };
 
@@ -545,6 +613,7 @@ const ProductCategoryFranchisePage = () => {
     if (!item) return;
 
     try {
+      beginFullScreenLoading();
       setIsProcessing(true);
       const res =
         type === "delete"
@@ -560,12 +629,13 @@ const ProductCategoryFranchisePage = () => {
           ),
         );
         setModalConfig((prev) => ({ ...prev, isOpen: false }));
-        await loadExistingMappings();
+        await Promise.all([loadExistingMappings(), loadFilterOptions()]);
       }
     } catch (error) {
       console.error("Lỗi thực hiện hành động:", error);
     } finally {
       setIsProcessing(false);
+      endFullScreenLoading();
     }
   };
 
@@ -637,6 +707,7 @@ const ProductCategoryFranchisePage = () => {
     }
 
     try {
+      beginFullScreenLoading();
       setIsProcessing(true);
 
       const res = await reorderProductCategoryFranchisesService({
@@ -660,6 +731,7 @@ const ProductCategoryFranchisePage = () => {
       toastError("Cập nhật thứ tự hiển thị thất bại");
     } finally {
       setIsProcessing(false);
+      endFullScreenLoading();
     }
   };
 

@@ -36,10 +36,13 @@ type CheckoutOrderItem = {
 };
 
 type CheckoutOrderSummary = {
+  orderCode: string;
   customerName: string;
   phone: string;
   address: string;
   items: CheckoutOrderItem[];
+  originalAmount: number;
+  deductedAmount: number;
   finalAmount: number;
 };
 
@@ -88,10 +91,13 @@ const mapOrderSummary = (value: unknown): CheckoutOrderSummary => {
   const root = asObject(value);
   if (!root) {
     return {
+      orderCode: "",
       customerName: "Khach hang",
       phone: "Dang cap nhat",
       address: "Dang cap nhat",
       items: [],
+      originalAmount: 0,
+      deductedAmount: 0,
       finalAmount: 0,
     };
   }
@@ -156,12 +162,21 @@ const mapOrderSummary = (value: unknown): CheckoutOrderSummary => {
       Boolean(item),
     );
 
+  const originalAmount = toNumberOrZero(
+    root.subtotal_amount ?? root.total_amount,
+  );
+  const finalAmount = toNumberOrZero(root.final_amount ?? root.total_amount);
+  const deductedAmount = Math.max(0, originalAmount - finalAmount);
+
   return {
+    orderCode: toStringOrUndefined(root.code ?? root.order_code) || "",
     customerName: toStringOrUndefined(root.customer_name) || "Khach hang",
     phone: toStringOrUndefined(root.phone) || "Dang cap nhat",
     address: toStringOrUndefined(root.address) || "Dang cap nhat",
     items,
-    finalAmount: toNumberOrZero(root.final_amount ?? root.total_amount),
+    originalAmount,
+    deductedAmount,
+    finalAmount,
   };
 };
 
@@ -177,10 +192,13 @@ const CheckoutPage: React.FC = () => {
   const [paymentStatus, setPaymentStatus] = useState("");
   const [resolvedOrderId, setResolvedOrderId] = useState("");
   const [orderSummary, setOrderSummary] = useState<CheckoutOrderSummary>({
+    orderCode: "",
     customerName: customer?.name?.trim() || "Khach hang",
     phone: customer?.phone?.trim() || "Dang cap nhat",
     address: customer?.address?.trim() || "Dang cap nhat",
     items: [],
+    originalAmount: 0,
+    deductedAmount: 0,
     finalAmount: 0,
   });
   const [paymentMethod, setPaymentMethod] =
@@ -199,6 +217,18 @@ const CheckoutPage: React.FC = () => {
     [checkoutState.orderCode],
   );
   const fallbackAmount = Number(checkoutState.finalAmount || 0);
+  const displayedFinalAmount =
+    paymentAmount || orderSummary.finalAmount || fallbackAmount;
+  const displayedOrderCode =
+    orderSummary.orderCode || orderCode || resolvedOrderId || orderId;
+  const displayedOriginalAmount =
+    orderSummary.originalAmount ||
+    displayedFinalAmount + orderSummary.deductedAmount;
+  const displayedDeductedAmount = Math.max(
+    0,
+    orderSummary.deductedAmount ||
+      displayedOriginalAmount - displayedFinalAmount,
+  );
 
   useEffect(() => {
     if (!customerId) {
@@ -396,7 +426,7 @@ const CheckoutPage: React.FC = () => {
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                 <p className="text-slate-500">Mã đơn hàng</p>
                 <p className="font-medium text-charcoal mt-0.5">
-                  {resolvedOrderId || orderId}
+                  {displayedOrderCode}
                 </p>
               </div>
 
@@ -410,7 +440,7 @@ const CheckoutPage: React.FC = () => {
               <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                 <p className="text-slate-500">Số tiền</p>
                 <p className="font-semibold text-primary mt-0.5">
-                  ₫{paymentAmount.toLocaleString()}
+                  ₫{displayedFinalAmount.toLocaleString()}
                 </p>
               </div>
 
@@ -572,9 +602,16 @@ const CheckoutPage: React.FC = () => {
           <div className="w-full md:max-w-sm md:ml-auto">
             <div className="space-y-3">
               <div className="flex justify-between text-base text-charcoal">
-                <span>Tổng cần thanh toán</span>
+                <span>Giá tiền ban đầu</span>
                 <span className="text-charcoal tracking-tight">
-                  ₫{paymentAmount.toLocaleString()}
+                  ₫{displayedOriginalAmount.toLocaleString()}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-base text-charcoal">
+                <span>Số tiền đã giảm</span>
+                <span className="text-emerald-600 tracking-tight">
+                  -₫{displayedDeductedAmount.toLocaleString()}
                 </span>
               </div>
 
@@ -583,7 +620,7 @@ const CheckoutPage: React.FC = () => {
                   Tổng thanh toán
                 </span>
                 <span className="text-[24px] font-black text-primary tabular-nums tracking-tighter">
-                  ₫{paymentAmount.toLocaleString()}
+                  ₫{displayedFinalAmount.toLocaleString()}
                 </span>
               </div>
             </div>

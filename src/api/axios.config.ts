@@ -177,7 +177,7 @@ axiosAdminClient.interceptors.response.use(
 
       try {
         // Call admin refresh token API via store action
-        await useAuthStore.getState().refreshAccessToken();
+        await axiosAdminClient.get("/api/auth/refresh-token");
 
         // Token refreshed successfully, process queued requests
         processAdminQueue();

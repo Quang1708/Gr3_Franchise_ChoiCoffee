@@ -1,5 +1,6 @@
 import { toastError, toastSuccess } from "@/utils/toast.util";
 import { deleteItem } from "@/components/cart/usecase/deleteItem.usecase";
+import { cancelCart } from "@/components/cart/usecase/cancelCart.usecase";
 import type { Dispatch, SetStateAction } from "react";
 import { extractCartDataList } from "../utils/cartApi.mapper";
 import type { OrderItem } from "@/models/order_item.model";
@@ -49,18 +50,18 @@ export const useCartDeleteActions = ({
   };
 
   const openDeleteFranchiseModal = (
-    targetCartItemIds: string[],
+    targetCartId: string,
     targetFranchiseName: string,
+    targetItemCount: number,
   ) => {
-    const validCartItemIds = targetCartItemIds.filter(Boolean);
-
-    if (validCartItemIds.length === 0) {
-      toastError("Không tìm thấy sản phẩm trong franchise để xóa");
+    if (!targetCartId.trim()) {
+      toastError("Không tìm thấy giỏ hàng để hủy");
       return;
     }
 
     setFranchiseToDelete({
-      cartItemIds: validCartItemIds,
+      cartId: targetCartId,
+      itemCount: targetItemCount,
       franchiseName: targetFranchiseName,
     });
     setShowDeleteModal(true);
@@ -128,14 +129,14 @@ export const useCartDeleteActions = ({
     if (franchiseToDelete) {
       setIsMutatingCart(true);
       try {
-        await deleteCartItemIds(franchiseToDelete.cartItemIds);
+        await cancelCart(franchiseToDelete.cartId);
 
-        toastSuccess("Đã xóa giỏ hàng của franchise");
+        toastSuccess("Đã hủy giỏ hàng của franchise");
         closeDeleteModal();
         await loadCartFromApi();
       } catch (error) {
         const err = error as CartError;
-        toastError(err.response?.data?.message || "Không thể xóa franchise");
+        toastError(err.response?.data?.message || "Không thể hủy giỏ hàng");
       } finally {
         setIsMutatingCart(false);
       }

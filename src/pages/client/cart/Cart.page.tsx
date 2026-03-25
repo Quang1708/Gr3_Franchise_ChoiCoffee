@@ -131,6 +131,7 @@ const CartPage: React.FC = () => {
     handleApplyVoucher,
     handleRemoveVoucher,
     updateQuantity,
+    openDeleteFranchiseModal,
     openDeleteSingleModal,
     handleConfirmDeleteSingle,
     handleConfirmDeleteMultiple,
@@ -332,13 +333,34 @@ const CartPage: React.FC = () => {
                     alt={group.franchiseName}
                     className="h-10 w-10 rounded-lg object-cover"
                   />
-                  <div className="flex flex-col">
-                    <p className="text-[11px] uppercase tracking-wide text-slate-500">
-                      Franchise
-                    </p>
-                    <p className="text-sm font-semibold text-charcoal">
-                      {group.franchiseName}
-                    </p>
+                  <div className="flex-1 flex items-center justify-between gap-3 min-w-0">
+                    <div className="flex flex-col min-w-0">
+                      <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                        Franchise
+                      </p>
+                      <p className="text-sm font-semibold text-charcoal truncate">
+                        {group.franchiseName}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openDeleteFranchiseModal(
+                          group.cartId,
+                          group.franchiseName,
+                          group.items.length,
+                        )
+                      }
+                      disabled={isMutatingCart || !group.cartId}
+                      className="inline-flex items-center justify-center size-8 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                      title="Hủy giỏ hàng"
+                      aria-label="Hủy giỏ hàng"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        delete
+                      </span>
+                    </button>
                   </div>
                 </div>
 

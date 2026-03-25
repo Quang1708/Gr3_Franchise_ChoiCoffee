@@ -22,7 +22,8 @@ export type VoucherContext = {
 };
 
 export type FranchiseToDelete = {
-  cartItemIds: string[];
+  cartId: string;
+  itemCount: number;
   franchiseName: string;
 };
 

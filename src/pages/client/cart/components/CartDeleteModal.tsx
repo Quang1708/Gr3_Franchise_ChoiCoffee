@@ -1,9 +1,10 @@
 import type { OrderItem } from "@/models/order_item.model";
+import type { FranchiseToDelete } from "../hooks/cartState.types";
 
 type CartDeleteModalProps = {
   showDeleteModal: boolean;
   productToDelete: OrderItem | null;
-  franchiseToDelete?: { cartItemIds: string[]; franchiseName: string } | null;
+  franchiseToDelete?: FranchiseToDelete | null;
   selectedCount: number;
   onClose: () => void;
   onConfirmSingle: () => void;
@@ -37,7 +38,7 @@ const CartDeleteModal = ({
             {productToDelete
               ? "Xóa sản phẩm?"
               : franchiseToDelete
-                ? "Xóa giỏ hàng franchise?"
+                ? "Hủy giỏ hàng franchise?"
                 : "Xóa các mục đã chọn?"}
           </h2>
 
@@ -52,11 +53,11 @@ const CartDeleteModal = ({
               </>
             ) : franchiseToDelete ? (
               <>
-                Bạn có chắc chắn muốn xóa toàn bộ giỏ hàng của franchise{" "}
+                Bạn có chắc chắn muốn hủy toàn bộ giỏ hàng của franchise{" "}
                 <span className="font-medium text-charcoal italic">
                   "{franchiseToDelete.franchiseName}"
                 </span>
-                ? ({franchiseToDelete.cartItemIds.length} sản phẩm)
+                ? ({franchiseToDelete.itemCount} sản phẩm)
               </>
             ) : (
               <>

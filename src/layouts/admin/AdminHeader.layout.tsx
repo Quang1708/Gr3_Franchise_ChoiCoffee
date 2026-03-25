@@ -82,6 +82,8 @@ const AdminHeader = () => {
     return `${currentRole.role} (${franchise})`;
   }, [currentRole, user]);
 
+  const avatarUrl = user?.avatar_url ?? user?.avatarUrl;
+
   const handleLogout = async () => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
@@ -143,10 +145,22 @@ const AdminHeader = () => {
           <button
             type="button"
             onClick={() => navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_PROFILE)}
-            className="w-9 h-9 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold hover:bg-gray-800 transition cursor-pointer"
+            className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition cursor-pointer overflow-hidden ${
+              avatarUrl
+                ? "bg-transparent hover:opacity-90"
+                : "bg-gray-900 text-white hover:bg-gray-800"
+            }`}
             title="View Profile"
           >
-            {initials(displayName)}
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="w-9 h-9 object-cover"
+              />
+            ) : (
+              initials(displayName)
+            )}
           </button>
 
           <button

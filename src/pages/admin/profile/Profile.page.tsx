@@ -1,9 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, type SyntheticEvent } from "react";
 import { toast } from "react-toastify";
 import {
-  Mail,
-  Phone,
   User,
   Building2,
   Shield,
@@ -12,6 +9,10 @@ import {
   Edit3,
 } from "lucide-react";
 import { getAdminProfile } from "../auth/login/services/auth03.service";
+import {
+  updateAdminProfile,
+  type UpdateAdminProfileRequest,
+} from "../auth/login/services/auth04.service";
 import { changePassword } from "@/pages/admin/auth/login/services/auth06.service";
 import type {
   AdminLoginUserProfile,
@@ -25,6 +26,19 @@ const ProfilePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+  const [isUpdateProfileModalOpen, setIsUpdateProfileModalOpen] = useState(false);
+  const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
+  const [updateProfileFormData, setUpdateProfileFormData] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    avatar_url: string;
+  }>({
+    name: "",
+    email: "",
+    phone: "",
+    avatar_url: "",
+  });
   const [passwordFormData, setPasswordFormData] = useState({
     old_password: "",
     new_password: "",
@@ -109,6 +123,63 @@ const ProfilePage = () => {
       new_password: "",
       confirm_password: "",
     });
+  };
+
+  const handleOpenUpdateProfileModal = () => {
+    setUpdateProfileFormData({
+      name: userData?.name ?? "",
+      email: userData?.email ?? "",
+      phone: userData?.phone ?? "",
+      avatar_url: userData?.avatar_url ?? "",
+    });
+    setIsUpdateProfileModalOpen(true);
+  };
+
+  const handleCloseUpdateProfileModal = () => {
+    setIsUpdateProfileModalOpen(false);
+    setIsSubmittingProfile(false);
+    setUpdateProfileFormData({
+      name: "",
+      email: "",
+      phone: "",
+      avatar_url: "",
+    });
+  };
+
+  const handleUpdateProfileSubmit = async (
+    e: SyntheticEvent<HTMLFormElement>,
+  ) => {
+    e.preventDefault();
+
+    try {
+      setIsSubmittingProfile(true);
+
+      const payload: UpdateAdminProfileRequest = {
+        name: updateProfileFormData.name.trim(),
+        email: updateProfileFormData.email.trim(),
+        phone: updateProfileFormData.phone.trim(),
+      };
+
+      const avatarUrl = updateProfileFormData.avatar_url.trim();
+      if (avatarUrl) payload.avatar_url = avatarUrl;
+
+      const result = await updateAdminProfile(payload);
+
+      if (!result.success) {
+        toast.error(result.message || "Không thể cập nhật thông tin");
+        return;
+      }
+
+      toast.success("Cập nhật thông tin thành công!");
+      setIsUpdateProfileModalOpen(false);
+
+      const refreshed = await getAdminProfile();
+      setProfile(refreshed);
+    } catch (err: any) {
+      toast.error(err?.message || "Lỗi khi cập nhật thông tin");
+    } finally {
+      setIsSubmittingProfile(false);
+    }
   };
 
   if (loading) {
@@ -200,10 +271,11 @@ const ProfilePage = () => {
             </h2>
             <button
               type="button"
-              className="px-6 py-2 bg-primary hover:bg-[#d17d0f] text-white font-medium rounded-lg transition-colors duration-200 cursor-default flex items-center gap-2"
+              onClick={handleOpenUpdateProfileModal}
+              className="px-6 py-2 bg-primary hover:bg-[#d17d0f] text-white font-medium rounded-lg transition-colors duration-200 cursor-pointer flex items-center gap-2"
             >
               <Edit3 className="w-4 h-4" />
-              Xem thông tin
+              Cập nhật thông tin
             </button>
           </div>
           <div className="space-y-4">
@@ -339,6 +411,158 @@ const ProfilePage = () => {
           )}
         </div>
       </div>
+
+      {/* Update Profile Modal */}
+      {isUpdateProfileModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-blue-600" />
+                Cập nhật thông tin
+              </h2>
+            </div>
+
+            <form onSubmit={handleUpdateProfileSubmit}>
+              <div className="px-6 py-4 space-y-4">
+                <div>
+                  <label
+                    htmlFor="admin-name"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Họ và tên <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="admin-name"
+                    type="text"
+                    required
+                    value={updateProfileFormData.name}
+                    onChange={(e) =>
+                      setUpdateProfileFormData((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập họ và tên"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="admin-email"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="admin-email"
+                    type="email"
+                    required
+                    value={updateProfileFormData.email}
+                    onChange={(e) =>
+                      setUpdateProfileFormData((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập email"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="admin-phone"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Số điện thoại <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="admin-phone"
+                    type="tel"
+                    required
+                    value={updateProfileFormData.phone}
+                    onChange={(e) =>
+                      setUpdateProfileFormData((prev) => ({
+                        ...prev,
+                        phone: e.target.value,
+                      }))
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập số điện thoại"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="admin-avatar-url"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Avatar URL mới
+                  </label>
+                  <input
+                    id="admin-avatar-url"
+                    type="url"
+                    value={updateProfileFormData.avatar_url}
+                    onChange={(e) =>
+                      setUpdateProfileFormData((prev) => ({
+                        ...prev,
+                        avatar_url: e.target.value,
+                      }))
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="https://... (vd URL ảnh đại diện)"
+                  />
+                </div>
+
+                <div className="flex items-center gap-4 pt-2">
+                  <div className="shrink-0">
+                    {updateProfileFormData.avatar_url ? (
+                      <img
+                        src={updateProfileFormData.avatar_url}
+                        alt="Preview avatar"
+                        className="w-14 h-14 rounded-full object-cover border border-gray-200"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full border border-gray-200 bg-gray-50 flex items-center justify-center">
+                        <User className="w-6 h-6 text-gray-500" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Mình sẽ gọi API cập nhật với field `avatar_url` nếu bạn nhập giá
+                    trị.
+                  </p>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
+                <button
+                  type="submit"
+                  disabled={isSubmittingProfile}
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium text-white transition ${
+                    isSubmittingProfile
+                      ? "bg-blue-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                >
+                  {isSubmittingProfile ? "Đang cập nhật..." : "Cập nhật"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCloseUpdateProfileModal}
+                  disabled={isSubmittingProfile}
+                  className="flex-1 px-4 py-2 rounded-lg font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 transition"
+                >
+                  Hủy
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Change Password Modal */}
       {isChangePasswordModalOpen && (

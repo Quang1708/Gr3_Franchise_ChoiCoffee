@@ -4,11 +4,11 @@ import ROUTER_URL from "@/routes/router.const";
 import ClientLoading from "@/components/Client/Client.Loading";
 import { useAuthStore } from "@/stores/auth.store";
 import { useAdminContextStore } from "@/stores/adminContext.store";
-import { LOCAL_STORAGE } from "@/consts/localstorage.const";
+import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
 import {
-  getItemInLocalStorage,
-  removeItemInLocalStorage,
-} from "@/utils/localStorage.util";
+  getItemInSessionStorage,
+  removeItemInSessionStorage,
+} from "@/utils/sessionStorage.util";
 import type {
   AdminLoginUserProfile,
   AdminRoleLike,
@@ -53,7 +53,6 @@ const resolveRoleFranchiseId = (role: AdminRoleLike) => {
 const AdminSelectContextPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const token = useAuthStore((s) => s.token);
   const setAuth = useAuthStore((s) => s.setAuth);
   const setSelectedFranchiseId = useAdminContextStore(
     (s) => s.setSelectedFranchiseId,
@@ -74,7 +73,9 @@ const AdminSelectContextPage: React.FC = () => {
   }, [user]);
 
   const contextRequired = Boolean(
-    getItemInLocalStorage<boolean>(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED),
+    getItemInSessionStorage<boolean>(
+      SESSION_STORAGE.ADMIN_CONTEXT_REQUIRED,
+    ),
   );
 
   useEffect(() => {
@@ -87,7 +88,7 @@ const AdminSelectContextPage: React.FC = () => {
       const role = roles[0];
       const roleFranchiseId = role ? resolveRoleFranchiseId(role) : null;
       setSelectedFranchiseId(roleFranchiseId);
-      removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
+      removeItemInSessionStorage(SESSION_STORAGE.ADMIN_CONTEXT_REQUIRED);
       navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
     }
   }, [user, roles, navigate, setSelectedFranchiseId]);
@@ -128,11 +129,12 @@ const AdminSelectContextPage: React.FC = () => {
       });
 
       if (!response?.success) {
-        setContextError(response?.message || "Không thể chuyển Roles.");
+        const fallbackMessage = response?.errors?.[0]?.message;
+        setContextError(
+          response?.message || fallbackMessage || "Không thể chuyển Roles.",
+        );
         return;
       }
-
-      const nextToken = response.data?.token ?? token ?? "SESSION";
 
       try {
         const profile = await getAdminProfile();
@@ -161,19 +163,19 @@ const AdminSelectContextPage: React.FC = () => {
               : profileUser;
 
           if (userWithRoles) {
-            setAuth(userWithRoles as AdminLoginUserProfile, nextToken);
+            setAuth(userWithRoles as AdminLoginUserProfile, null);
           }
         }
       } catch (profileError) {
         console.error("Get profile failed after switch context", profileError);
         if (user) {
-          setAuth(user, nextToken);
+          setAuth(user, null);
         }
       }
 
       setSelectedFranchiseId(roleFranchiseId);
 
-      removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
+      removeItemInSessionStorage(SESSION_STORAGE.ADMIN_CONTEXT_REQUIRED);
 
       navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
     } catch (error) {

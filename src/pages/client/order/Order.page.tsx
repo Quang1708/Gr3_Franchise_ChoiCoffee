@@ -64,7 +64,12 @@ const OrderPage = () => {
       return;
     }
 
-    if (order.status === "completed" || order.status === "canceled") {
+    if (order.status === "canceled") {
+      navigate(ROUTER_URL.MENU);
+      return;
+    }
+
+    if (order.status === "completed") {
       navigate(ROUTER_URL.MENU);
     }
   };

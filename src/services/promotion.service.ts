@@ -40,7 +40,39 @@ export async function searchPromotionsService(franchiseId?: string) {
     "/api/promotions/search",
     {
       searchCondition: {
+        keyword: "",
+        name: "",
         ...(franchiseId ? { franchise_id: franchiseId } : {}),
+        product_franchise_id: "",
+        type: "",
+        value: "",
+        start_date: "",
+        end_date: "",
+        is_active: "",
+        is_deleted: false,
+      },
+      pageInfo: { pageNum: 1, pageSize: 200 },
+    },
+  );
+  return res.data;
+}
+
+export async function searchPromotionsServiceByKeyword(
+  franchiseId: string | undefined,
+  keyword: string,
+) {
+  const res = await axiosAdminClient.post<PromotionSearchResponse>(
+    "/api/promotions/search",
+    {
+      searchCondition: {
+        keyword: keyword ?? "",
+        name: keyword ?? "",
+        ...(franchiseId ? { franchise_id: franchiseId } : {}),
+        product_franchise_id: "",
+        type: "",
+        value: "",
+        start_date: "",
+        end_date: "",
         is_active: "",
         is_deleted: false,
       },
@@ -73,6 +105,11 @@ export async function updatePromotionService(
 
 export async function deletePromotionService(id: string) {
   const res = await axiosAdminClient.delete(`/api/promotions/${id}`);
+  return res.data as unknown;
+}
+
+export async function restorePromotionService(id: string) {
+  const res = await axiosAdminClient.patch(`/api/promotions/${id}/restore`, {});
   return res.data as unknown;
 }
 

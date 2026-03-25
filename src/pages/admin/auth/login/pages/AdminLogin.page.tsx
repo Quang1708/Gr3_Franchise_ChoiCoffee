@@ -10,15 +10,15 @@ import {
   type AdminAuthSchemaType,
 } from "../schema/adminLogin.schema";
 import { useAuthStore } from "@/stores/auth.store";
-import { LOCAL_STORAGE } from "@/consts/localstorage.const";
+import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import type { AdminLoginUserProfile } from "../models/api.model";
 import {
-  getItemInLocalStorage,
-  removeItemInLocalStorage,
-  setItemInLocalStorage,
-} from "@/utils/localStorage.util";
+  getItemInSessionStorage,
+  removeItemInSessionStorage,
+  setItemInSessionStorage,
+} from "@/utils/sessionStorage.util";
 import { runAdminLogin } from "../usecases/login.usecase";
 import ClientLoading from "@/components/Client/Client.Loading";
 
@@ -59,7 +59,7 @@ const AdminLoginPage: React.FC = () => {
     setError("email", { type: "manual", message });
     setError("password", { type: "manual", message });
   };
-  const handleLoginSuccess = (user: AdminLoginUserProfile, token: string) => {
+  const handleLoginSuccess = (user: AdminLoginUserProfile) => {
     const primaryRole = user.roles?.[0];
     const roleFranchiseId =
       primaryRole?.franchise_id ??
@@ -73,7 +73,7 @@ const AdminLoginPage: React.FC = () => {
     } else {
       setSelectedFranchiseId(null);
     }
-    useAuthStore.getState().login(user, token);
+    useAuthStore.getState().login(user, null);
     toastSuccess?.("Đăng nhập thành công!");
     clearErrors();
     navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_DASHBOARD, { replace: true });
@@ -82,7 +82,9 @@ const AdminLoginPage: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     const contextRequired = Boolean(
-      getItemInLocalStorage<boolean>(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED),
+      getItemInSessionStorage<boolean>(
+        SESSION_STORAGE.ADMIN_CONTEXT_REQUIRED,
+      ),
     );
     navigate(
       contextRequired
@@ -103,16 +105,16 @@ const AdminLoginPage: React.FC = () => {
 
         if (hasMultipleRoles) {
           setSelectedFranchiseId(null);
-          setItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED, true);
-          useAuthStore.getState().login(user, result.token ?? "SESSION");
+          setItemInSessionStorage(SESSION_STORAGE.ADMIN_CONTEXT_REQUIRED, true);
+          useAuthStore.getState().login(user, null);
           navigate(ROUTER_URL.ADMIN_ROUTER.ADMIN_SELECT_CONTEXT, {
             replace: true,
           });
           return;
         }
 
-        removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED);
-        handleLoginSuccess(user, result.token ?? "SESSION");
+        removeItemInSessionStorage(SESSION_STORAGE.ADMIN_CONTEXT_REQUIRED);
+        handleLoginSuccess(user);
         return;
       }
 

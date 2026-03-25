@@ -93,16 +93,6 @@ export const axiosAdminClient = axios.create({
   withCredentials: true,
 });
 
-axiosAdminClient.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
-
-  if (token && token !== "SESSION") {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
-
 // Track if we're currently refreshing admin token
 let isRefreshingAdmin = false;
 // Queue of admin requests waiting for token refresh
@@ -205,9 +195,9 @@ axiosAdminClient.interceptors.response.use(
     }
 
     return Promise.reject({
-    message: errorData?.message || error.message,
-    errors: errorData?.errors || [],
-    status: error.response?.status,
-});
+      message: errorData?.message || error.message,
+      errors: errorData?.errors || [],
+      status: error.response?.status,
+    });
   },
 );

@@ -34,7 +34,7 @@ export const Modal: React.FC<ModalProps> = ({
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-            <h3 className="text-lg font-semibold leading-6 text-gray-900">
+            <h3 className="text-base font-semibold leading-6 tracking-tight text-gray-900">
               {title}
             </h3>
             <button
@@ -48,7 +48,9 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
 
           {/* Body */}
-          <div className="px-6 py-6">{children}</div>
+          <div className="px-6 py-6 text-sm leading-relaxed text-gray-700">
+            {children}
+          </div>
         </div>
       </div>
     </div>

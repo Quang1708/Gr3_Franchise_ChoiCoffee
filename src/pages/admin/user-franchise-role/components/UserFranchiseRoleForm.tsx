@@ -19,6 +19,9 @@ export type UserFranchiseRoleInitialData = {
   user_id: string;
   role_id: string;
   franchise_id: string | null;
+  user_display_name?: string;
+  role_display_name?: string;
+  franchise_display_name?: string;
   note: string;
   user_email?: string;
   role_code?: string;
@@ -32,6 +35,23 @@ export type SimpleOption = {
   value: string;
   label: string;
 };
+
+const ViewDetailField = ({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string;
+}) => (
+  <div className="rounded-lg border border-gray-100 bg-white px-3 py-2">
+    <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+      {label}
+    </p>
+    <p className="mt-1 text-sm font-medium text-gray-700">
+      {value || "(Không có)"}
+    </p>
+  </div>
+);
 
 export const UserFranchiseRoleForm = ({
   mode,
@@ -106,9 +126,28 @@ export const UserFranchiseRoleForm = ({
 
   const isView = mode === "view";
   const isEdit = mode === "edit";
+  const isCreate = mode === "create";
   const selectedUserId = useWatch({ control, name: "user_id" }) ?? "";
   const selectedRoleId = useWatch({ control, name: "role_id" }) ?? "";
   const selectedFranchiseId = useWatch({ control, name: "franchise_id" }) ?? "";
+
+  const selectedUserLabel =
+    userOptions.find((option) => option.value === selectedUserId)?.label ??
+    initialData?.user_display_name ??
+    initialData?.user_id ??
+    "Không có";
+
+  const selectedRoleLabel =
+    roleOptions.find((option) => option.value === selectedRoleId)?.label ??
+    initialData?.role_display_name ??
+    initialData?.role_id ??
+    "Không có";
+
+  const selectedFranchiseLabel =
+    franchiseOptions.find((option) => option.value === selectedFranchiseId)
+      ?.label ??
+    initialData?.franchise_display_name ??
+    "Hệ thống (GLOBAL)";
 
   return (
     <CRUDModalTemplate
@@ -125,115 +164,129 @@ export const UserFranchiseRoleForm = ({
       <form
         id="user-franchise-role-form"
         onSubmit={handleSubmit((data) => onSubmit(data, setError))}
-        className="w-full space-y-4"
+        className="w-full space-y-5"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {isView || isEdit ? (
+        {!isView && (
+          <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
+            <p className="text-sm font-medium text-amber-900">
+              {isCreate
+                ? "Chọn người dùng, vai trò và chi nhánh để tạo quyền mới."
+                : "Bạn chỉ có thể thay đổi vai trò cho phân quyền hiện tại."}
+            </p>
+          </div>
+        )}
+
+        <div className="rounded-xl border border-gray-100 bg-white p-4">
+          <h4 className="mb-3 text-sm font-semibold text-gray-800">
+            Thông tin phân quyền
+          </h4>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {isView || isEdit ? (
+              <FormInput
+                label="Người dùng"
+                register={register("user_id")}
+                isView
+                defaultValue={selectedUserLabel}
+              />
+            ) : (
+              <FormSelect
+                label="Người dùng"
+                options={userOptions}
+                error={errors.user_id}
+                register={register("user_id")}
+                value={selectedUserId}
+                placeholder="Chọn người dùng"
+              />
+            )}
+
+            {isView ? (
+              <FormInput
+                label="Vai trò"
+                register={register("role_id")}
+                isView
+                defaultValue={selectedRoleLabel}
+              />
+            ) : (
+              <FormSelect
+                label="Vai trò"
+                options={roleOptions}
+                error={errors.role_id}
+                register={register("role_id")}
+                value={selectedRoleId}
+                placeholder="Chọn vai trò"
+              />
+            )}
+
+            {isView || isEdit ? (
+              <FormInput
+                label="Chi nhánh"
+                register={register("franchise_id")}
+                isView
+                defaultValue={selectedFranchiseLabel}
+              />
+            ) : (
+              <FormSelect
+                label="Chi nhánh"
+                options={[
+                  { value: "", label: "Hệ thống (GLOBAL)" },
+                  ...franchiseOptions,
+                ]}
+                error={errors.franchise_id as never}
+                register={register("franchise_id", {
+                  setValueAs: (v) => (v === "" ? null : v),
+                })}
+                value={selectedFranchiseId}
+                placeholder="Chọn chi nhánh"
+              />
+            )}
+
             <FormInput
-              label="Người dùng"
-              register={register("user_id")}
-              isView
-              defaultValue={initialData?.user_id}
+              label="Ghi chú"
+              placeholder="Ví dụ: Gán quyền ADMIN cho chi nhánh A"
+              register={register("note")}
+              error={errors.note}
+              isView={isView}
+              defaultValue={initialData?.note || "(Không có)"}
+              className="md:col-span-2"
             />
-          ) : (
-            <FormSelect
-              label="Người dùng"
-              options={userOptions}
-              error={errors.user_id}
-              register={register("user_id")}
-              value={selectedUserId}
-            />
-          )}
-
-          {isView ? (
-            <FormInput
-              label="Vai trò"
-              register={register("role_id")}
-              isView
-              defaultValue={initialData?.role_id}
-            />
-          ) : (
-            <FormSelect
-              label="Vai trò"
-              options={roleOptions}
-              error={errors.role_id}
-              register={register("role_id")}
-              value={selectedRoleId}
-            />
-          )}
-
-          {isView || isEdit ? (
-            <FormInput
-              label="Chi nhánh"
-              register={register("franchise_id")}
-              isView
-              defaultValue={initialData?.franchise_id ?? "Hệ thống (GLOBAL)"}
-            />
-          ) : (
-            <FormSelect
-              label="Chi nhánh"
-              options={[
-                { value: "", label: "Hệ thống (GLOBAL)" },
-                ...franchiseOptions,
-              ]}
-              error={errors.franchise_id as never}
-              register={register("franchise_id", {
-                setValueAs: (v) => (v === "" ? null : v),
-              })}
-              value={selectedFranchiseId}
-            />
-          )}
-
-          <FormInput
-            label="Ghi chú"
-            placeholder="Ví dụ: Gán quyền ADMIN cho chi nhánh A"
-            register={register("note")}
-            error={errors.note}
-            isView={isView}
-            defaultValue={initialData?.note || "(Không có)"}
-          />
-
-          {isView && (
-            <>
-              <FormInput
-                label="Email người dùng"
-                register={register("note")}
-                isView
-                defaultValue={initialData?.user_email || "(Không có)"}
-              />
-              <FormInput
-                label="Mã vai trò"
-                register={register("note")}
-                isView
-                defaultValue={initialData?.role_code || "(Không có)"}
-              />
-              <FormInput
-                label="Trạng thái hoạt động"
-                register={register("note")}
-                isView
-                defaultValue={initialData?.is_active || "(Không có)"}
-              />
-              <FormInput
-                label="Trạng thái xóa"
-                register={register("note")}
-                isView
-                defaultValue={initialData?.is_deleted || "(Không có)"}
-              />
-              <FormInput
-                label="Ngày tạo"
-                register={register("note")}
-                isView
-                defaultValue={initialData?.created_at || "(Không có)"}
-              />
-              <FormInput
-                label="Ngày cập nhật"
-                register={register("note")}
-                isView
-                defaultValue={initialData?.updated_at || "(Không có)"}
-              />
-            </>
-          )}
+          </div>
         </div>
+
+        {isView && (
+          <div className="rounded-xl border border-gray-100 bg-white p-4">
+            <h4 className="mb-3 text-sm font-semibold text-gray-800">
+              Thông tin bổ sung
+            </h4>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <ViewDetailField
+                label="Email người dùng"
+                value={initialData?.user_email}
+              />
+              <ViewDetailField
+                label="Mã vai trò"
+                value={initialData?.role_code}
+              />
+              <ViewDetailField
+                label="Trạng thái hoạt động"
+                value={initialData?.is_active}
+              />
+              <ViewDetailField
+                label="Trạng thái xóa"
+                value={initialData?.is_deleted}
+              />
+              <ViewDetailField
+                label="Ngày tạo"
+                value={initialData?.created_at}
+              />
+              <ViewDetailField
+                label="Ngày cập nhật"
+                value={initialData?.updated_at}
+              />
+            </div>
+          </div>
+        )}
 
         <button
           id="user-franchise-role-form-submit"

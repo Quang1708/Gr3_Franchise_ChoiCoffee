@@ -66,6 +66,13 @@ const resolveUserFranchiseRoleItems = (
   return [];
 };
 
+const getTabButtonClass = (isActive: boolean) =>
+  `px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+    isActive
+      ? "bg-white border border-b-0 border-gray-200 text-primary -mb-px"
+      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+  }`;
+
 const UserPage = () => {
   const selectedFranchiseId = useAdminContextStore(
     (state) => state.selectedFranchiseId,
@@ -427,21 +434,19 @@ const UserPage = () => {
     },
   ];
 
+  const shouldShowUsersTab = activeTab === "users" || !canManageUser;
+
   return (
-    <div className="p-6 transition-all animate-fade-in">
+    <div className="p-6 transition-all animate-fade-in h-full min-h-0 overflow-hidden flex flex-col">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">
         Quản lý người dùng
       </h1>
 
-      <div className="flex flex-1 gap-2 mb-6 border-b border-gray-200">
+      <div className="flex gap-2 mb-6 border-b border-gray-200 shrink-0">
         <button
           type="button"
           onClick={() => setActiveTab("users")}
-          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeTab === "users"
-              ? "bg-white border border-b-0 border-gray-200 text-primary -mb-px"
-              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-          }`}
+          className={getTabButtonClass(activeTab === "users")}
         >
           Người dùng
         </button>
@@ -449,30 +454,28 @@ const UserPage = () => {
           <button
             type="button"
             onClick={() => setActiveTab("userFranchiseRoles")}
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-              activeTab === "userFranchiseRoles"
-                ? "bg-white border border-b-0 border-gray-200 text-primary -mb-px"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-            }`}
+            className={getTabButtonClass(activeTab === "userFranchiseRoles")}
           >
             User Franchise Role
           </button>
         )}
       </div>
 
-      {activeTab === "users" || !canManageUser ? (
-        <>
-          {(isLoading || isTableLoading) && <ClientLoading />}
-          {isProcessing && (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20">
-              <ClientLoading />
-            </div>
-          )}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {shouldShowUsersTab && (
+          <div className="h-full min-h-0 flex flex-col">
+            {(isLoading || isTableLoading) && <ClientLoading />}
+            {isProcessing && (
+              <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/20">
+                <ClientLoading />
+              </div>
+            )}
 
           <CRUDPageTemplate<User>
             title="Danh sách người dùng"
             data={users}
             columns={columns}
+            tableMaxHeightClass="flex-1 overflow-auto"
             pageSize={pageSize}
             totalItems={totalItems}
             currentPage={page}
@@ -535,12 +538,15 @@ const UserPage = () => {
                 : `Khôi phục tài khoản cho "${modalConfig.user?.name}"?`
             }
           />
-        </>
-      ) : canManageUser ? (
-        <div className="rounded-lg border border-gray-100 bg-white p-2">
-          <UserFranchiseRolePage />
-        </div>
-      ) : null}
+          </div>
+        )}
+
+        {!shouldShowUsersTab && canManageUser && (
+          <div className="h-full min-h-0 rounded-lg border border-gray-100 bg-white p-2 overflow-hidden">
+            <UserFranchiseRolePage />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

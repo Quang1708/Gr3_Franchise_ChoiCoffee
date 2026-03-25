@@ -10,7 +10,7 @@ import { getAdminProfile } from "../services/auth03.service";
 type AdminLoginResult = {
   success: boolean;
   user?: AdminLoginUserProfile;
-  token?: string;
+  token?: string | null;
   message?: string;
 };
 
@@ -53,7 +53,7 @@ export const runAdminLogin = async (
   } catch (error) {
     const err = error as AxiosError<{ message?: string }>;
     const message =
-      err.response?.data?.message ?? err.message ?? "Dang nhap that bai.";
+      err.response?.data?.message ?? err.message ?? "Đăng nhập thất bại.";
     return { success: false, message };
   }
 
@@ -61,7 +61,7 @@ export const runAdminLogin = async (
     return {
       success: true,
       user: buildUser(result.data) ?? result.data.user,
-      token: result.data.token,
+      token: null,
     };
   }
 
@@ -70,7 +70,7 @@ export const runAdminLogin = async (
     const user = profile.success ? buildUser(profile.data) : null;
 
     if (user) {
-      return { success: true, user, token: "SESSION" };
+      return { success: true, user, token: null };
     }
 
     return {

@@ -61,6 +61,7 @@ export interface CRUDPageTemplateProps<T> {
   searchKeys?: (keyof T)[];
   searchRight?: React.ReactNode;
   searchContent?: React.ReactNode;
+  headerRight?: React.ReactNode;
   filters?: FilterConfig<T>[];
   onRefresh?: () => void;
 
@@ -98,7 +99,9 @@ const ToggleSwitch = ({
 );
 
 // --- Main Template ---
-export function CRUDPageTemplate<T extends { id?: string | number, _id?: string}>({
+export function CRUDPageTemplate<
+  T extends { id?: string | number; _id?: string },
+>({
   title,
   data,
   columns,
@@ -120,7 +123,7 @@ export function CRUDPageTemplate<T extends { id?: string | number, _id?: string}
 
   onRowClick,
   selectedRowId,
-
+  headerRight,
   onStatusChange,
   statusField,
 
@@ -352,17 +355,19 @@ export function CRUDPageTemplate<T extends { id?: string | number, _id?: string}
         <div>
           <h2 className="text-xl font-bold text-gray-800 uppercase">{title}</h2>
         </div>
-        {onAdd && (
-          <button
-            onClick={onAdd}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md active:scale-[0.95] cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm mới</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {headerRight}
+          {onAdd && (
+            <button
+              onClick={onAdd}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors font-medium shadow-sm hover:shadow-md active:scale-[0.95] cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm mới</span>
+            </button>
+          )}
+        </div>
       </div>
-
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -455,7 +460,7 @@ export function CRUDPageTemplate<T extends { id?: string | number, _id?: string}
         ref={tableContainerRef}
         tabIndex={0}
         onKeyDown={handleKeyNavigation}
-        className={`outline-none focus:outline-none px-3 md:px-6 lg:px-8 py-3 flex-1 overflow-auto ${tableMaxHeightClass || ""}`}
+        className={`outline-none focus:outline-none px-3 md:px-6 lg:px-8 py-3 flex-1 overflow-auto scrollbar-hide ${tableMaxHeightClass || ""}`}
       >
         <div className="relative w-full rounded-lg border border-gray-200 overflow-auto">
           {isTableLoading && (

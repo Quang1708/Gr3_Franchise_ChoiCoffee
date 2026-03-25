@@ -42,7 +42,7 @@ export const lowStockService = {
     });
 
     return safeItems
-      .filter((item) => !item.is_deleted)
+      .filter((item) => item.is_active !== false)
       .map((item) => {
         const quantity = Number(item.quantity ?? 0);
         const alertThreshold = Number(item.alert_threshold ?? 0);
@@ -52,8 +52,15 @@ export const lowStockService = {
         const productFranchiseId = String(item.product_franchise_id ?? "");
         const productInfo = productMap.get(productFranchiseId);
         const category = String(item.category_name ?? "");
+        const productFranchise = item.product_franchise as
+          | { product_name?: string }
+          | undefined;
         const productName = String(
-          productInfo?.name || item.product_name || productFranchiseId || "Unknown product",
+          productInfo?.name ||
+            productFranchise?.product_name ||
+            item.product_name ||
+            productFranchiseId ||
+            "Unknown product",
         );
 
         return {

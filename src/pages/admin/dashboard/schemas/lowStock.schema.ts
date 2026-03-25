@@ -10,6 +10,7 @@ export const lowStockItemSchema = z
     quantity: z.number().optional(),
     reserved_quantity: z.number().optional(),
     alert_threshold: z.number().optional(),
+    is_active: z.boolean().optional(),
     is_deleted: z.boolean().optional(),
     product_franchise: z.unknown().optional(),
   })

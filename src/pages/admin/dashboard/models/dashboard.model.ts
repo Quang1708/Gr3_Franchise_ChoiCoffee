@@ -33,6 +33,43 @@ export type DashboardInfo = {
   countDeliveries: DashboardDeliveryCounts;
 };
 
+export type TrendRange = "today" | "7d" | "30d";
+
+export type TrendDirection = "up" | "down" | "flat";
+
+export type TrendStats = {
+  pct: number | null;
+  direction: TrendDirection;
+};
+
+export type TrendMeta = {
+  label: string;
+  compareLabel: string;
+  currentRevenue: number;
+  prevRevenue: number;
+  currentOrders: number;
+  prevOrders: number;
+  avgOrderValue: number;
+  revenueChange: TrendStats;
+  ordersChange: TrendStats;
+};
+
+export type RecentOrderItem = {
+  id: string;
+  code: string;
+  customerName: string;
+  franchiseName: string;
+  status: string;
+  amount: number;
+  dateLabel: string;
+};
+
+export type TopProductItem = {
+  name: string;
+  quantity: number;
+  revenue: number;
+};
+
 export type InventoryAlertItem = {
   id: string;
   productName: string;

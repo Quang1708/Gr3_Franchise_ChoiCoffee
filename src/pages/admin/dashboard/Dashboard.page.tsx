@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -20,10 +20,14 @@ import {
   Heart,
   Target,
   TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
+  DollarSign,
+  ClipboardList,
 } from "lucide-react";
 import { useAuthStore } from "../../../stores/auth.store";
 import { useAdminContextStore } from "../../../stores/adminContext.store";
-import type { DashboardInfo, InventoryAlertItem } from "./models/dashboard.model";
+import type { TrendRange } from "./models/dashboard.model";
 import {
   buildDeliveryChartData,
   buildOrderChartData,
@@ -32,62 +36,76 @@ import {
   buildPaymentChartData,
   buildPerformancePercentage,
   buildSummaryData,
-  getDashboardInfoUsecase,
-  getLowStockAlertsUsecase,
 } from "./usecases";
-import { toastError } from "../../../utils/toast.util";
 import ClientLoading from "../../../components/Client/Client.Loading";
+import { useDashboardInfo } from "./hooks/useDashboardInfo";
+import { useDashboardInsights } from "./hooks/useDashboardInsights";
+import { useFranchiseOptions } from "./hooks/useFranchiseOptions";
+import {
+  currency,
+  formatTrendLabel,
+  getOrderStatusBadge,
+  getOrderStatusLabel,
+} from "./utils/dashboard.utils";
 
 const DashboardPage = () => {
   const { user } = useAuthStore();
   const selectedFranchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
-  const [dashboardInfo, setDashboardInfo] = useState<DashboardInfo | null>(null);
-  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
-  const [lowStockItems, setLowStockItems] = useState<InventoryAlertItem[]>([]);
-  const [isLowStockLoading, setIsLowStockLoading] = useState(false);
+  const normalizedFranchiseId =
+    selectedFranchiseId === "ALL" ? null : selectedFranchiseId;
+  const isGlobalContext = normalizedFranchiseId == null;
+  const [trendRange, setTrendRange] = useState<TrendRange>("7d");
+  const [lowStockFranchiseId, setLowStockFranchiseId] = useState<string | null>(null);
+  const currentRole = useMemo(() => {
+    if (!user?.roles?.length) return null;
+
+    return user.roles.find((role) => {
+      if (isGlobalContext) {
+        return role.scope === "GLOBAL";
+      }
+
+      const roleFranchiseId = role.franchise_id ?? (role as { franchiseId?: string }).franchiseId;
+      return String(roleFranchiseId ?? "") === String(normalizedFranchiseId);
+    });
+  }, [user, isGlobalContext, normalizedFranchiseId]);
+  const useFranchiseCounts = !isGlobalContext;
 
   const userName = useMemo(() => {
     return user?.name || "Admin";
   }, [user]);
+  const scopeLabel = useMemo(() => {
+    if (isGlobalContext) return "Global";
+    if (currentRole?.franchise_name) return currentRole.franchise_name;
+    if (normalizedFranchiseId) return `Franchise ${normalizedFranchiseId}`;
+    return "Franchise";
+  }, [isGlobalContext, currentRole, normalizedFranchiseId]);
+  const summaryScopeLabel = useMemo(
+    () => (isGlobalContext ? "Global" : "Franchise"),
+    [isGlobalContext],
+  );
+  const lowStockTargetId = isGlobalContext ? lowStockFranchiseId : normalizedFranchiseId;
+  const { options: franchiseOptions, isLoading: isFranchiseLoading } = useFranchiseOptions(
+    isGlobalContext,
+  );
 
-  useEffect(() => {
-    const loadDashboardInfo = async () => {
-      try {
-        setIsDashboardLoading(true);
-        const data = await getDashboardInfoUsecase(selectedFranchiseId);
-        setDashboardInfo(data);
-      } catch {
-        setDashboardInfo(null);
-        toastError("Cannot load dashboard data");
-      } finally {
-        setIsDashboardLoading(false);
-      }
-    };
-
-    void loadDashboardInfo();
-  }, [selectedFranchiseId]);
-
-  useEffect(() => {
-    const loadLowStock = async () => {
-      if (!selectedFranchiseId) {
-        setLowStockItems([]);
-        return;
-      }
-
-      try {
-        setIsLowStockLoading(true);
-        const mapped = await getLowStockAlertsUsecase(String(selectedFranchiseId));
-        setLowStockItems(mapped);
-      } catch {
-        setLowStockItems([]);
-        toastError("Cannot load low stock data");
-      } finally {
-        setIsLowStockLoading(false);
-      }
-    };
-
-    void loadLowStock();
-  }, [selectedFranchiseId]);
+  const {
+    dashboardInfo,
+    isDashboardLoading,
+    lowStockItems,
+    isLowStockLoading,
+  } = useDashboardInfo(normalizedFranchiseId, lowStockTargetId);
+  const {
+    isPaymentsLoading,
+    recentOrders,
+    topProducts,
+    isInsightsLoading,
+    trendMeta,
+  } = useDashboardInsights(
+    normalizedFranchiseId,
+    isGlobalContext,
+    scopeLabel,
+    trendRange,
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -115,9 +133,39 @@ const DashboardPage = () => {
     }
   };
 
+  const renderTrendBadge = (trend: { pct: number | null; direction: "up" | "down" | "flat" }) => {
+    if (trend.pct === null) {
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+          <ArrowUpRight className="h-3.5 w-3.5" />
+          {formatTrendLabel(trend)}
+        </span>
+      );
+    }
+
+    const color =
+      trend.direction === "up"
+        ? "text-emerald-600"
+        : trend.direction === "down"
+          ? "text-red-600"
+          : "text-gray-500";
+    const Icon = trend.direction === "down" ? ArrowDownRight : ArrowUpRight;
+    const label = formatTrendLabel(trend);
+
+    return (
+      <span className={`inline-flex items-center gap-1 text-xs font-semibold ${color}`}>
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </span>
+    );
+  };
+
   const COLORS = ["#e69019", "#3d2b1f", "#887863", "#333333"];
 
-  const summaryData = useMemo(() => buildSummaryData(dashboardInfo), [dashboardInfo]);
+  const summaryData = useMemo(
+    () => buildSummaryData(dashboardInfo, { useFranchiseCounts }),
+    [dashboardInfo, useFranchiseCounts],
+  );
   const orderStatusItems = useMemo(
     () => buildOrderStatusItems(dashboardInfo),
     [dashboardInfo],
@@ -156,19 +204,32 @@ const DashboardPage = () => {
     <div className="space-y-6 bg-[#f8f7f6]">
       {isDashboardLoading && <ClientLoading />}
       {/* Welcome Panel */}
-      <div className="bg-linear-to-r from-[#3d2b1f] via-[#e69019] to-[#887863] rounded-xl shadow-lg p-6 text-white">
+      <div className="bg-linear-to-r from-[#f7efe3] via-[#f4e2c4] to-[#efe1cf] rounded-xl shadow-lg p-6 text-[#3d2b1f]">
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-2xl font-bold">Welcome Back {userName}</h2>
-              <span className="text-2xl">👋</span>
             </div>
             {isDashboardLoading && (
-              <p className="text-sm text-[#f8f7f6]">Loading dashboard data...</p>
+              <p className="text-sm text-[#6b5a4b]">Loading dashboard data...</p>
             )}
-            <p className="text-sm text-[#f8f7f6]">
+            <p className="text-sm text-[#6b5a4b]">
               Overview of orders, payments, deliveries, and low stock.
             </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center rounded-full bg-[#3d2b1f]/10 px-3 py-1 text-xs font-semibold">
+                {scopeLabel}
+              </span>
+              <select
+                value={trendRange}
+                onChange={(event) => setTrendRange(event.target.value as TrendRange)}
+                className="h-8 rounded-lg border border-[#e5e1dc] bg-white px-3 text-xs font-semibold text-[#3d2b1f] focus:outline-none"
+              >
+                <option value="today" className="text-[#333333]">Today</option>
+                <option value="7d" className="text-[#333333]">Last 7 days</option>
+                <option value="30d" className="text-[#333333]">Last 30 days</option>
+              </select>
+            </div>
           </div>
           <div className="hidden lg:block">
             <div className="w-32 h-32 bg-white/15 rounded-full flex items-center justify-center">
@@ -189,7 +250,7 @@ const DashboardPage = () => {
           <p className="text-3xl font-bold text-[#333333] mb-2">
             {summaryData.users.toLocaleString()}
           </p>
-          <p className="text-sm text-[#887863]">Total users</p>
+          <p className="text-sm text-[#887863]">Total users · {summaryScopeLabel}</p>
         </div>
 
         {/* Customers Card */}
@@ -201,7 +262,7 @@ const DashboardPage = () => {
           <p className="text-3xl font-bold text-[#333333] mb-2">
             {summaryData.customers.toLocaleString()}
           </p>
-          <p className="text-sm text-[#887863]">Total customers</p>
+          <p className="text-sm text-[#887863]">Total customers · {summaryScopeLabel}</p>
         </div>
 
         {/* Products Card */}
@@ -213,7 +274,7 @@ const DashboardPage = () => {
           <p className="text-3xl font-bold text-[#333333] mb-2">
             {summaryData.products.toLocaleString()}
           </p>
-          <p className="text-sm text-[#887863]">Total products</p>
+          <p className="text-sm text-[#887863]">Total products · {summaryScopeLabel}</p>
         </div>
 
         {/* Orders Card */}
@@ -225,7 +286,7 @@ const DashboardPage = () => {
           <p className="text-3xl font-bold text-[#333333] mb-2">
             {summaryData.totalOrders.toLocaleString()}
           </p>
-          <p className="text-sm text-[#887863]">Total orders</p>
+          <p className="text-sm text-[#887863]">Total orders · {summaryScopeLabel}</p>
         </div>
       </div>
 
@@ -352,20 +413,41 @@ const DashboardPage = () => {
 
         {/* Inventory Alerts - US-2.3 */}
         <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="w-5 h-5 text-orange-500" />
-            <h3 className="text-lg font-semibold text-[#333333]">Inventory Alerts</h3>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-orange-500" />
+              <h3 className="text-lg font-semibold text-[#333333]">Inventory Alerts</h3>
+            </div>
+            {isGlobalContext && (
+              <select
+                value={lowStockFranchiseId ?? ""}
+                onChange={(event) =>
+                  setLowStockFranchiseId(event.target.value || null)
+                }
+                className="h-8 rounded-lg border border-[#e5e1dc] bg-white px-3 text-xs font-semibold text-[#333333]"
+              >
+                <option value="">Select franchise</option>
+                {franchiseOptions.map((franchise) => (
+                  <option key={franchise.id} value={franchise.id}>
+                    {franchise.code} - {franchise.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {isLowStockLoading && (
               <div className="text-sm text-[#887863]">Loading low stock items...</div>
             )}
-            {!isLowStockLoading && !selectedFranchiseId && (
+              {isGlobalContext && isFranchiseLoading && (
+                <div className="text-sm text-[#887863]">Loading franchises...</div>
+              )}
+              {!isLowStockLoading && isGlobalContext && !lowStockTargetId && (
               <div className="text-sm text-[#887863]">
                 Select a franchise to view low stock items.
               </div>
             )}
-            {!isLowStockLoading && selectedFranchiseId && lowStockItems.length === 0 && (
+              {!isLowStockLoading && lowStockTargetId && lowStockItems.length === 0 && (
               <div className="text-sm text-[#887863]">No low stock items.</div>
             )}
             {lowStockItems.map((alert) => (
@@ -409,6 +491,143 @@ const DashboardPage = () => {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Revenue and Recent Orders */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6 lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-[#333333]">Revenue & Orders</h3>
+              <p className="text-sm text-[#887863]">
+                {trendMeta.label} · {trendMeta.compareLabel}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f3ece2] text-[#3d2b1f]">
+                {scopeLabel}
+              </span>
+              {isPaymentsLoading && (
+                <span className="text-xs text-[#887863]">Loading...</span>
+              )}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-lg bg-[#f8f7f6] p-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#887863]">
+                <DollarSign className="w-4 h-4 text-[#e69019]" />
+                Revenue
+              </div>
+              <div className="mt-2 text-2xl font-bold text-[#333333]">
+                {currency.format(trendMeta.currentRevenue)}
+              </div>
+              <div className="mt-1 flex items-center gap-2 text-xs text-[#887863]">
+                {renderTrendBadge(trendMeta.revenueChange)}
+                <span>{trendMeta.compareLabel}</span>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-[#f8f7f6] p-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#887863]">
+                <ClipboardList className="w-4 h-4 text-[#e69019]" />
+                Paid Orders
+              </div>
+              <div className="mt-2 text-2xl font-bold text-[#333333]">
+                {trendMeta.currentOrders.toLocaleString()}
+              </div>
+              <div className="mt-1 flex items-center gap-2 text-xs text-[#887863]">
+                {renderTrendBadge(trendMeta.ordersChange)}
+                <span>{trendMeta.compareLabel}</span>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-[#f8f7f6] p-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#887863]">
+                <TrendingUp className="w-4 h-4 text-[#e69019]" />
+                Avg Order Value
+              </div>
+              <div className="mt-2 text-2xl font-bold text-[#333333]">
+                {currency.format(trendMeta.avgOrderValue)}
+              </div>
+              <div className="mt-1 text-xs text-[#887863]">Based on paid orders</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <ClipboardList className="w-5 h-5 text-[#e69019]" />
+            <h3 className="text-lg font-semibold text-[#333333]">Recent Orders</h3>
+          </div>
+          <div className="space-y-3">
+            {isInsightsLoading && (
+              <div className="text-sm text-[#887863]">Loading recent orders...</div>
+            )}
+            {!isInsightsLoading && recentOrders.length === 0 && (
+              <div className="text-sm text-[#887863]">No recent orders yet.</div>
+            )}
+            {recentOrders.map((order) => (
+              <div
+                key={order.id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-[#f0ede9] p-3"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-[#333333] truncate">
+                    {order.code}
+                  </div>
+                  <div className="text-xs text-[#887863] truncate">
+                    {order.customerName} · {order.franchiseName}
+                  </div>
+                  <div className="text-xs text-[#887863]">{order.dateLabel}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-[#333333]">
+                    {currency.format(order.amount)}
+                  </div>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${getOrderStatusBadge(order.status)}`}
+                  >
+                    {getOrderStatusLabel(order.status)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Top Products */}
+      <div className="bg-white rounded-lg shadow-sm border border-[#e5e1dc] p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Package className="w-5 h-5 text-[#e69019]" />
+          <h3 className="text-lg font-semibold text-[#333333]">Top Products</h3>
+        </div>
+        <div className="space-y-3">
+          {isInsightsLoading && (
+            <div className="text-sm text-[#887863]">Loading top products...</div>
+          )}
+          {!isInsightsLoading && topProducts.length === 0 && (
+            <div className="text-sm text-[#887863]">No product data yet.</div>
+          )}
+          {topProducts.map((item) => (
+            <div
+              key={item.name}
+              className="flex items-center justify-between rounded-lg border border-[#f0ede9] p-3"
+            >
+              <div>
+                <div className="text-sm font-semibold text-[#333333]">
+                  {item.name}
+                </div>
+                <div className="text-xs text-[#887863]">
+                  Sold {item.quantity} items
+                </div>
+              </div>
+              <div className="text-sm font-semibold text-[#333333]">
+                {currency.format(item.revenue)}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

@@ -1,8 +1,8 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import ROUTER_URL from "../router.const";
 import { useAuthStore } from "../../stores/auth.store";
-import { LOCAL_STORAGE } from "@/consts/localstorage.const";
-import { getItemInLocalStorage } from "@/utils/localStorage.util";
+import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
+import { getItemInSessionStorage } from "@/utils/sessionStorage.util";
 import ClientLoading from "@/components/Client/Client.Loading";
 
 const AdminGuard = () => {
@@ -22,7 +22,9 @@ const AdminGuard = () => {
   }
 
   const contextRequired = Boolean(
-    getItemInLocalStorage<boolean>(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED),
+    getItemInSessionStorage<boolean>(
+      SESSION_STORAGE.ADMIN_CONTEXT_REQUIRED,
+    ),
   );
   if (
     contextRequired &&

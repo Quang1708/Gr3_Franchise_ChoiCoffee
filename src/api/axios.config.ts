@@ -95,15 +95,7 @@ export const axiosAdminClient = axios.create({
 
 
 
-axiosAdminClient.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token;
 
-  if (token && token !== "SESSION") {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
 
 // Track if we're currently refreshing admin token
 let isRefreshingAdmin = false;

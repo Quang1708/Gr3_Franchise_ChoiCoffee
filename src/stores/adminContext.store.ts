@@ -1,10 +1,10 @@
 import { create } from "zustand";
-import { LOCAL_STORAGE } from "@/consts/localstorage.const";
+import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
 import {
-  getItemInLocalStorage,
-  removeItemInLocalStorage,
-  setItemInLocalStorage,
-} from "@/utils/localStorage.util";
+  getItemInSessionStorage,
+  removeItemInSessionStorage,
+  setItemInSessionStorage,
+} from "@/utils/sessionStorage.util";
 
 export type FranchiseOption = {
   id: string;
@@ -26,11 +26,11 @@ export const useAdminContextStore = create<AdminContextState>((set) => ({
   franchises: [],
 
   /**
-   * Load context từ localStorage khi app start
+   * Load context từ sessionStorage khi app start
    */
   hydrate: () => {
-    const saved = getItemInLocalStorage<string | number>(
-      LOCAL_STORAGE.ADMIN_FRANCHISE_ID,
+    const saved = getItemInSessionStorage<string | number>(
+      SESSION_STORAGE.FRANCHISE_ID,
     );
 
     if (!saved) {
@@ -40,7 +40,7 @@ export const useAdminContextStore = create<AdminContextState>((set) => ({
 
     const savedText = String(saved).trim().toLowerCase();
     if (savedText === "all") {
-      removeItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID);
+      removeItemInSessionStorage(SESSION_STORAGE.FRANCHISE_ID);
       set({ selectedFranchiseId: null });
       return;
     }
@@ -60,11 +60,11 @@ export const useAdminContextStore = create<AdminContextState>((set) => ({
    */
   setSelectedFranchiseId: (id) => {
     if (id === null) {
-      setItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID, "null");
+      setItemInSessionStorage(SESSION_STORAGE.FRANCHISE_ID, "null");
       set({ selectedFranchiseId: null });
       return;
     }
-    setItemInLocalStorage(LOCAL_STORAGE.ADMIN_FRANCHISE_ID, id);
+    setItemInSessionStorage(SESSION_STORAGE.FRANCHISE_ID, id);
     set({ selectedFranchiseId: String(id) });
   },
 

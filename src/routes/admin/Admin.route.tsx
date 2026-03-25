@@ -151,7 +151,9 @@ const AdminRoutes = (
           <Route path="voucher" element={<VoucherPage />} />
         </Route>
 
-        <Route path="promotion" element={<PromotionPage />} />
+        <Route element={<RequirePermission perm={PERM.PROMOTION_READ} />}>
+          <Route path="promotion" element={<PromotionPage />} />
+        </Route>
 
         <Route element={<RequirePermission perm={PERM.USER_READ} />}>
           <Route path="user" element={<UserPage />} />

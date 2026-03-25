@@ -21,9 +21,6 @@ const CustomerPage = React.lazy(() => import("../../pages/admin/customer"));
 const FranchisePage = React.lazy(
   () => import("../../pages/admin/franchise/Franchise.page"),
 );
-const FranchiseDetailPage = React.lazy(
-  () => import("../../pages/admin/franchise/FranchiseDetail.page"),
-);
 const InventoryPage = React.lazy(
   () => import("../../pages/admin/inventory/Inventory.page"),
 );
@@ -33,9 +30,7 @@ const ShiftAssignmentPage = React.lazy(
 const LoyaltyPage = React.lazy(() => import("../../pages/admin/loyalty"));
 const OrderPage = React.lazy(() => import("../../pages/admin/order"));
 const PaymentPage = React.lazy(() => import("../../pages/admin/payment"));
-const VoucherPage = React.lazy(
-  () => import("../../pages/admin/voucher"),
-);
+const VoucherPage = React.lazy(() => import("../../pages/admin/voucher"));
 const PromotionPage = React.lazy(
   () => import("../../pages/admin/promotion/Promotion.page"),
 );
@@ -140,7 +135,6 @@ const AdminRoutes = (
         {/* ADMIN ONLY */}
         <Route element={<RequirePermission perm={PERM.FRANCHISE_MGMT} />}>
           <Route path="franchise" element={<FranchisePage />} />
-          <Route path="franchise/:id" element={<FranchiseDetailPage />} />
         </Route>
 
         <Route element={<RequirePermission perm={PERM.PAYMENT_READ} />}>

@@ -158,7 +158,7 @@ const PromotionPage = () => {
         });
 
       setList(rows);
-      toastSuccess(`Gọi API OK`);
+      console.log(`Gọi API OK`);
     } catch {
       setError("Không thể tải danh sách promotion");
       setList([]);

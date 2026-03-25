@@ -44,22 +44,12 @@ const CartVoucherModal = ({
           ) : (
             <div className="space-y-3">
               {vouchers.map((voucher) => {
-                const isExpired = voucher.endTime
-                  ? new Date(voucher.endTime).getTime() < Date.now()
-                  : false;
-                const disabled = !voucher.isActive || isExpired;
-
                 return (
                   <button
                     key={voucher.id}
                     type="button"
                     onClick={() => onApply(voucher)}
-                    disabled={disabled}
-                    className={`w-full rounded-xl border px-4 py-3 text-left transition-all ${
-                      disabled
-                        ? "cursor-not-allowed border-slate-200 opacity-50"
-                        : "cursor-pointer border-slate-300 hover:border-primary"
-                    } ${selectedVoucher?.id === voucher.id ? "border-primary bg-primary/5" : ""}`}
+                    className={`w-full rounded-xl border px-4 py-3 text-left transition-all cursor-pointer border-slate-300 hover:border-primary ${selectedVoucher?.id === voucher.id ? "border-primary bg-primary/5" : ""}`}
                   >
                     <div className="flex items-center justify-between">
                       <div>

@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
 import { FormInput } from "@/components/Admin/form/FormInput";
-import FormSelect from "@/components/Admin/Form/FormSelect";
+import FormSelect from "@/components/Admin/form/FormSelect";
 import { getUserFranchiseRoleFormSchema } from "../schema/userFranchiseRole.schema";
 
 export type UserFranchiseRoleFormValues = {
@@ -51,7 +51,10 @@ export const UserFranchiseRoleForm = ({
   onClose: () => void;
   onSubmit: (
     data: UserFranchiseRoleFormValues,
-    setError: (field: keyof UserFranchiseRoleFormValues, error: { message: string }) => void,
+    setError: (
+      field: keyof UserFranchiseRoleFormValues,
+      error: { message: string },
+    ) => void,
   ) => void;
   userOptions?: SimpleOption[];
   roleOptions?: SimpleOption[];
@@ -115,7 +118,9 @@ export const UserFranchiseRoleForm = ({
       mode={mode}
       isLoading={isLoading}
       maxWidth="max-w-2xl"
-      onSave={() => document.getElementById("user-franchise-role-form-submit")?.click()}
+      onSave={() =>
+        document.getElementById("user-franchise-role-form-submit")?.click()
+      }
     >
       <form
         id="user-franchise-role-form"
@@ -167,7 +172,10 @@ export const UserFranchiseRoleForm = ({
           ) : (
             <FormSelect
               label="Chi nhánh"
-              options={[{ value: "", label: "Hệ thống (GLOBAL)" }, ...franchiseOptions]}
+              options={[
+                { value: "", label: "Hệ thống (GLOBAL)" },
+                ...franchiseOptions,
+              ]}
               error={errors.franchise_id as never}
               register={register("franchise_id", {
                 setValueAs: (v) => (v === "" ? null : v),
@@ -227,7 +235,11 @@ export const UserFranchiseRoleForm = ({
           )}
         </div>
 
-        <button id="user-franchise-role-form-submit" type="submit" className="hidden" />
+        <button
+          id="user-franchise-role-form-submit"
+          type="submit"
+          className="hidden"
+        />
       </form>
     </CRUDModalTemplate>
   );

@@ -10,6 +10,7 @@ interface CRUDModalTemplateProps {
   isLoading?: boolean;
   children: React.ReactNode;
   maxWidth?: string;
+  hideScrollbar?: boolean;
 }
 
 export const CRUDModalTemplate = ({
@@ -21,6 +22,7 @@ export const CRUDModalTemplate = ({
   isLoading = false,
   children,
   maxWidth,
+  hideScrollbar = false,
 }: CRUDModalTemplateProps) => {
   if (!isOpen) return null;
 
@@ -50,7 +52,11 @@ export const CRUDModalTemplate = ({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30">
+        <div
+          className={`flex-1 overflow-y-auto p-6 bg-gray-50/30 ${
+            hideScrollbar ? "hide-scrollbar" : ""
+          }`}
+        >
           {children}
         </div>
 

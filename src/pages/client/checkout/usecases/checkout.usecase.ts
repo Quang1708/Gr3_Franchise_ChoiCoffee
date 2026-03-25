@@ -6,6 +6,7 @@ import {
   cancelCartCheckoutApi,
   checkoutCartApi,
   confirmPaymentApi,
+  getPaymentByOrderIdApi,
   refundPaymentApi,
 } from "../services/checkout.api";
 
@@ -57,6 +58,42 @@ const pickPaymentId = (value: unknown): string | undefined => {
   }
 
   return undefined;
+};
+
+const pickPaymentData = (value: unknown): Record<string, unknown> | null => {
+  const root = asObject(value);
+  if (!root) return null;
+
+  const candidates = [root.data, root.payment, root.result, root];
+  for (const candidate of candidates) {
+    const candidateObj = asObject(candidate);
+    if (candidateObj) return candidateObj;
+  }
+
+  return null;
+};
+
+export const getPaymentByOrderId = async (orderId: string) => {
+  const response = await getPaymentByOrderIdApi(orderId);
+  const paymentData = pickPaymentData(response);
+  const paymentId = pickPaymentId(response);
+
+  return {
+    paymentId,
+    paymentData,
+    response,
+  };
+};
+
+export const confirmPaymentByPaymentId = async (
+  paymentId: string,
+  method: "CARD" | "CASH" | "MOMO" | "VNPAY",
+  providerTxnId = "",
+) => {
+  return confirmPaymentApi(paymentId, {
+    method,
+    providerTxnId,
+  });
 };
 
 export const submitCheckout = async (

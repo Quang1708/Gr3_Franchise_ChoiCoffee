@@ -11,6 +11,7 @@ import {
 type ShiftCalendarSectionProps = {
   canAssignmentRead: boolean;
   canAssignmentWrite: boolean;
+  fullWidth?: boolean;
   monthAssignmentsCount: number;
   currentMonth: Date;
   calendarDays: Date[];
@@ -25,6 +26,7 @@ type ShiftCalendarSectionProps = {
 const ShiftCalendarSection = ({
   canAssignmentRead,
   canAssignmentWrite,
+  fullWidth = false,
   monthAssignmentsCount,
   currentMonth,
   calendarDays,
@@ -36,7 +38,11 @@ const ShiftCalendarSection = ({
   onOpenDayAssignments,
 }: ShiftCalendarSectionProps) => {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-4 xl:col-span-8 xl:flex xl:min-h-0 xl:flex-col">
+    <section
+      className={`rounded-2xl border border-gray-200 bg-white p-4 xl:flex xl:min-h-0 xl:flex-col ${
+        fullWidth ? "xl:col-span-12" : "xl:col-span-8"
+      }`}
+    >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Lịch phân ca</h2>
@@ -78,7 +84,7 @@ const ShiftCalendarSection = ({
           Bạn chưa có quyền xem dữ liệu phân ca.
         </div>
       ) : (
-        <div className="xl:min-h-0 xl:flex-1 xl:overflow-auto xl:pr-1">
+        <div className="xl:min-h-0 xl:flex-1 xl:overflow-auto xl:pr-1 scrollbar-hide">
           <div className="grid grid-cols-7 gap-2">
             {WEEKDAY_LABELS.map((label) => (
               <div

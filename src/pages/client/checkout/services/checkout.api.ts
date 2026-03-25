@@ -21,6 +21,11 @@ export const cancelCartCheckoutApi = async (cartId: string) => {
   return response.data;
 };
 
+export const getPaymentByOrderIdApi = async (orderId: string) => {
+  const response = await axiosClient.get(`/api/payments/order/${orderId}`);
+  return response.data;
+};
+
 export const confirmPaymentApi = async (
   paymentId: string,
   payload: PaymentConfirmPayload,

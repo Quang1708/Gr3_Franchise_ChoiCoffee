@@ -15,7 +15,7 @@ const CartEmptyState = ({ onBackToMenu }: CartEmptyStateProps) => {
           </span>
         </div>
       </div>
-      <h3 className="text-xl font-bold text-charcoal font-bold mb-2">
+      <h3 className="text-xl font-bold text-charcoal mb-2">
         Giỏ hàng của bạn đang trống
       </h3>
       <p className="text-[14px] text-charcoal mb-10 max-w-xs text-center leading-relaxed">
@@ -25,7 +25,7 @@ const CartEmptyState = ({ onBackToMenu }: CartEmptyStateProps) => {
       <ButtonSubmit
         label="Quay lại thực đơn"
         onClick={onBackToMenu}
-        className="!w-auto px-12 !py-3 shadow-xl shadow-primary/10"
+        className="w-auto! px-12 py-3! shadow-xl shadow-primary/10 cursor-pointer"
       />
     </div>
   );

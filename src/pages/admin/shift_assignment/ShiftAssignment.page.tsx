@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ShiftAssignmentItem } from "./models/shiftAssignment.model";
 import { toastSuccess, toastError } from "@/utils/toast.util";
 import { useAdminContextStore } from "@/stores/adminContext.store";
+import { useAuthStore } from "@/stores/auth.store";
 import ShiftAssignmentForm, {
   type ShiftAssignmentFormValues,
 } from "./components/ShiftAssignmentForm";
@@ -11,15 +12,49 @@ import ShiftAssignmentForm, {
 // Usecases
 import { searchShiftAssignment } from "./usecases/searchShiftAssignment.usecase";
 import { createShiftAssignment } from "./usecases/createShiftAssignment.usecase";
+import { bulkCreateShiftAssignment } from "./usecases/bulkCreateShiftAssignment.usecase";
 import { updateShiftAssignmentStatus } from "./usecases/updateShiftAssignmentStatus.usecase";
 import { loadLookupOptions as loadLookupOptionsUsecase } from "./usecases/loadLookupOptions.usecase";
 import { getShiftAssignmentColumns } from "./shiftAssignment.columns";
+
+const mapShiftStatusErrorMessage = (message?: string) => {
+  const normalized = String(message || "").trim();
+
+  if (!normalized) {
+    return "Không thể cập nhật trạng thái phân ca";
+  }
+
+  if (normalized === "Status can only be updated from ASSIGNED") {
+    return "Chỉ có thể cập nhật trạng thái khi phân ca đang ở trạng thái Đã phân công.";
+  }
+
+  if (normalized === "Status can only change to COMPLETED or ABSENT") {
+    return "Từ trạng thái Đã phân công chỉ được chuyển sang Hoàn thành hoặc Vắng mặt.";
+  }
+
+  return normalized;
+};
+
+const mapShiftAssignmentSubmitErrorMessage = (message?: string) => {
+  const normalized = String(message || "").trim();
+
+  if (!normalized) {
+    return "Không thể phân ca";
+  }
+
+  if (normalized === "Cannot assign shift for past dates") {
+    return "Không thể phân ca cho ngày trong quá khứ.";
+  }
+
+  return normalized;
+};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type SelectOption = {
   value: string;
   label: string;
+  franchiseId?: string;
 };
 
 // ── Page Component ────────────────────────────────────────────────────────────
@@ -28,6 +63,44 @@ const ShiftAssignmentPage = () => {
   const selectedFranchiseId = useAdminContextStore(
     (s) => s.selectedFranchiseId,
   );
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = useMemo(
+    () =>
+      (user?.roles ?? []).some(
+        (role) =>
+          String(role.role ?? role.role_code ?? "").toUpperCase() === "ADMIN",
+      ),
+    [user?.roles],
+  );
+  const isManager = useMemo(
+    () =>
+      !isAdmin &&
+      (user?.roles ?? []).some(
+        (role) =>
+          String(role.role ?? role.role_code ?? "").toUpperCase() === "MANAGER",
+      ),
+    [isAdmin, user?.roles],
+  );
+  const roleFranchiseIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (user?.roles ?? [])
+            .map((role) =>
+              String(role.franchise_id ?? role.franchiseId ?? "").trim(),
+            )
+            .filter(Boolean),
+        ),
+      ),
+    [user?.roles],
+  );
+  const effectiveFranchiseId = useMemo(() => {
+    const selected = String(selectedFranchiseId ?? "").trim();
+    if (isAdmin) return selected;
+    if (selected && roleFranchiseIds.includes(selected)) return selected;
+    return roleFranchiseIds[0] ?? selected;
+  }, [isAdmin, roleFranchiseIds, selectedFranchiseId]);
+  const isGlobalContext = isAdmin && selectedFranchiseId === null;
 
   const [shiftAssignments, setShiftAssignments] = useState<
     ShiftAssignmentItem[]
@@ -103,7 +176,12 @@ const ShiftAssignmentPage = () => {
   const loadLookupOptions = useCallback(async () => {
     try {
       setLookupLoading(true);
-      const options = await loadLookupOptionsUsecase(selectedFranchiseId);
+      const options = await loadLookupOptionsUsecase({
+        franchiseId: effectiveFranchiseId || selectedFranchiseId,
+        allowedFranchiseIds:
+          isManager && effectiveFranchiseId ? [effectiveFranchiseId] : [],
+        includeFranchiseName: isAdmin && isGlobalContext,
+      });
       setStaffOptions(options.staffOptions);
       setShiftOptions(options.shiftOptions);
     } catch (error) {
@@ -114,7 +192,13 @@ const ShiftAssignmentPage = () => {
     } finally {
       setLookupLoading(false);
     }
-  }, [selectedFranchiseId]);
+  }, [
+    effectiveFranchiseId,
+    isAdmin,
+    isGlobalContext,
+    isManager,
+    selectedFranchiseId,
+  ]);
 
   useEffect(() => {
     void fetchShiftAssignments();
@@ -147,12 +231,41 @@ const ShiftAssignmentPage = () => {
       setIsProcessing(true);
 
       if (formMode === "create") {
-        await createShiftAssignment({
-          user_id: data.user_id,
-          shift_id: data.shift_id,
-          work_date: data.work_date,
-          note: data.note,
-        });
+        const selectedShiftIds = Array.from(
+          new Set(
+            (data.shift_ids ?? [])
+              .map((id) => String(id || "").trim())
+              .filter(Boolean),
+          ),
+        );
+
+        if (selectedShiftIds.length > 1) {
+          await bulkCreateShiftAssignment(
+            selectedShiftIds.map((shiftId) => ({
+              user_id: data.user_id,
+              shift_id: shiftId,
+              work_date: data.work_date,
+              note: data.note,
+            })),
+          );
+        } else {
+          const shiftId =
+            selectedShiftIds[0] || String(data.shift_id || "").trim();
+          if (!shiftId) {
+            setError("shift_id", {
+              type: "manual",
+              message: "Ca làm là bắt buộc",
+            });
+            return;
+          }
+
+          await createShiftAssignment({
+            user_id: data.user_id,
+            shift_id: shiftId,
+            work_date: data.work_date,
+            note: data.note,
+          });
+        }
         toastSuccess("Phân ca thành công!");
       }
 
@@ -182,9 +295,9 @@ const ShiftAssignmentPage = () => {
           });
         }
       } else {
-        const errorMessage =
-          error.response?.data?.message || "Có lỗi xảy ra khi phân ca";
-        toastError(errorMessage);
+        const apiMessage = error.response?.data?.message;
+        const displayMessage = mapShiftAssignmentSubmitErrorMessage(apiMessage);
+        toastError(displayMessage);
       }
     } finally {
       setIsProcessing(false);
@@ -207,8 +320,18 @@ const ShiftAssignmentPage = () => {
         toastSuccess("Cập nhật trạng thái phân ca thành công!");
         await fetchShiftAssignments(page, "table", pageSize);
       } catch (error) {
+        const err = error as {
+          response?: {
+            data?: {
+              message?: string;
+            };
+          };
+          message?: string;
+        };
+        const apiMessage = err.response?.data?.message || err.message;
+        const displayMessage = mapShiftStatusErrorMessage(apiMessage);
         console.error("Error changing shift assignment status:", error);
-        toastError("Có lỗi xảy ra khi cập nhật trạng thái phân ca");
+        toastError(displayMessage);
       } finally {
         setIsProcessing(false);
       }

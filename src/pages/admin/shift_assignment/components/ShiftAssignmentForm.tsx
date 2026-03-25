@@ -1,23 +1,42 @@
 import { FormInput } from "@/components/Admin/form/FormInput";
 import FormSelect from "@/components/Admin/form/FormSelect";
 import { TextEditor } from "@/components/UI/TextEditor";
+import ClientLoading from "@/components/Client/Client.Loading";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { ShiftAssignmentItem } from "../models/shiftAssignment.model";
+import type {
+  ShiftAssignmentItem,
+  ShiftAssignmentStatus,
+} from "../models/shiftAssignment.model";
 
-const shiftAssignmentFormSchema = z.object({
-  user_id: z.string().min(1, "Nhân viên là bắt buộc"),
-  shift_id: z.string().min(1, "Ca làm là bắt buộc"),
-  work_date: z.string().min(1, "Ngày làm là bắt buộc"),
-  note: z.string().optional(),
-});
+const shiftAssignmentFormSchema = z
+  .object({
+    user_id: z.string().min(1, "Nhân viên là bắt buộc"),
+    shift_id: z.string().optional(),
+    shift_ids: z.array(z.string()).optional(),
+    work_date: z.string().min(1, "Ngày làm là bắt buộc"),
+    note: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      const hasSingle = Boolean(String(data.shift_id ?? "").trim());
+      const hasMulti =
+        Array.isArray(data.shift_ids) && data.shift_ids.length > 0;
+      return hasSingle || hasMulti;
+    },
+    {
+      message: "Ca làm là bắt buộc",
+      path: ["shift_id"],
+    },
+  );
 
 export type ShiftAssignmentFormValues = {
   user_id: string;
-  shift_id: string;
+  shift_id?: string;
+  shift_ids?: string[];
   work_date: string;
   note?: string;
 };
@@ -48,6 +67,9 @@ type ShiftAssignmentFormProps = {
   staffOptions?: SelectOption[];
   shiftOptions?: SelectOption[];
   lookupLoading?: boolean;
+  canUpdateStatus?: boolean;
+  isUpdatingStatus?: boolean;
+  onUpdateStatus?: (status: ShiftAssignmentStatus) => void;
 };
 
 const formatDateTime = (dateString?: string) => {
@@ -67,6 +89,9 @@ const ShiftAssignmentForm = ({
   staffOptions = [],
   shiftOptions = [],
   lookupLoading = false,
+  canUpdateStatus = false,
+  isUpdatingStatus = false,
+  onUpdateStatus,
 }: ShiftAssignmentFormProps) => {
   const {
     control,
@@ -79,6 +104,7 @@ const ShiftAssignmentForm = ({
     defaultValues: {
       user_id: "",
       shift_id: "",
+      shift_ids: [],
       work_date: "",
       note: "",
     },
@@ -94,6 +120,7 @@ const ShiftAssignmentForm = ({
       reset({
         user_id: "",
         shift_id: "",
+        shift_ids: [],
         work_date: defaultWorkDate || new Date().toISOString().split("T")[0],
         note: "",
       });
@@ -101,6 +128,7 @@ const ShiftAssignmentForm = ({
       reset({
         user_id: initialData?.user_id || "",
         shift_id: initialData?.shift_id || "",
+        shift_ids: initialData?.shift_id ? [initialData.shift_id] : [],
         work_date: initialData?.work_date || "",
         note: initialData?.note || "",
       });
@@ -109,7 +137,10 @@ const ShiftAssignmentForm = ({
 
   const isView = mode === "view";
   const selectedUserId = useWatch({ control, name: "user_id" });
-  const selectedShiftId = useWatch({ control, name: "shift_id" });
+  const [selectedStatusOverride, setSelectedStatusOverride] =
+    useState<ShiftAssignmentStatus | null>(null);
+  const selectedStatus =
+    selectedStatusOverride ?? initialData?.status ?? "ASSIGNED";
 
   const getUserLabel = () => {
     if (!initialData?.user_id) return "---";
@@ -134,10 +165,13 @@ const ShiftAssignmentForm = ({
       mode={mode}
       maxWidth={isView ? "max-w-5xl" : "max-w-3xl"}
       isLoading={isLoading}
+      hideScrollbar={!isView}
       onSave={() =>
         document.getElementById("shift-assignment-form-submit")?.click()
       }
     >
+      {isLoading && <ClientLoading />}
+
       <form
         id="shift-assignment-form"
         onSubmit={handleSubmit((data) => {
@@ -197,28 +231,58 @@ const ShiftAssignmentForm = ({
             </div>
           ) : (
             <div className="flex flex-col gap-1 md:col-span-2">
-              <FormSelect
-                label="Ca làm"
-                name="ca làm"
-                options={
-                  lookupLoading
-                    ? [{ value: "", label: "Đang tải ca làm..." }]
-                    : shiftOptions
-                }
-                value={selectedShiftId}
-                register={register("shift_id", {
-                  required: "Vui lòng chọn ca làm",
-                })}
-                error={errors.shift_id}
-                placeholder={
-                  lookupLoading
-                    ? "Đang tải ca làm..."
-                    : shiftOptions.length === 0
-                      ? "Không có ca làm"
-                      : `Chọn ca làm (${shiftOptions.length})`
-                }
-                className="w-full"
+              <label className="text-sm font-medium text-gray-700">
+                Ca làm (có thể chọn nhiều)
+              </label>
+              <Controller
+                name="shift_ids"
+                control={control}
+                render={({ field }) => (
+                  <div className="max-h-44 space-y-2 overflow-auto scrollbar-hide hide-scrollbar rounded-lg border border-gray-300 p-3">
+                    {lookupLoading ? (
+                      <p className="text-sm text-gray-500">
+                        Đang tải ca làm...
+                      </p>
+                    ) : shiftOptions.length === 0 ? (
+                      <p className="text-sm text-gray-500">Không có ca làm</p>
+                    ) : (
+                      shiftOptions.map((option) => {
+                        const isChecked = (field.value || []).includes(
+                          option.value,
+                        );
+                        return (
+                          <label
+                            key={option.value}
+                            className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const currentValues = field.value || [];
+                                const nextValues = e.target.checked
+                                  ? [...currentValues, option.value]
+                                  : currentValues.filter(
+                                      (value) => value !== option.value,
+                                    );
+
+                                field.onChange(nextValues);
+                              }}
+                              className="size-4 rounded border-gray-300"
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
               />
+              {errors.shift_id?.message && (
+                <p className="text-xs text-red-500">
+                  {errors.shift_id.message}
+                </p>
+              )}
             </div>
           )}
 
@@ -276,20 +340,53 @@ const ShiftAssignmentForm = ({
                   Trạng thái
                 </label>
                 <div className="py-2 border-b border-gray-100">
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      initialData?.status === "COMPLETED"
-                        ? "bg-green-100 text-green-700"
-                        : initialData?.status === "CANCELED"
-                          ? "bg-red-100 text-red-700"
-                          : initialData?.status === "ABSENT"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-blue-100 text-blue-700"
-                    }`}
-                  >
-                    {STATUS_LABEL_MAP[initialData?.status || "ASSIGNED"] ||
-                      "Đã phân công"}
-                  </span>
+                  {canUpdateStatus ? (
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={selectedStatus}
+                        onChange={(e) =>
+                          setSelectedStatusOverride(
+                            e.target.value as ShiftAssignmentStatus,
+                          )
+                        }
+                        className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700"
+                        disabled={isUpdatingStatus}
+                      >
+                        <option value="ASSIGNED">Đã phân công</option>
+                        <option value="COMPLETED">Hoàn thành</option>
+                        <option value="ABSENT">Vắng mặt</option>
+                        <option value="CANCELED">Đã hủy</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="cursor-pointer rounded-md bg-primary px-2 py-1 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={
+                          isUpdatingStatus ||
+                          selectedStatus === initialData?.status
+                        }
+                        onClick={() => {
+                          onUpdateStatus?.(selectedStatus);
+                        }}
+                      >
+                        {isUpdatingStatus ? "Đang lưu..." : "Cập nhật"}
+                      </button>
+                    </div>
+                  ) : (
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${
+                        initialData?.status === "COMPLETED"
+                          ? "bg-green-100 text-green-700"
+                          : initialData?.status === "CANCELED"
+                            ? "bg-red-100 text-red-700"
+                            : initialData?.status === "ABSENT"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      {STATUS_LABEL_MAP[initialData?.status || "ASSIGNED"] ||
+                        "Đã phân công"}
+                    </span>
+                  )}
                 </div>
               </div>
 

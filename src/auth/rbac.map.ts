@@ -49,9 +49,9 @@ export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
   MANAGER: [
     PERM.MENU_READ,
     PERM.MENU_WRITE,
+    PERM.PRODUCT_READ,
 
     // ❌ REMOVE:
-    // PERM.PRODUCT_READ
     // PERM.CATEGORY_READ
 
     // ✅ ONLY franchise

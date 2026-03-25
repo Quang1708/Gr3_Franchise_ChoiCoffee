@@ -32,7 +32,18 @@ const DEFAULT_AVATAR =
 type UserFranchiseRoleItem = {
   role_name?: string;
   role_code?: string;
+  role_display_name?: string;
   franchise_name?: string;
+  franchise_id?: string | number | null;
+  franchiseId?: string | number | null;
+  franchise?: {
+    name?: string;
+  } | null;
+  role?: {
+    role_name?: string;
+    role_code?: string;
+    role_display_name?: string;
+  } | null;
 };
 
 type UserWithRoleDetails = User & {
@@ -256,8 +267,26 @@ const UserPage = () => {
           ? roleItems
               .map((item) => {
                 const role =
-                  item.role_name || item.role_code || "Không rõ vai trò";
-                const franchise = item.franchise_name || "Hệ thống";
+                  item.role_display_name ||
+                  item.role_name ||
+                  item.role?.role_display_name ||
+                  item.role?.role_name ||
+                  item.role_code ||
+                  item.role?.role_code ||
+                  "Không rõ vai trò";
+
+                const rawFranchiseId = item.franchise_id ?? item.franchiseId;
+                const franchiseFromId =
+                  rawFranchiseId === null || rawFranchiseId === undefined
+                    ? ""
+                    : `Franchise ${rawFranchiseId}`;
+
+                const franchise =
+                  item.franchise_name ||
+                  item.franchise?.name ||
+                  franchiseFromId ||
+                  "Hệ thống";
+
                 return `${role} (${franchise})`;
               })
               .join(", ")

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CRUDTable, type Column } from "@/components/Admin/template/CRUD.template";
 import ClientLoading from "@/components/Client/Client.Loading";
 import { useAdminContextStore } from "@/stores/adminContext.store";
@@ -6,13 +6,16 @@ import { useAuthStore } from "@/stores/auth.store";
 import {
   createPromotionService,
   deletePromotionService,
+  restorePromotionService,
+  searchPromotionsServiceByKeyword,
   searchPromotionsService,
   updatePromotionService,
   type PromotionApiItem,
 } from "@/services/promotion.service";
 import { searchProductFranchisesService } from "@/pages/admin/product_category_franchise/services/searchProductFranchises.service";
-import { toastError } from "@/utils/toast.util";
+import { toastError, toastSuccess } from "@/utils/toast.util";
 import type { ProductFranchise } from "@/models/product_franchise.model";
+import { Edit, RotateCcw, Trash2 } from "lucide-react";
 import {
   PromotionForm,
   type PromotionFormInitialData,
@@ -32,6 +35,7 @@ type PromotionRow = {
   end_raw?: string | null;
   start_date: string;
   end_date: string;
+  is_deleted?: boolean;
 };
 
 const formatDateTime = (value?: string) => {
@@ -60,6 +64,7 @@ const PromotionPage = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [selectedItem, setSelectedItem] = useState<PromotionRow | null>(null);
+  const searchSeqRef = useRef(0);
 
   const isGlobalAdmin = useMemo(() => {
     return (
@@ -126,7 +131,7 @@ const PromotionPage = () => {
 
       const items = promoRes?.data ?? [];
       const rows: PromotionRow[] = items
-        .filter((p) => p && p.is_deleted !== true)
+        .filter((p) => !!p)
         .map((p) => {
           const pfId = p.product_franchise_id ? String(p.product_franchise_id) : "";
           const product =
@@ -155,6 +160,7 @@ const PromotionPage = () => {
             end_raw: p.end_date ?? null,
             start_date: formatDateTime(p.start_date ?? undefined),
             end_date: formatDateTime(p.end_date ?? undefined),
+            is_deleted: Boolean(p.is_deleted),
           };
         });
 
@@ -171,6 +177,105 @@ const PromotionPage = () => {
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
+
+  const handleSearch = useCallback(
+    async (keyword: string) => {
+      const seq = ++searchSeqRef.current;
+      try {
+        setError(null);
+
+        const toType = (
+          raw: PromotionApiItem["type"],
+        ): "PERCENT" | "FIXED" =>
+          String(raw ?? "PERCENT").toUpperCase() === "FIXED" ? "FIXED" : "PERCENT";
+
+        const toNumber = (raw: unknown): number => {
+          if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+          if (typeof raw === "string") {
+            const n = Number(raw);
+            if (Number.isFinite(n)) return n;
+          }
+          return 0;
+        };
+
+        const promoRes = await searchPromotionsServiceByKeyword(
+          isGlobalAdmin ? undefined : franchiseId,
+          keyword,
+        );
+
+        if (seq !== searchSeqRef.current) return; // ignore stale responses
+
+        const franchiseNameById = new Map(
+          (franchises ?? []).map((f) => [String(f.id), f.name]),
+        );
+
+        const items = promoRes?.data ?? [];
+        let rows: PromotionRow[] = items
+          .filter((p) => !!p)
+          .map((p) => {
+            const pfId = p.product_franchise_id
+              ? String(p.product_franchise_id)
+              : "";
+            const product =
+              p.product_name && String(p.product_name).trim()
+                ? String(p.product_name)
+                : pfId
+                  ? pfId
+                  : "Toàn Sản Phẩm";
+
+            return {
+              id: String(p.id),
+              name: String(p.name ?? `Promotion ${p.id}`),
+              franchise_name: isGlobalAdmin
+                ? String(
+                    p.franchise_name ??
+                      franchiseNameById.get(String(p.franchise_id ?? "")) ??
+                      p.franchise_id ??
+                      "",
+                  )
+                : undefined,
+              product,
+              product_franchise_id: p.product_franchise_id ?? null,
+              type: toType(p.type),
+              value: toNumber(p.value),
+              start_raw: p.start_date ?? null,
+              end_raw: p.end_date ?? null,
+              start_date: formatDateTime(p.start_date ?? undefined),
+              end_date: formatDateTime(p.end_date ?? undefined),
+              is_deleted: Boolean(p.is_deleted),
+            };
+          });
+
+        // Fallback local filter so search still works if backend ignores keyword field.
+        const normalizedKeyword = keyword.trim().toLowerCase();
+        if (normalizedKeyword) {
+          rows = rows.filter((row) => {
+            const bucket = [
+              row.name,
+              row.franchise_name ?? "",
+              row.product,
+              row.type,
+              String(row.value),
+              row.start_date,
+              row.end_date,
+            ]
+              .join(" ")
+              .toLowerCase();
+            return bucket.includes(normalizedKeyword);
+          });
+        }
+
+        setList(rows);
+      } catch {
+        if (seq === searchSeqRef.current) {
+          setError("Không thể tìm kiếm danh sách promotion");
+          setList([]);
+          toastError("Gọi API promotions search thất bại");
+        }
+      }
+    },
+    [franchises, franchiseId, isGlobalAdmin],
+  );
 
   const handleCreate = () => {
     if (isGlobalAdmin && !createFranchiseId) {
@@ -259,10 +364,40 @@ const PromotionPage = () => {
     void (async () => {
       try {
         await deletePromotionService(item.id);
+        setList((prev) =>
+          prev.map((x) =>
+            x.id === item.id
+              ? {
+                  ...x,
+                  is_deleted: true,
+                }
+              : x,
+          ),
+        );
+        toastSuccess("Đã xóa promotion");
       } catch {
-        // ignore - still do optimistic UI
-      } finally {
-        setList((prev) => prev.filter((x) => x.id !== item.id));
+        toastError("Xóa promotion thất bại");
+      }
+    })();
+  };
+
+  const handleRestore = (item: PromotionRow) => {
+    void (async () => {
+      try {
+        await restorePromotionService(item.id);
+        setList((prev) =>
+          prev.map((x) =>
+            x.id === item.id
+              ? {
+                  ...x,
+                  is_deleted: false,
+                }
+              : x,
+          ),
+        );
+        toastSuccess("Đã khôi phục promotion");
+      } catch {
+        toastError("Khôi phục promotion thất bại");
       }
     })();
   };
@@ -298,6 +433,44 @@ const PromotionPage = () => {
       },
       { header: "start_date", accessor: "start_date" },
       { header: "end_date", accessor: "end_date" },
+      {
+        header: "Hành động",
+        className: "text-right min-w-[140px]",
+        render: (it) => {
+          if (it.is_deleted) {
+            return (
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  onClick={() => handleRestore(it)}
+                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors cursor-pointer"
+                  title="Khôi phục"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                </button>
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => handleEdit(it)}
+                className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
+                title="Chỉnh sửa"
+              >
+                <Edit className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => handleDelete(it)}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                title="Xóa"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          );
+        },
+      },
     ],
     [isGlobalAdmin],
   );
@@ -324,28 +497,7 @@ const PromotionPage = () => {
             columns={columns}
             pageSize={10}
             onAdd={handleCreate}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            searchKeys={
-              isGlobalAdmin
-                ? ([
-                    "name",
-                    "franchise_name",
-                    "product",
-                    "type",
-                    "value",
-                    "start_date",
-                    "end_date",
-                  ] as (keyof PromotionRow)[])
-                : ([
-                    "name",
-                    "product",
-                    "type",
-                    "value",
-                    "start_date",
-                    "end_date",
-                  ] as (keyof PromotionRow)[])
-            }
+            onSearch={handleSearch}
           />
         )}
 

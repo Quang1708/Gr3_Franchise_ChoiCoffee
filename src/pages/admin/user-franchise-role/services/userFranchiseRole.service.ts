@@ -42,15 +42,39 @@ export const userFranchiseRoleService = {
   },
 
   async getByUserId(userId: string) {
-    const res = await axiosAdminClient.get<unknown[]>(
+    const res = await axiosAdminClient.get<unknown>(
       `/api/user-franchise-roles/user/${userId}`,
     );
 
     const payload = res.data;
 
+    const normalizedData = (() => {
+      if (Array.isArray(payload)) return payload;
+      if (!payload || typeof payload !== "object") return [];
+
+      const source = payload as {
+        data?: unknown;
+        items?: unknown;
+        rows?: unknown;
+      };
+
+      if (Array.isArray(source.data)) return source.data;
+
+      if (source.data && typeof source.data === "object") {
+        const nested = source.data as { items?: unknown; rows?: unknown };
+        if (Array.isArray(nested.items)) return nested.items;
+        if (Array.isArray(nested.rows)) return nested.rows;
+      }
+
+      if (Array.isArray(source.items)) return source.items;
+      if (Array.isArray(source.rows)) return source.rows;
+
+      return [];
+    })();
+
     return {
       success: true,
-      data: Array.isArray(payload) ? payload : [],
+      data: normalizedData,
     };
   },
 

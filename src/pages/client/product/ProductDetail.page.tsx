@@ -9,61 +9,69 @@ import ToppingModal from "@/components/Client/Product/Topping.Modal";
 // import ProductCard from "../../../components/Client/Product/ProductCard";
 
 const ProductDetailPage = () => {
-    const { productId } = useParams<{ productId: string }>();
-    const [product, setProduct] = useState<ProductDetail>();
-    const franchiseId = localStorage.getItem("selectedFranchise");
-    const [isLoading, setIsLoading] = useState(false);
-    const [selectedImage, setSelectedImage] = useState<string>("");
-    const allImages = [product?.image_url, ...(product?.images_url || [])].filter(url => url);
-    const VISIBLE_COUNT = 4;
-    const [startIndex, setStartIndex] = useState(0);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const {customer} = useCustomerAuthStore();
+  const { productId } = useParams<{ productId: string }>();
+  const [product, setProduct] = useState<ProductDetail>();
+  const franchiseId = localStorage.getItem("selectedFranchise");
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string>("");
+  const allImages = [product?.image_url, ...(product?.images_url || [])].filter(
+    (url) => url,
+  );
+  const VISIBLE_COUNT = 4;
+  const [startIndex, setStartIndex] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { customer } = useCustomerAuthStore();
+  const availableSizes =
+    product?.sizes?.filter((size) => size.is_available) || [];
+  const firstAvailableSize = availableSizes[0];
 
-    useEffect(() => {
-      const fetchDetailProduct = async () => {
-        setIsLoading(true);
-        if (franchiseId && productId) {        
-          try {
-            const response = await getPublicDetailProduct(franchiseId, productId);
-            if (response) {
-              setIsLoading(false);
-              setProduct(response);
-              setSelectedImage(response.image_url || "");
-            }
-          } catch (error) {
-            console.error("Error fetching product detail:", error);
+  useEffect(() => {
+    const fetchDetailProduct = async () => {
+      setIsLoading(true);
+      if (franchiseId && productId) {
+        try {
+          const response = await getPublicDetailProduct(franchiseId, productId);
+          if (response) {
             setIsLoading(false);
-          }finally{
-            setIsLoading(false);
+            setProduct(response);
+            setSelectedImage(response.image_url || "");
           }
+        } catch (error) {
+          console.error("Error fetching product detail:", error);
+          setIsLoading(false);
+        } finally {
+          setIsLoading(false);
         }
       }
-      fetchDetailProduct();
-    }, [franchiseId, productId]);
-
+    };
+    fetchDetailProduct();
+  }, [franchiseId, productId]);
 
   const handleUp = () => {
-  setStartIndex(prev => Math.max(0, prev - 1));
-};
+    setStartIndex((prev) => Math.max(0, prev - 1));
+  };
 
   const handleDown = () => {
-  setStartIndex(prev => Math.min(allImages.length - VISIBLE_COUNT, prev + 1));
-};
+    setStartIndex((prev) =>
+      Math.min(allImages.length - VISIBLE_COUNT, prev + 1),
+    );
+  };
 
   const handleCartButtonClick = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (!customer) {
+    e.stopPropagation();
+    if (!firstAvailableSize) {
+      toast.error("Sản phẩm hiện đang hết hàng!");
+      return;
+    }
+    if (!customer) {
       toast.error("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!");
       return;
     }
-      setIsModalOpen(true);
-    };
+    setIsModalOpen(true);
+  };
 
   if (isLoading) {
-    return (
-      <ClientLoading />
-    )
+    return <ClientLoading />;
   }
 
   return (
@@ -76,7 +84,9 @@ const ProductDetailPage = () => {
               // disabled={startIndex === 0}
               className="mb-2 p-1 text-slate-700 disabled:opacity-20 hover:bg-slate-100 rounded-full transition-all cursor-pointer dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              <span className="material-symbols-outlined rounded-full">expand_less</span>
+              <span className="material-symbols-outlined rounded-full">
+                expand_less
+              </span>
             </button>
 
             <div className="flex flex-col gap-4 overflow-hidden w-full">
@@ -132,7 +142,9 @@ const ProductDetailPage = () => {
           </div>
           <div className="mb-8 p-6 bg-primary/5 dark:bg-primary/10 rounded-xl">
             <h2 className="text-primary text-3xl font-bold leading-tight">
-              {(product?.sizes?.[0]?.price || 0).toLocaleString()} VND
+              {firstAvailableSize
+                ? `${firstAvailableSize.price.toLocaleString()} VND`
+                : "Hết hàng"}
             </h2>
             <p className="text-sm mt-1 text-clay dark:text-[#a5947d]">
               Giá đã bao gồm thuế VAT và phí vận chuyển nhượng quyền
@@ -170,12 +182,17 @@ const ProductDetailPage = () => {
                 </button>
               </div>
             </div> */}
-            <button 
-              className="cursor-pointer flex-1 h-14 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-all flex items-center justify-center gap-2 text-lg shadow-lg shadow-primary/20"
+            <button
+              className={`flex-1 h-14 font-bold rounded-lg transition-all flex items-center justify-center gap-2 text-lg shadow-lg shadow-primary/20 ${
+                firstAvailableSize
+                  ? "cursor-pointer bg-primary text-white hover:bg-primary/90"
+                  : "cursor-not-allowed bg-gray-300 text-gray-500"
+              }`}
               onClick={handleCartButtonClick}
+              disabled={!firstAvailableSize}
             >
               <span className="material-symbols-outlined">shopping_cart</span>
-              Thêm vào giỏ hàng
+              {firstAvailableSize ? "Thêm vào giỏ hàng" : "Hết hàng"}
             </button>
           </div>
         </div>
@@ -203,14 +220,15 @@ const ProductDetailPage = () => {
             ))} */}
         </div>
       </section>
-      <ToppingModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        product={product as ProductDetail}
-      />
+      {product && (
+        <ToppingModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          product={product}
+        />
+      )}
     </div>
   );
-}
+};
 
-
-export default ProductDetailPage
+export default ProductDetailPage;

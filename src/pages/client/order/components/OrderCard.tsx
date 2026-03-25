@@ -60,7 +60,7 @@ const getStatusMeta = (status: ClientOrderStatus): StatusMeta => {
 };
 
 const getActionLabel = (status: ClientOrderStatus): string | null => {
-  if (status === "draft") return "Tiếp tục đặt hàng";
+  if (status === "draft") return "Thanh toán ngay";
   if (status === "ready_for_pickup" || status === "out_for_delivery")
     return "Theo dõi đơn";
   if (status === "completed") return "Mua lại";

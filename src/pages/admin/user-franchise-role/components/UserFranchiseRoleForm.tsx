@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
 import { FormInput } from "@/components/Admin/form/FormInput";
-import FormSelect from "@/components/Admin/Form/FormSelect";
+import FormSelect from "@/components/Admin/form/FormSelect";
 import { getUserFranchiseRoleFormSchema } from "../schema/userFranchiseRole.schema";
 
 export type UserFranchiseRoleFormValues = {
@@ -36,10 +36,20 @@ export type SimpleOption = {
   label: string;
 };
 
-const ViewDetailField = ({ label, value }: { label: string; value?: string }) => (
+const ViewDetailField = ({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string;
+}) => (
   <div className="rounded-lg border border-gray-100 bg-white px-3 py-2">
-    <p className="text-xs font-medium uppercase tracking-wide text-gray-400">{label}</p>
-    <p className="mt-1 text-sm font-medium text-gray-700">{value || "(Không có)"}</p>
+    <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+      {label}
+    </p>
+    <p className="mt-1 text-sm font-medium text-gray-700">
+      {value || "(Không có)"}
+    </p>
   </div>
 );
 
@@ -61,7 +71,10 @@ export const UserFranchiseRoleForm = ({
   onClose: () => void;
   onSubmit: (
     data: UserFranchiseRoleFormValues,
-    setError: (field: keyof UserFranchiseRoleFormValues, error: { message: string }) => void,
+    setError: (
+      field: keyof UserFranchiseRoleFormValues,
+      error: { message: string },
+    ) => void,
   ) => void;
   userOptions?: SimpleOption[];
   roleOptions?: SimpleOption[];
@@ -131,7 +144,8 @@ export const UserFranchiseRoleForm = ({
     "Không có";
 
   const selectedFranchiseLabel =
-    franchiseOptions.find((option) => option.value === selectedFranchiseId)?.label ??
+    franchiseOptions.find((option) => option.value === selectedFranchiseId)
+      ?.label ??
     initialData?.franchise_display_name ??
     "Hệ thống (GLOBAL)";
 
@@ -143,7 +157,9 @@ export const UserFranchiseRoleForm = ({
       mode={mode}
       isLoading={isLoading}
       maxWidth="max-w-2xl"
-      onSave={() => document.getElementById("user-franchise-role-form-submit")?.click()}
+      onSave={() =>
+        document.getElementById("user-franchise-role-form-submit")?.click()
+      }
     >
       <form
         id="user-franchise-role-form"
@@ -161,7 +177,9 @@ export const UserFranchiseRoleForm = ({
         )}
 
         <div className="rounded-xl border border-gray-100 bg-white p-4">
-          <h4 className="mb-3 text-sm font-semibold text-gray-800">Thông tin phân quyền</h4>
+          <h4 className="mb-3 text-sm font-semibold text-gray-800">
+            Thông tin phân quyền
+          </h4>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {isView || isEdit ? (
@@ -210,7 +228,10 @@ export const UserFranchiseRoleForm = ({
             ) : (
               <FormSelect
                 label="Chi nhánh"
-                options={[{ value: "", label: "Hệ thống (GLOBAL)" }, ...franchiseOptions]}
+                options={[
+                  { value: "", label: "Hệ thống (GLOBAL)" },
+                  ...franchiseOptions,
+                ]}
                 error={errors.franchise_id as never}
                 register={register("franchise_id", {
                   setValueAs: (v) => (v === "" ? null : v),
@@ -234,20 +255,44 @@ export const UserFranchiseRoleForm = ({
 
         {isView && (
           <div className="rounded-xl border border-gray-100 bg-white p-4">
-            <h4 className="mb-3 text-sm font-semibold text-gray-800">Thông tin bổ sung</h4>
+            <h4 className="mb-3 text-sm font-semibold text-gray-800">
+              Thông tin bổ sung
+            </h4>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <ViewDetailField label="Email người dùng" value={initialData?.user_email} />
-              <ViewDetailField label="Mã vai trò" value={initialData?.role_code} />
-              <ViewDetailField label="Trạng thái hoạt động" value={initialData?.is_active} />
-              <ViewDetailField label="Trạng thái xóa" value={initialData?.is_deleted} />
-              <ViewDetailField label="Ngày tạo" value={initialData?.created_at} />
-              <ViewDetailField label="Ngày cập nhật" value={initialData?.updated_at} />
+              <ViewDetailField
+                label="Email người dùng"
+                value={initialData?.user_email}
+              />
+              <ViewDetailField
+                label="Mã vai trò"
+                value={initialData?.role_code}
+              />
+              <ViewDetailField
+                label="Trạng thái hoạt động"
+                value={initialData?.is_active}
+              />
+              <ViewDetailField
+                label="Trạng thái xóa"
+                value={initialData?.is_deleted}
+              />
+              <ViewDetailField
+                label="Ngày tạo"
+                value={initialData?.created_at}
+              />
+              <ViewDetailField
+                label="Ngày cập nhật"
+                value={initialData?.updated_at}
+              />
             </div>
           </div>
         )}
 
-        <button id="user-franchise-role-form-submit" type="submit" className="hidden" />
+        <button
+          id="user-franchise-role-form-submit"
+          type="submit"
+          className="hidden"
+        />
       </form>
     </CRUDModalTemplate>
   );

@@ -87,12 +87,13 @@ export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
 
   // ✅ STAFF: chỉ READ + đúng scope bạn yêu cầu
   STAFF: [
-    PERM.MENU_READ,
     PERM.PRODUCT_FRANCHISE_READ,
     PERM.CUSTOMER_READ,
     PERM.ORDER_READ,
     PERM.INVENTORY_READ,
     PERM.CART_READ,
     PERM.CART_WRITE,
+    PERM.SHIFT_READ,
+    PERM.SHIFT_WRITE,
   ],
 };

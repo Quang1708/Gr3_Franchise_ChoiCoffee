@@ -1,5 +1,7 @@
 import { create } from "zustand";
+import { ENV } from "@/config";
 import type { CustomerAuthProfile } from "@/pages/client/account/model/account.model";
+import axios from "axios";
 
 interface CustomerAuthState {
   customer: CustomerAuthProfile | null;
@@ -11,6 +13,7 @@ interface CustomerAuthState {
   clearCustomer: () => void;
   setInitialized: (initialized: boolean) => void;
   setLoggingOut: (isLoggingOut: boolean) => void;
+  refreshAccessToken: () => Promise<void>;
 }
 
 export const useCustomerAuthStore = create<CustomerAuthState>()((set) => ({
@@ -40,4 +43,11 @@ export const useCustomerAuthStore = create<CustomerAuthState>()((set) => ({
     set({
       isLoggingOut,
     }),
+
+  refreshAccessToken: async () => {
+    await axios.get(`${ENV.API_URL}/api/customer-auth/refresh-token`, {
+      withCredentials: true,
+      timeout: 300000,
+    });
+  },
 }));

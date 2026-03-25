@@ -52,7 +52,13 @@ const OrderPage = () => {
 
   const handleOrderAction = (order: OrderListRow) => {
     if (order.status === "draft") {
-      navigate(ROUTER_URL.CLIENT_ROUTER.CART);
+      navigate(ROUTER_URL.CLIENT_ROUTER.CHECKOUT, {
+        state: {
+          orderId: order.id,
+          orderCode: order.orderCode,
+          finalAmount: order.totalAmount,
+        },
+      });
       return;
     }
 
@@ -64,7 +70,12 @@ const OrderPage = () => {
       return;
     }
 
-    if (order.status === "completed" || order.status === "canceled") {
+    if (order.status === "canceled") {
+      navigate(ROUTER_URL.MENU);
+      return;
+    }
+
+    if (order.status === "completed") {
       navigate(ROUTER_URL.MENU);
     }
   };

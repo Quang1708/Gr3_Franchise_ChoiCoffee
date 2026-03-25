@@ -5,15 +5,29 @@ export const sumCountMap = (input?: Record<string, number>) => {
   return Object.values(input).reduce((sum, value) => sum + Number(value || 0), 0);
 };
 
-export const buildSummaryData = (dashboardInfo?: DashboardInfo | null) => {
+export const buildSummaryData = (
+  dashboardInfo?: DashboardInfo | null,
+  options: { useFranchiseCounts?: boolean } = {},
+) => {
   const totalOrders = sumCountMap(dashboardInfo?.countOrders);
   const totalPayments = sumCountMap(dashboardInfo?.countPayments);
+  const useFranchiseCounts = Boolean(options.useFranchiseCounts);
+
+  const users = useFranchiseCounts
+    ? dashboardInfo?.countUserFranchises ?? dashboardInfo?.countUsers ?? 0
+    : dashboardInfo?.countUsers ?? 0;
+  const customers = useFranchiseCounts
+    ? dashboardInfo?.countCustomerFranchises ?? dashboardInfo?.countCustomers ?? 0
+    : dashboardInfo?.countCustomers ?? 0;
+  const products = useFranchiseCounts
+    ? dashboardInfo?.countProductFranchises ?? dashboardInfo?.countProducts ?? 0
+    : dashboardInfo?.countProducts ?? 0;
 
   return {
-    users: dashboardInfo?.countUsers ?? 0,
+    users,
     userFranchises: dashboardInfo?.countUserFranchises ?? 0,
-    customers: dashboardInfo?.countCustomers ?? 0,
-    products: dashboardInfo?.countProducts ?? 0,
+    customers,
+    products,
     totalOrders,
     totalPayments,
   };

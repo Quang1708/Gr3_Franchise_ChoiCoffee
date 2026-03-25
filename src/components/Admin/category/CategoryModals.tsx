@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -48,6 +48,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
     defaultValues: {
@@ -59,6 +60,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
       is_active: defaultValues?.is_active ?? true,
     },
   });
+  const [hasParent, setHasParent] = useState(Boolean(defaultValues?.parent_id));
 
   // Reset form when defaultValues change (important for Edit mode)
   useEffect(() => {
@@ -74,8 +76,15 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
     }
   }, [defaultValues, reset]);
 
+  const handleParentToggle = (nextValue: boolean) => {
+    setHasParent(nextValue);
+    if (!nextValue) {
+      setValue("parent_id", "");
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       {/* Code */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -87,7 +96,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
           className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
             ${errors.code ? "border-red-500 bg-red-50" : "border-gray-300"}
           `}
-          placeholder="Mã danh mục"
+          placeholder="Nhập mã danh mục"
         />
         {errors.code && (
           <p className="text-red-500 text-xs mt-1">{errors.code.message}</p>
@@ -105,7 +114,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
           className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all
             ${errors.name ? "border-red-500 bg-red-50" : "border-gray-300"}
           `}
-          placeholder="Tên danh mục"
+          placeholder="Nhập tên danh mục"
         />
         {errors.name && (
           <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
@@ -115,48 +124,77 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
       {/* Description */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Mô tả
+          Mô tả danh mục
         </label>
         <textarea
           {...register("description")}
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none"
-          placeholder="Mô tả chi tiết về danh mục..."
+          placeholder="Nhập mô tả cho danh mục"
         />
       </div>
 
       {/* Parent */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Danh mục cha
+      <div className="rounded-lg border border-gray-200 bg-gray-50/40 p-3">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Phân cấp danh mục
         </label>
-        {parentOptions && parentOptions.length > 0 ? (
-          <select
-            {...register("parent_id")}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all bg-white"
-          >
-            <option value="">-- Không có --</option>
-            {parentOptions.map((option) => (
-              <option key={String(option.value)} value={String(option.value)}>
-                {option.name} ({option.code})
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            {...register("parent_id")}
-            type="text"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-            placeholder="VD: 64f1c2a9b5e3d0c2a1f9e0ab"
-          />
-        )}
-        <p className="text-xs text-gray-500 mt-1">
-          Bỏ trống nếu không có danh mục cha.
-        </p>
-        {errors.parent_id && (
-          <p className="text-red-500 text-xs mt-1">
-            {errors.parent_id.message}
-          </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 shadow-sm">
+            <input
+              type="radio"
+              name="category_level"
+              checked={!hasParent}
+              onChange={() => handleParentToggle(false)}
+              className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+            />
+            Danh mục gốc
+          </label>
+          <label className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 shadow-sm">
+            <input
+              type="radio"
+              name="category_level"
+              checked={hasParent}
+              onChange={() => handleParentToggle(true)}
+              className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+            />
+            Danh mục con
+          </label>
+        </div>
+        {hasParent && (
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Danh mục gốc
+            </label>
+            {parentOptions && parentOptions.length > 0 ? (
+              <select
+                {...register("parent_id")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all bg-white"
+              >
+                <option value="">-- Chọn danh mục gốc --</option>
+                {parentOptions.map((option) => (
+                  <option key={String(option.value)} value={String(option.value)}>
+                    {option.name} ({option.code})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                {...register("parent_id")}
+                type="text"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                placeholder="Nhập mã danh mục gốc"
+              />
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              Chọn danh mục gốc để tạo danh mục con.
+            </p>
+            {errors.parent_id && (
+              <p className="text-red-500 text-xs mt-1">
+                {errors.parent_id.message}
+              </p>
+            )}
+          </div>
         )}
       </div>
 
@@ -174,7 +212,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
             htmlFor="is_active"
             className="text-sm text-gray-700 select-none cursor-pointer"
           >
-            Đang hoạt động
+            Trạng thái hoạt động
           </label>
         </div>
       )}
@@ -233,6 +271,7 @@ export const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Thêm danh mục mới">
       <CategoryForm
+        key="create-category"
         onSubmit={handleSubmit}
         onCancel={onClose}
         submitLabel="Thêm mới"
@@ -279,6 +318,7 @@ export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Chỉnh sửa danh mục">
       <CategoryForm
+        key={String(category.id)}
         defaultValues={{
           code: category.code,
           name: category.name,
@@ -328,7 +368,7 @@ export const ViewCategoryModal: React.FC<ViewCategoryModalProps> = ({
           <span className="font-medium text-gray-900">{category.name}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-gray-500">Danh mục cha</span>
+          <span className="text-gray-500">Danh mục gốc</span>
           <span className="font-medium text-gray-900">{parentLabel}</span>
         </div>
         <div className="flex items-center justify-between">

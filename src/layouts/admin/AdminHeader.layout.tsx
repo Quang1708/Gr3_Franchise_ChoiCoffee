@@ -9,8 +9,7 @@ import { removeItemInSessionStorage } from "@/utils/sessionStorage.util";
 import { SESSION_STORAGE } from "@/consts/sessionstorage.const";
 
 import ROUTER_URL from "@/routes/router.const";
-import { LOCAL_STORAGE } from "@/consts/localstorage.const";
-import { getItemInLocalStorage } from "@/utils/localStorage.util";
+import { getItemInSessionStorage } from "@/utils/sessionStorage.util";
 
 const initials = (name?: string) => {
   const s = (name ?? "").trim();
@@ -33,7 +32,9 @@ const AdminHeader = () => {
   );
 
   const contextRequired = Boolean(
-    getItemInLocalStorage<boolean>(LOCAL_STORAGE.ADMIN_CONTEXT_REQUIRED),
+    getItemInSessionStorage<boolean>(
+      SESSION_STORAGE.ADMIN_CONTEXT_REQUIRED,
+    ),
   );
 
   /**

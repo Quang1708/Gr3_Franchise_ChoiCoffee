@@ -41,7 +41,7 @@ const FranchisePage = () => {
 
   // pagination state giống CustomerPage
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
 
   // fetch data
   const fetchFranchises = async () => {

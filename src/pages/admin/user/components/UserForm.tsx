@@ -19,8 +19,6 @@ type UserViewData = User & {
   roleDetailsText?: string;
 };
 
-const ROLE_OPTIONS = ["ADMIN", "MANAGER", "STAFF", "CUSTOMER"];
-
 export const UserForm = ({
   mode,
   initialData,
@@ -146,7 +144,7 @@ export const UserForm = ({
             isView={isView}
             defaultValue={initialData?.email}
           />
-          {mode !== "create" && (
+          {isView && (
             <div>
               <label
                 htmlFor="roleCode"
@@ -154,32 +152,11 @@ export const UserForm = ({
               >
                 Vai trò
               </label>
-              {isView ? (
-                <div className="py-2 min-h-[38px] border-b border-gray-100 md:border-none">
-                  <span className="text-sm text-gray-900">
-                    {initialData?.roleDetailsText || initialData?.roleCode || "—"}
-                  </span>
-                </div>
-              ) : (
-                <select
-                  id="roleCode"
-                  {...register("roleCode")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all cursor-pointer"
-                  defaultValue={initialData?.roleCode || ""}
-                >
-                  <option value="">Chọn vai trò</option>
-                  {ROLE_OPTIONS.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {errors.roleCode && (
-                <span className="text-xs text-red-500 mt-1 block">
-                  {errors.roleCode.message}
+              <div className="py-2 min-h-[38px] border-b border-gray-100 md:border-none">
+                <span className="text-sm text-gray-900">
+                  {initialData?.roleDetailsText || initialData?.roleCode || "—"}
                 </span>
-              )}
+              </div>
             </div>
           )}
           {mode === "create" && (

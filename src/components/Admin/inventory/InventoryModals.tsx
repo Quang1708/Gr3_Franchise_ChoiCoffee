@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Modal } from "@/components/UI/Modal";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
+import ClientLoading from "@/components/Client/Client.Loading";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -14,7 +15,7 @@ SCHEMA
 ================================ */
 
 const schema = z.object({
-  id: z.string().min(1, "Sản phẩm bắt buộc"),
+  product_franchise_id: z.string().min(1, "Sản phẩm bắt buộc"),
   franchise_id: z.string().min(1, "Chi nhánh bắt buộc"),
   quantity: z.number().min(0, "Số lượng phải >= 0"),
   alert_threshold: z.number().min(0, "Ngưỡng cảnh báo phải >= 0"),
@@ -82,20 +83,42 @@ export const CreateInventoryModal: React.FC<Props> = ({
     handleSubmit,
     watch,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    mode: "onChange", // 🔥 realtime validate
+    mode: "onChange",
     defaultValues: {
       franchise_id: "",
-      product_id: "",
+      product_franchise_id: "",
       quantity: 0,
       alert_threshold: 0,
     },
   });
 
+  const selectedProduct = useWatch({
+    control,
+    name: "product_franchise_id",
+  });
+
+  const selectedFranchise = useWatch({
+    control,
+    name: "franchise_id",
+  });
+  const [loading, setLoading] = useState(false);
+
+  const isDisabled =
+    isSubmitting ||
+    !selectedProduct ||
+    selectedProduct === "" ||
+    (isAdminGlobal && (!selectedFranchise || selectedFranchise === ""));
+  const watchedFranchiseId = useWatch({
+    control,
+    name: "franchise_id",
+  });
+
   const franchiseId = isAdminGlobal
-    ? watch("franchise_id")
+    ? watchedFranchiseId
     : String(selectedFranchiseId);
 
   const [franchises, setFranchises] = useState<FranchiseSelect[]>([]);
@@ -105,32 +128,50 @@ export const CreateInventoryModal: React.FC<Props> = ({
     if (!isOpen || !isAdminGlobal) return;
 
     const fetchFranchises = async () => {
-      const res = await axiosAdminClient.get("/api/franchises/select");
-      if (res.data?.success) setFranchises(res.data.data);
+      setLoading(true);
+      try {
+        const res = await axiosAdminClient.get("/api/franchises/select");
+        if (res.data?.success) setFranchises(res.data.data);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchFranchises();
   }, [isOpen, isAdminGlobal]);
 
   useEffect(() => {
+    if (!franchiseId) {
+      reset((prev) => ({
+        ...prev,
+        product_franchise_id: "",
+      }));
+    }
+  }, [franchiseId, reset]);
+  useEffect(() => {
     if (!isOpen || !franchiseId) return;
 
     const fetchProducts = async () => {
-      const res = await axiosAdminClient.post(
-        "/api/product-franchises/search",
-        {
-          searchCondition: {
-            franchise_id: franchiseId,
-            is_deleted: false,
+      setLoading(true);
+      try {
+        const res = await axiosAdminClient.post(
+          "/api/product-franchises/search",
+          {
+            searchCondition: {
+              franchise_id: franchiseId,
+              is_deleted: false,
+            },
+            pageInfo: {
+              pageNum: 1,
+              pageSize: 50,
+            },
           },
-          pageInfo: {
-            pageNum: 1,
-            pageSize: 50,
-          },
-        },
-      );
+        );
 
-      if (res.data?.success) setProducts(res.data.data);
+        if (res.data?.success) setProducts(res.data.data);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchProducts();
@@ -141,20 +182,17 @@ export const CreateInventoryModal: React.FC<Props> = ({
 
     reset({
       franchise_id: isAdminGlobal ? "" : String(selectedFranchiseId),
-      product_id: "",
+      product_franchise_id: "",
       quantity: 0,
       alert_threshold: 0,
     });
 
     setProducts([]);
-  }, [isOpen]);
+  }, [isOpen, selectedFranchiseId, isAdminGlobal, reset]);
 
   const submitHandler = async (data: FormData) => {
-    const selected = products.find((p) => p.id === data.id);
-    if (!selected) return;
-
     await onSubmit({
-      product_franchise_id: selected.id,
+      product_franchise_id: data.product_franchise_id,
       quantity: data.quantity,
       alert_threshold: data.alert_threshold,
     });
@@ -164,95 +202,105 @@ export const CreateInventoryModal: React.FC<Props> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Tạo tồn kho">
-      <form onSubmit={handleSubmit(submitHandler)} className="space-y-4">
-        {isAdminGlobal && (
+    <>
+      {loading && <ClientLoading />}
+      <Modal isOpen={isOpen} onClose={onClose} title="Tạo tồn kho">
+        <form onSubmit={handleSubmit(submitHandler)} className="space-y-4">
+          {isAdminGlobal && (
+            <div>
+              <label>Chi nhánh</label>
+              <select
+                {...register("franchise_id")}
+                className={inputClass(errors.franchise_id)}
+              >
+                <option value="">Chọn chi nhánh</option>
+                {franchises.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+              {errors.franchise_id && (
+                <p className="text-red-500 text-sm">
+                  {errors.franchise_id.message}
+                </p>
+              )}
+            </div>
+          )}
+
           <div>
-            <label>Chi nhánh</label>
+            <label>Sản phẩm</label>
             <select
-              {...register("franchise_id")}
-              className={inputClass(errors.franchise_id)}
+              {...register("product_franchise_id")}
+              disabled={!franchiseId}
+              className={`
+    ${inputClass(errors.product_franchise_id)}
+    ${!franchiseId ? "bg-gray-100 cursor-not-allowed opacity-60" : ""}
+  `}
             >
-              <option value="">Chọn chi nhánh</option>
-              {franchises.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.name}
+              <option value="">Chọn sản phẩm</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.product_name} ({p.size})
                 </option>
               ))}
             </select>
-            {errors.franchise_id && (
+
+            {errors.product_franchise_id && (
               <p className="text-red-500 text-sm">
-                {errors.franchise_id.message}
+                {errors.product_franchise_id.message}
               </p>
             )}
           </div>
-        )}
 
-        <div>
-          <label>Sản phẩm</label>
-          <select
-            {...register("id")}
-            className={inputClass(errors.id)}
-          >
-            <option value="">Chọn sản phẩm</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.product_name} ({p.size})
-              </option>
-            ))}
-          </select>
-          {errors.product_id && (
-            <p className="text-red-500 text-sm">{errors.product_id.message}</p>
-          )}
-        </div>
+          <div>
+            <label>Số lượng</label>
+            <input
+              type="number"
+              {...register("quantity", { valueAsNumber: true })}
+              className={inputClass(errors.quantity)}
+            />
+            {errors.quantity && (
+              <p className="text-red-500 text-sm">{errors.quantity.message}</p>
+            )}
+          </div>
 
-        <div>
-          <label>Số lượng</label>
-          <input
-            type="number"
-            {...register("quantity", { valueAsNumber: true })}
-            className={inputClass(errors.quantity)}
-          />
-          {errors.quantity && (
-            <p className="text-red-500 text-sm">{errors.quantity.message}</p>
-          )}
-        </div>
+          <div>
+            <label>Ngưỡng cảnh báo</label>
+            <input
+              type="number"
+              {...register("alert_threshold", { valueAsNumber: true })}
+              className={inputClass(errors.alert_threshold)}
+            />
+            {errors.alert_threshold && (
+              <p className="text-red-500 text-sm">
+                {errors.alert_threshold.message}
+              </p>
+            )}
+          </div>
 
-        <div>
-          <label>Ngưỡng cảnh báo</label>
-          <input
-            type="number"
-            {...register("alert_threshold", { valueAsNumber: true })}
-            className={inputClass(errors.alert_threshold)}
-          />
-          {errors.alert_threshold && (
-            <p className="text-red-500 text-sm">
-              {errors.alert_threshold.message}
-            </p>
-          )}
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <button type="button" onClick={onClose}>
-            Hủy
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`
-    px-4 py-2 rounded-lg font-medium text-sm transition-all
-    ${
-      isSubmitting
-        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-        : "bg-primary text-white hover:bg-primary/90 active:scale-95 shadow-sm hover:shadow-md cursor-pointer"
-    }
-  `}
-          >
-            {isSubmitting ? "Đang tạo..." : "Tạo"}
-          </button>
-        </div>
-      </form>
-    </Modal>
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={onClose}>
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={isDisabled}
+              className={`
+  px-4 py-2 rounded-lg font-medium text-sm transition-all
+  ${
+    isDisabled
+      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+      : "bg-primary text-white hover:bg-primary/90 active:scale-95 shadow-sm hover:shadow-md cursor-pointer"
+  }
+`}
+            >
+              {isSubmitting ? "Đang tạo..." : "Tạo"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+    </>
   );
 };
 
@@ -281,7 +329,7 @@ export const AdjustInventoryModal = ({
     },
   });
 
-  // ✅ luôn gọi hook trước
+  // luôn gọi hook trước
   const newQuantity = watch("quantity", inventory?.quantity ?? 0);
   const newAlert = watch("alert_threshold", inventory?.alert_threshold ?? 0);
 
@@ -413,7 +461,7 @@ export const DeleteInventoryModal: React.FC<DeleteInventoryModalProps> = ({
   if (!inventory) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Xóa tồn kho" >
+    <Modal isOpen={isOpen} onClose={onClose} title="Xóa tồn kho">
       <div className="space-y-4">
         <div className="flex gap-3">
           <AlertTriangle className="text-red-600" />
@@ -462,7 +510,7 @@ export const InventoryLogModal: React.FC<InventoryLogModalProps> = ({
 
     fetchLogs(inventoryId);
   }, [inventoryId, fetchLogs]);
-
+  if (logsLoading) return <ClientLoading />;
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Inventory Logs" size="lg">
       <div className="max-h-[500px] overflow-auto">

@@ -13,7 +13,6 @@ import {
   Boxes,
   Gift,
   User,
-  CalendarCheck,
   BadgePercent,
   ChevronLeft,
   ChevronRight,
@@ -49,15 +48,18 @@ const menuSections: MenuSection[] = [
       },
     ],
   },
-
   {
     title: "Catalog",
     items: [
       {
         icon: <Store size={18} />,
         label: "Franchise",
+        path: "franchise",
+      },
+      {
+        icon: <Store size={18} />,
+        label: "Franchise Resources",
         children: [
-          { label: "Franchise", path: "franchise", icon: <Store size={16} /> },
           {
             label: "Category Franchise",
             path: "category-franchise",
@@ -75,13 +77,11 @@ const menuSections: MenuSection[] = [
           },
         ],
       },
-
       { icon: <ShoppingBag size={18} />, label: "Products", path: "product" },
       { icon: <Package size={18} />, label: "Categories", path: "category" },
       { icon: <Menu size={18} />, label: "Menu", path: "menu" },
     ],
   },
-
   {
     title: "Operations",
     items: [
@@ -90,15 +90,9 @@ const menuSections: MenuSection[] = [
       { icon: <Boxes size={18} />, label: "Inventory", path: "inventory" },
       { icon: <ShoppingCart size={18} />, label: "Pos", path: "pos" },
       { icon: <ShoppingCart size={18} />, label: "Cart", path: "cart" },
-      {
-        icon: <CalendarCheck size={18} />,
-        label: "Shift Assignment",
-        path: "shift-assignment",
-      },
       { icon: <User size={18} />, label: "Shift", path: "shift" },
     ],
   },
-
   {
     title: "Finance & Marketing",
     items: [
@@ -112,7 +106,6 @@ const menuSections: MenuSection[] = [
       { icon: <Gift size={18} />, label: "Loyalty", path: "loyalty" },
     ],
   },
-
   {
     title: "System",
     items: [{ icon: <User size={18} />, label: "Users", path: "user" }],
@@ -120,7 +113,6 @@ const menuSections: MenuSection[] = [
 ];
 
 /* ================= COMPONENT ================= */
-
 const AdminSidebar = ({ collapsed = false, onToggle }: any) => {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
@@ -141,15 +133,25 @@ const AdminSidebar = ({ collapsed = false, onToggle }: any) => {
       ...section,
       items: section.items
         .map((item) => {
-          if (item.children) {
-            const children = item.children.filter((child) =>
-              isMenuVisible(user, franchiseId, child.path!),
+          if (item.children && item.children.length > 0) {
+            // Filter child menu theo isMenuVisible + franchiseId
+            const children = item.children.filter(
+              (child) =>
+                isMenuVisible(user, franchiseId, child.path!) &&
+                !(franchiseId && child.path === "franchise"), // nếu có franchiseId, ẩn child franchise
             );
-            if (!children.length) return null;
+            if (children.length === 0) return null; // parent không còn child visible → ẩn
             return { ...item, children };
           }
 
-          return isMenuVisible(user, franchiseId, item.path!) ? item : null;
+          // Kiểm tra item bình thường
+          if (item.path) {
+            if (franchiseId && item.path === "franchise") return null;
+
+            if (!isMenuVisible(user, franchiseId, item.path)) return null;
+          }
+
+          return item;
         })
         .filter(Boolean),
     }))
@@ -157,59 +159,72 @@ const AdminSidebar = ({ collapsed = false, onToggle }: any) => {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-200 flex flex-col ${
-        collapsed ? "w-16" : "w-64"
-      }`}
+      className={`fixed left-0 top-0 h-screen bg-white border-r border-gray-200 flex flex-col transition-all duration-300
+      ${collapsed ? "w-16" : "w-64"}`}
     >
       {/* HEADER */}
-      <div className="h-16 flex items-center justify-between px-3 border-b">
-        {!collapsed && <div className="font-bold">ChoiCoffee</div>}
+      <div className="h-16 flex items-center justify-between px-3 border-b bg-white">
+        {!collapsed && (
+          <div className="font-semibold text-lg tracking-tight flex items-center gap-2">
+            ☕ <span>ChoiCoffee</span>
+          </div>
+        )}
 
-        <button onClick={onToggle}>
-          {collapsed ? <ChevronRight /> : <ChevronLeft />}
+        <button
+          onClick={onToggle}
+          className="p-1.5 rounded-md hover:bg-gray-100 transition cursor-pointer"
+        >
+          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
 
       {/* NAV */}
-      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-4 scrollbar-hide">
+      <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-5 scrollbar-hide">
         {visibleSections.map((section) => (
           <div key={section.title}>
             {!collapsed && (
-              <div className="text-xs text-gray-400 px-3 mb-2 uppercase">
+              <div className="text-[11px] font-semibold text-gray-400 px-3 mb-2 uppercase tracking-wider">
                 {section.title}
               </div>
             )}
 
             <div className="space-y-1">
               {section.items.map((item: any) => {
+                if (!item) return null;
+
                 /* ===== SUB MENU ===== */
-                if (item.children) {
+                if (item.children && item.children.length > 0) {
                   const isOpen = openMenus.includes(item.label);
 
                   return (
                     <div key={item.label}>
                       <button
                         onClick={() => toggleMenu(item.label)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-100"
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition
+                        ${
+                          isOpen
+                            ? "bg-gray-100 text-gray-900"
+                            : "text-gray-600 hover:bg-gray-100"
+                        }`}
                       >
                         <div className="flex items-center gap-3">
-                          {item.icon}
-                          {!collapsed && item.label}
+                          <span className="text-gray-500">{item.icon}</span>
+                          {!collapsed && <span>{item.label}</span>}
                         </div>
 
                         {!collapsed && (
                           <ChevronDown
-                            className={`transition ${
+                            size={16}
+                            className={`transition-transform duration-200 ${
                               isOpen ? "rotate-180" : ""
                             }`}
-                            size={16}
                           />
                         )}
                       </button>
 
                       {/* CHILDREN */}
                       {isOpen && !collapsed && (
-                        <div className="ml-6 mt-1 space-y-1">
+                        <div className="ml-6 mt-1 space-y-1 border-l border-gray-100 pl-3">
                           {item.children.map((child: any) => {
                             const isActive =
                               location.pathname === `/admin/${child.path}`;
@@ -218,14 +233,16 @@ const AdminSidebar = ({ collapsed = false, onToggle }: any) => {
                               <NavLink
                                 key={child.path}
                                 to={`/admin/${child.path}`}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm
-                                  ${
-                                    isActive
-                                      ? "bg-primary text-white"
-                                      : "hover:bg-gray-100"
-                                  }`}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition
+                                ${
+                                  isActive
+                                    ? "bg-primary text-white shadow-sm"
+                                    : "text-gray-600 hover:bg-gray-100"
+                                }`}
                               >
-                                {child.icon}
+                                <span className="text-gray-400">
+                                  {child.icon}
+                                </span>
                                 {child.label}
                               </NavLink>
                             );
@@ -237,21 +254,34 @@ const AdminSidebar = ({ collapsed = false, onToggle }: any) => {
                 }
 
                 /* ===== NORMAL ITEM ===== */
-                const isActive = location.pathname === `/admin/${item.path}`;
+                if (item.path) {
+                  const isActive = location.pathname === `/admin/${item.path}`;
 
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={`/admin/${item.path}`}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={`/admin/${item.path}`}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition
                       ${
-                        isActive ? "bg-primary text-white" : "hover:bg-gray-100"
+                        isActive
+                          ? "bg-primary text-white shadow-sm"
+                          : "text-gray-600 hover:bg-gray-100"
                       }`}
-                  >
-                    {item.icon}
-                    {!collapsed && item.label}
-                  </NavLink>
-                );
+                    >
+                      <span
+                        className={`${
+                          isActive ? "text-white" : "text-gray-500"
+                        }`}
+                      >
+                        {item.icon}
+                      </span>
+
+                      {!collapsed && <span>{item.label}</span>}
+                    </NavLink>
+                  );
+                }
+
+                return null;
               })}
             </div>
           </div>

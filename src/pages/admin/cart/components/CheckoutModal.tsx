@@ -2,18 +2,19 @@ import { useState, useEffect } from "react";
 import { X, CreditCard, Search, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { axiosAdminClient } from "@/api";
-import { checkoutCartService } from "@/components/cart/services/checkoutCart.service";
 import { FormInput } from "@/components/Admin/form/FormInput";
 import { getCustomerDetailUsecase } from "@/pages/admin/customer/usecases/getCustomerDetail.usecase";
+import { createCart } from "@/components/cart/usecase/createCart.usecase";
+import type { CreateCartRequest, Items } from "@/components/cart/models/createCart.model";
 
 interface CheckoutModalProps {
     isOpen: boolean;
     onClose: () => void;
     cart: any[];
-    cartId: string;
     total: number;
     onConfirm: (customerInfo: any) => void;
     onSuccess?: () => void;
+    franchise: any; 
 }
 
 interface CheckoutFormData {
@@ -32,7 +33,7 @@ interface CustomerData {
     image: string;
 }
 
-const CheckoutModal = ({ isOpen, onClose, cart, cartId, total, onConfirm, onSuccess }: CheckoutModalProps) => {
+const CheckoutModal = ({ isOpen, onClose, cart, total, onConfirm, onSuccess, franchise }: CheckoutModalProps) => {
     const {
         register,
         handleSubmit,
@@ -152,14 +153,35 @@ const CheckoutModal = ({ isOpen, onClose, cart, cartId, total, onConfirm, onSucc
         }
 
         setIsSubmitting(true);
-        try {
-            const checkoutData = {
-                address: data.address,
-                phone: data.phone,
-                message: data.message
-            };
 
-            await checkoutCartService(cartId, checkoutData);
+        const itemsList: Items[] = cart.map(item => {
+            const options: { product_franchise_id: string; quantity: number }[] = [];
+            
+            if (item.toppings && item.toppings.length > 0) {
+                item.toppings.forEach((t: any) => {
+                    options.push({
+                        product_franchise_id: t.id  , 
+                        quantity: t.quantity || 1
+                    });
+                });
+            }
+            return {
+                product_franchise_id: item.size_id,
+                quantity: item.quantity,
+                note: item.note || "",
+                options: options
+            };
+        });
+        try {
+            const checkoutData:CreateCartRequest = {
+                customer_id: selectedCustomer?.value || "",
+                franchise_id: franchise?.id ,
+                items: itemsList
+            };
+            console.log("c",checkoutData);
+            await createCart(
+                checkoutData
+            );
 
             if (onConfirm) {
                 await onConfirm({
@@ -174,7 +196,7 @@ const CheckoutModal = ({ isOpen, onClose, cart, cartId, total, onConfirm, onSucc
             }
 
             onClose();
-            // Reset form
+            
             setValue("name", "");
             setValue("phone", "");
             setValue("address", "");
@@ -190,205 +212,232 @@ const CheckoutModal = ({ isOpen, onClose, cart, cartId, total, onConfirm, onSucc
             setIsSubmitting(false);
         }
     };
-
+    console.log("franchise", franchise);
+    console.log(cart);
     return (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                    <h2 className="text-xl font-bold text-gray-800">Xác nhận đơn hàng</h2>
-                    <button
-                        onClick={onClose}
-                        className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                        <X className="w-5 h-5 text-gray-500" />
-                    </button>
-                </div>
+      <div className="fixed inset-0  z-50 bg-black/50 flex items-center justify-center p-4">
+        <div className="bg-white h-[70vh] rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-5 border-b border-gray-100">
+            <h2 className="text-xl font-bold text-gray-800">
+              Xác nhận đơn hàng
+            </h2>
+            <button
+              title="Đóng"
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
 
-                <div className="flex-1 overflow-hidden flex">
-                    {/* LEFT SIDE - Customer Info */}
-                    <div className="w-1/2 border-r border-gray-100 overflow-y-auto p-5">
-                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                            {/* Tìm kiếm khách hàng */}
-                            <div className="relative">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        value={searchPhone}
-                                        onChange={(e) => {
-                                            setSearchPhone(e.target.value);
-                                            setShowCustomerList(true);
-                                            if (e.target.value === "") {
-                                                handleClearCustomer();
-                                            }
-                                        }}
-                                        onFocus={() => setShowCustomerList(true)}
-                                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                        placeholder="Tìm khách hàng theo số điện thoại, tên hoặc email"
-                                    />
-                                    {searching && (
-                                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
-                                    )}
-                                    {selectedCustomer && !searching && searchPhone === "" && (
-                                        <button
-                                            type="button"
-                                            onClick={handleClearCustomer}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                    )}
-                                </div>
+          <div className="flex-1 overflow-hidden flex">
+            {/* LEFT SIDE - Customer Info */}
+            <div className="w-1/2 border-r border-gray-100 overflow-y-auto p-5">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                {/* Tìm kiếm khách hàng */}
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={searchPhone}
+                      onChange={(e) => {
+                        setSearchPhone(e.target.value);
+                        setShowCustomerList(true);
+                        if (e.target.value === "") {
+                          handleClearCustomer();
+                        }
+                      }}
+                      onFocus={() => setShowCustomerList(true)}
+                      className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      placeholder="Tìm khách hàng theo số điện thoại, tên hoặc email"
+                    />
+                    {searching && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+                    )}
+                    {selectedCustomer && !searching && searchPhone === "" && (
+                      <button
+                        title="Xóa khách hàng đã chọn"
+                        type="button"
+                        onClick={handleClearCustomer}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
 
-                                {/* Danh sách khách hàng tìm thấy */}
-                                {showCustomerList && searchPhone && customers.length > 0 && (
-                                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                                        {customers.map((customer) => (
-                                            <button
-                                                key={customer.value}
-                                                type="button"
-                                                onClick={() => handleSelectCustomer(customer)}
-                                                className="w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
-                                            >
-                                                <p className="text-sm font-medium text-gray-800">
-                                                    {customer.name}
-                                                </p>
-                                                <p className="text-xs text-gray-500">
-                                                    {customer.phone} {customer.email && `• ${customer.email}`}
-                                                </p>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Loading khi lấy chi tiết khách hàng */}
-                                {loadingCustomerDetail && (
-                                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-                                        <div className="flex items-center gap-2">
-                                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                                            <span className="text-sm text-gray-500">Đang tải thông tin...</span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Form thông tin khách hàng */}
-                            <FormInput
-                                label="Số điện thoại"
-                                type="tel"
-                                register={register("phone", {
-                                    required: "Vui lòng nhập số điện thoại",
-                                    pattern: {
-                                        value: /^(0[3|5|7|8|9])+([0-9]{8})$/,
-                                        message: "Số điện thoại không hợp lệ"
-                                    }
-                                })}
-                                error={errors.phone}
-                                placeholder="Nhập số điện thoại"
-                            />
-
-                            <FormInput
-                                label="Địa chỉ giao hàng"
-                                type="text"
-                                register={register("address", { required: "Vui lòng nhập địa chỉ" })}
-                                error={errors.address}
-                                placeholder="Nhập địa chỉ giao hàng"
-                            />
-
-                            <FormInput
-                                label="Họ tên"
-                                type="text"
-                                register={register("name")}
-                                error={errors.name}
-                                placeholder="Nhập họ tên (không bắt buộc)"
-                            />
-
-                            <FormInput
-                                label="Ghi chú"
-                                type="text"
-                                register={register("message")}
-                                error={errors.message}
-                                placeholder="Ghi chú thêm..."
-                            />
-                        </form>
-                    </div>
-
-                    {/* RIGHT SIDE - Order Details */}
-                    <div className="w-1/2 overflow-y-auto p-5 bg-gray-50">
-                        <h3 className="text-base font-semibold text-gray-800 mb-4">Chi tiết đơn hàng</h3>
-                        <div className="bg-white rounded-xl p-4 space-y-3">
-                            {cart.map((item, idx) => (
-                                <div key={idx} className="flex justify-between text-sm border-b border-gray-100 pb-3">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="font-medium text-gray-800">{item.name}</span>
-                                            {item.size && (
-                                                <span className="text-xs text-gray-500">({item.size})</span>
-                                            )}
-                                            <span className="text-xs text-gray-500">x{item.quantity}</span>
-                                        </div>
-                                        {item.toppings && item.toppings.length > 0 && (
-                                            <div className="text-xs text-gray-500 mt-1">
-                                                {item.toppings.map((t: any) => `${t.name} x${t.quantity}`).join(", ")}
-                                            </div>
-                                        )}
-                                        {item.note && (
-                                            <div className="text-xs text-gray-400 mt-1 italic">
-                                                {item.note}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <span className="font-medium text-primary">
-                                        {item.total_price?.toLocaleString()}đ
-                                    </span>
-                                </div>
-                            ))}
-
-                            <div className="pt-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="font-semibold text-gray-800">Tổng cộng</span>
-                                    <span className="text-xl font-bold text-primary">
-                                        {total.toLocaleString()}đ
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="p-5 border-t border-gray-100 bg-white">
-                    <div className="flex gap-3">
+                  {/* Danh sách khách hàng tìm thấy */}
+                  {showCustomerList && searchPhone && customers.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {customers.map((customer) => (
                         <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                          key={customer.value}
+                          type="button"
+                          onClick={() => handleSelectCustomer(customer)}
+                          className="w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
                         >
-                            Hủy
+                          <p className="text-sm font-medium text-gray-800">
+                            {customer.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {customer.phone}{" "}
+                            {customer.email && `• ${customer.email}`}
+                          </p>
                         </button>
-                        <button
-                            type="submit"
-                            onClick={handleSubmit(onSubmit)}
-                            disabled={isSubmitting || !watchedPhone || !watchedAddress}
-                            className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Đang xử lý...
-                                </>
-                            ) : (
-                                <>
-                                    <CreditCard className="w-4 h-4" />
-                                    Xác nhận đơn hàng
-                                </>
-                            )}
-                        </button>
+                      ))}
                     </div>
+                  )}
+
+                  {/* Loading khi lấy chi tiết khách hàng */}
+                  {loadingCustomerDetail && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                        <span className="text-sm text-gray-500">
+                          Đang tải thông tin...
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Form thông tin khách hàng */}
+                <FormInput
+                  isDisabled = {!!selectedCustomer}
+                  label="Số điện thoại"
+                  type="tel"
+                  register={register("phone", {
+                    required: "Vui lòng nhập số điện thoại",
+                    pattern: {
+                      value: /^(0[3|5|7|8|9])+([0-9]{8})$/,
+                      message: "Số điện thoại không hợp lệ",
+                    },
+                  })}
+                  error={errors.phone}
+                  placeholder="Nhập số điện thoại"
+                />
+
+                <FormInput
+                  isDisabled = {!!selectedCustomer}
+                  label="Địa chỉ khách hàng"
+                  type="text"
+                  register={register("address", {
+                    required: "Vui lòng nhập địa chỉ",
+                  })}
+                  error={errors.address}
+                  placeholder="Nhập địa chỉ giao hàng"
+                />
+
+                <FormInput
+                  isDisabled = {!!selectedCustomer}
+                  label="Họ tên"
+                  type="text"
+                  register={register("name")}
+                  error={errors.name}
+                  placeholder="Nhập họ tên (không bắt buộc)"
+                />
+
+                {/* <FormInput
+                  label="Ghi chú"
+                  type="text"
+                  register={register("message")}
+                  error={errors.message}
+                  placeholder="Ghi chú thêm..."
+                /> */}
+              </form>
             </div>
+            {/* RIGHT SIDE - Order Details */}
+            <div className="w-1/2 p-5 bg-gray-50 h-full flex flex-col">
+              <h3 className="text-base font-semibold text-gray-800 mb-4 shrink-0">
+                Chi tiết đơn hàng
+              </h3>
+
+              <div className="bg-white rounded-t-xl p-4 space-y-3 flex-1 overflow-y-auto custom-scroll">
+                {cart.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex justify-between text-sm border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-gray-800">
+                          {item.name}
+                        </span>
+                        {item.size && (
+                          <span className="text-xs text-gray-500">
+                            ({item.size})
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-500">
+                          x{item.quantity}
+                        </span>
+                      </div>
+                      {item.toppings && item.toppings.length > 0 && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          {item.toppings
+                            .map((t: any) => `${t.name} x${t.quantity}`)
+                            .join(", ")}
+                        </div>
+                      )}
+                      {item.note && (
+                        <div className="text-xs text-gray-400 mt-1 italic">
+                          {item.note}
+                        </div>
+                      )}
+                    </div>
+                    <span className="font-medium text-primary">
+                      {item.total_price?.toLocaleString()}đ
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tổng cộng */}
+              <div className="bg-white rounded-b-xl p-4 pt-3 border-t border-gray-100 shrink-0 mt-0.5">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-800">Tổng cộng</span>
+                  <span className="text-xl font-bold text-primary">
+                    {total.toLocaleString()}đ
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-5 border-t border-gray-100 bg-white">
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                onClick={handleSubmit(onSubmit)}
+                disabled={isSubmitting || !watchedPhone || !watchedAddress}
+                className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4" />
+                    Xác nhận đơn hàng
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
+      </div>
     );
 };
 

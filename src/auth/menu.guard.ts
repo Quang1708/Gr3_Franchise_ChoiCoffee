@@ -66,11 +66,20 @@ export function isMenuVisible(
     return can(user, PERM.SHIFT_ASSIGNMENT_READ, fid);
 
   if (path === "loyalty") return can(user, PERM.LOYALTY_READ, fid);
+  if (path === "shift") {
+    return (
+      can(user, PERM.SHIFT_READ, fid) ||
+      can(user, PERM.SHIFT_ASSIGNMENT_READ, fid)
+    );
+  }
+  return true;
 
   if (path === "user") return can(user, PERM.USER_READ, fid);
 
-  if (path ==="cart") return can(user, PERM.CART_READ, fid);
+  if (path === "cart") return can(user, PERM.CART_READ, fid);
 
   if (path === "promotion") return can(user, PERM.PROMOTION_READ, fid);
+
+  if (path === "pos") return can(user, PERM.POS_READ, fid);
   return false;
 }

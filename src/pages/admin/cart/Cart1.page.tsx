@@ -12,7 +12,7 @@ import CartForm from "@/components/cart/CartForm";
 import { createCart } from "@/components/cart/usecase/createCart.usecase";
 import { toast } from "react-toastify";
 
-const CartAdminPage = () => {
+const CartPage = () => {
     const [carts, setCarts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [customers, setCustomers] = useState<Customer[]>([]);
@@ -222,4 +222,4 @@ const CartAdminPage = () => {
     );
 };
 
-export default CartAdminPage;
+export default CartPage;

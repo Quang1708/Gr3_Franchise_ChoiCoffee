@@ -6,6 +6,8 @@ import RequirePermission from "../guard/RequirePermission.route";
 import ROUTER_URL from "../router.const";
 import { PERM } from "@/auth/rbac.permissions";
 import ShiftPage from "@/pages/admin/shift/Shift.page";
+import CartAdminPage from "../../pages/admin/cart";
+import CartPage from "@/pages/admin/cart/Cart1.page";
 
 /* ==================== PAGES ==================== */
 const DashboardPage = React.lazy(() => import("../../pages/admin/dashboard"));
@@ -46,7 +48,8 @@ const AdminSelectContextPage = React.lazy(
   () => import("../../pages/admin/auth/context/AdminSelectContext.page"),
 );
 
-const CartPage = React.lazy(() => import("../../pages/admin/cart"));
+// const CartPage = React.lazy(() => import("../../pages/admin/cart"));
+
 
 /* ==================== ROUTES ==================== */
 
@@ -153,6 +156,9 @@ const AdminRoutes = (
             path="user-franchise-role"
             element={<UserFranchiseRolePage />}
           />
+        </Route>
+        <Route element={<RequirePermission perm={PERM.POS_READ} />}>
+          <Route path="pos" element={<CartAdminPage />} />
         </Route>
         <Route element={<RequirePermission perm={PERM.CART_READ} />}>
           <Route path="cart" element={<CartPage />} />

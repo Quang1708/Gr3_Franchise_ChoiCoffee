@@ -12,6 +12,7 @@ import {
   Trash2,
   Eye,
   RotateCw,
+  CircleCheckBig,
 } from "lucide-react";
 import CustomSelect from "../filters/CustomSelect";
 
@@ -53,10 +54,14 @@ export interface CRUDPageTemplateProps<T> {
   onAdd?: () => void;
   onView?: (item: T) => void;
   onEdit?: (item: T) => void;
+  canEdit?: (item: T) => boolean;
   onDelete?: (item: T) => void;
   onRestore?: (item: T) => void;
   statusField?: keyof T;
   onStatusChange?: (item: T, newStatus: boolean) => void;
+
+  onChangeOrderStatus?: (item: T) => void;
+  canChangeOrderStatus?: (item: T) => boolean;
 
   searchKeys?: (keyof T)[];
   searchRight?: React.ReactNode;
@@ -118,12 +123,16 @@ export function CRUDPageTemplate<
   onAdd,
   onView,
   onEdit,
+  canEdit,
   onDelete,
   onRestore,
 
   onRowClick,
   selectedRowId,
   headerRight,
+  onChangeOrderStatus,
+  canChangeOrderStatus,
+
   onStatusChange,
   statusField,
 
@@ -438,6 +447,7 @@ export function CRUDPageTemplate<
           </button>
 
           <button
+            title="Làm mới"
             type="button"
             onClick={handleRefresh}
             className="px-3 py-2 text-sm rounded-lg bg-gray-200 text-gray-600 
@@ -506,7 +516,7 @@ export function CRUDPageTemplate<
                   </th>
                 )}
 
-                {(onView || onEdit || onDelete) && (
+                {(onView || onEdit || onDelete || onChangeOrderStatus) && (
                   <th className="w-40 px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">
                     Hành động
                   </th>
@@ -612,24 +622,48 @@ export function CRUDPageTemplate<
                         <div className="flex items-center justify-end gap-2">
                           {!isDeleted && onView && (
                             <button
+                              title="Xem chi tiết"
                               onClick={() => onView(item)}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition active:scale-90 cursor-pointer"
                             >
                               <Eye className="w-5 h-5" />
                             </button>
                           )}
+                          {!isDeleted &&
+                            onChangeOrderStatus &&
+                            (!canChangeOrderStatus ||
+                              canChangeOrderStatus(item)) && (
+                              <button
+                                title="Đổi trạng thái"
+                                onClick={(e) => {
+                                  e.stopPropagation(); 
+                                  onChangeOrderStatus(item);
+                                }}
+                                className="p-2 text-orange-500 hover:bg-orange-50 rounded-lg transition active:scale-90 cursor-pointer"
+                              >
+                                <CircleCheckBig className="w-5 h-5" />{" "}
+                                
+                              </button>
+                            )}
 
-                          {!isDeleted && onEdit && (
-                            <button
-                              onClick={() => onEdit(item)}
-                              className="p-2 text-primary hover:bg-primary/10 rounded-lg transition active:scale-90 cursor-pointer"
-                            >
-                              <Edit className="w-5 h-5" />
-                            </button>
-                          )}
+                          {!isDeleted &&
+                            onEdit &&
+                            (!canEdit || canEdit(item)) && (
+                              <button
+                                title="Chỉnh sửa"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onEdit(item);
+                                }}
+                                className="p-2 text-primary hover:bg-primary/10 rounded-lg transition active:scale-90 cursor-pointer"
+                              >
+                                <Edit className="w-5 h-5" />
+                              </button>
+                            )}
 
                           {!isDeleted && onDelete && (
                             <button
+                              title="Xóa"
                               onClick={() => onDelete(item)}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition active:scale-90 cursor-pointer"
                             >
@@ -639,6 +673,7 @@ export function CRUDPageTemplate<
 
                           {isDeleted && onRestore && (
                             <button
+                              title="Khôi phục"
                               onClick={() => handleRestore(item)}
                               className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition active:scale-90 cursor-pointer"
                             >
@@ -671,6 +706,7 @@ export function CRUDPageTemplate<
           <div className="flex items-center gap-2">
             <span>Hiển thị</span>
             <select
+              title="Số mục mỗi trang"
               value={pageSizeState}
               onChange={handlePageSizeChange}
               className="border border-gray-200 rounded-lg px-2 py-1 bg-white cursor-pointer outline-none focus:ring-2 focus:ring-primary/20"
@@ -693,6 +729,7 @@ export function CRUDPageTemplate<
         </div>
         <div className="flex items-center gap-2">
           <button
+            title="Trang trước"
             onClick={goPrevPage}
             disabled={page === 1}
             className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
@@ -701,6 +738,7 @@ export function CRUDPageTemplate<
           </button>
           <div className="flex items-center gap-1 text-sm font-medium text-gray-700">
             <input
+              title="Trang hiện tại"
               type="number"
               min={1}
               max={totalPages || 1}
@@ -715,6 +753,7 @@ export function CRUDPageTemplate<
             <span>/ {totalPages}</span>
           </div>
           <button
+            title="Trang tiếp theo"
             onClick={goNextPage}
             disabled={page === totalPages || totalPages === 0}
             className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"

@@ -79,5 +79,7 @@ export function isMenuVisible(
   if (path === "cart") return can(user, PERM.CART_READ, fid);
 
   if (path === "promotion") return can(user, PERM.PROMOTION_READ, fid);
+
+  if (path === "pos") return can(user, PERM.POS_READ, fid);
   return false;
 }

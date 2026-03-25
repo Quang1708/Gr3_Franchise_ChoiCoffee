@@ -16,7 +16,7 @@ import AdminToppingModal from "./components/AdminToppingModal";
 const CartAdminPage = () => {
   const selectedFranchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
   const isAdmin = !selectedFranchiseId;
-
+  const [topping, setTopping] = useState<string | null>(null);
   const [posFranchise, setPosFranchise] = useState<any>(null);
   const [franchises, setFranchises] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -45,9 +45,14 @@ const CartAdminPage = () => {
     try {
       setLoading(true);
       const res = await getCategoryFranchise(fid);
+      console.log("res", res);
       if (res?.length) {
         setCategories(res);
         setActiveCategory(res[0].category_id);
+        const toppingCategory = res.find((cat: any) => cat.category_code === "TOPPING");
+        if(toppingCategory) {
+          setTopping(toppingCategory.category_id);
+        }
       } else {
         setCategories([]);
         setProducts([]);
@@ -85,7 +90,6 @@ const CartAdminPage = () => {
       });
     }
   }, [selectedFranchiseId, franchises]);
-
   useEffect(() => {
     if (posFranchise?.id) {
       fetchCategories(posFranchise.id);
@@ -150,6 +154,7 @@ const CartAdminPage = () => {
   };
 
   const total = cart.reduce((sum, i) => sum + i.total_price, 0);
+  console.log(posFranchise);
 
   // ================= EDIT =================
   const handleEditItem = (item: any) => {
@@ -228,6 +233,8 @@ const CartAdminPage = () => {
 
                 <div className="flex-1 min-h-0">
                   <ProductGrid
+                    toppingId={topping || undefined}
+                    franchiseId={posFranchise?.id}
                     products={products}
                     onAdd={add}
                     loading={loading}
@@ -240,6 +247,7 @@ const CartAdminPage = () => {
 
         {/* RIGHT */}
         <CartPanel
+          franchise={posFranchise}
           cart={cart}
           updateQty={updateQty}
           total={total}
@@ -250,6 +258,8 @@ const CartAdminPage = () => {
       {/* MODAL */}
       {editingItem && (
         <AdminToppingModal
+          toppingId={topping || undefined}
+          franchiseId={posFranchise?.id}
           isOpen={!!editingItem}
           product={editingItem.product}
           initialData={editingItem}

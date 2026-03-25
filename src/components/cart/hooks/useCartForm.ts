@@ -183,7 +183,7 @@ export const useCartForm = ({
         ...response.data.filter((n: any) => !prev.some((o) => o.id === n.id)),
       ]);
       return {
-        data: response.data.map((pf: productFranchise) => ({
+        data: response.data.map((pf: ProductFranchise) => ({
           label: `${pf.product_name} - (${pf.size}) - ${pf.price_base.toLocaleString("vi-VN")}đ`,
           value: pf.id,
         })),
@@ -212,11 +212,11 @@ export const useCartForm = ({
 
       try {
         const cate = await getCategoryFranchise(currentFranchiseId,);
-        console.log(cate);
         if (cate) {
           const toppingcate = cate.find((c: any) =>
             c.category_name.toLocaleLowerCase().includes("topping"),
           );
+          
           if (!toppingcate) {
             setToppingOptions([]);
             return;
@@ -228,7 +228,10 @@ export const useCartForm = ({
           if (response && response?.length > 0) {
             const mappedData = response?.flatMap((p) =>
               p.category_name.toLocaleLowerCase().includes("topping")
-                ? p.sizes.map((s) => ({
+
+                ? p.sizes
+                .filter((s) => s.is_available === true)
+                .map((s) => ({
                     product_data: {
                       product_franchise_id: s.product_franchise_id,
                       price: s.price,
@@ -240,6 +243,7 @@ export const useCartForm = ({
                   }))
                 : [],
             );
+            console.log(mappedData);
             setToppingOptions(mappedData);
           }
         } else {

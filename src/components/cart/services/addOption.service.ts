@@ -11,7 +11,7 @@ export type AddOptionRequest = {
 
 export const addOptionService = async (data: AddOptionRequest) => {
     try{
-        const response = await axiosAdminClient.post(
+        const response = await axiosAdminClient.put(
             `/api/carts/items/update-options-cart-item`,
             data
         );

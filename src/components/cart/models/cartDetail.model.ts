@@ -33,6 +33,7 @@ export interface CartData {
   status: string; // Có thể thêm các status khác nếu có
   address: string;
   phone: string;
+  promotion_value?: number;
   promotion_discount: number;
   voucher_discount: number;
   loyalty_points_used: number;

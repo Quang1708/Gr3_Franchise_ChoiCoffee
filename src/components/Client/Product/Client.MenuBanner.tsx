@@ -9,27 +9,42 @@ const MenuBanner = () => {
   const franchiseSelected = localStorage.getItem("selectedFranchise");
   const [menuData, setMenuData] = useState<MenuData>([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchMenuData = async () => {
-            try{
-                const response = await getMenuProducts(franchiseSelected || "");
-                if (response) {
-                    console.log(response);
-                    setMenuData(response);
-                }
-            }catch(error){
-                console.error("Error fetching menu data:", error);  
-            }             
+    const fetchMenuData = async () => {
+      try {
+        const response = await getMenuProducts(franchiseSelected || "");
+        if (response) {
+          setMenuData(response);
         }
-        fetchMenuData();
-    }, [franchiseSelected]);
+      } catch (error) {
+        console.error("Error fetching menu data:", error);
+      }
+    };
+    fetchMenuData();
+  }, [franchiseSelected]);
+
+  useEffect(() => {
+    // Nếu chưa có dữ liệu hoặc người dùng đang hover chuột thì không chạy auto
+    if (menuData.length === 0 || isHovered) return;
+
+    const timer = setInterval(() => {
+      setActiveIndex((prevIndex) => (prevIndex + 1) % menuData.length);
+    }, 5000); 
+
+    
+    return () => clearInterval(timer);
+  }, [menuData.length, isHovered]);
 
 
 
   return (
-    <div className="flex flex-col md:flex-row bg-[#FDFBF7] rounded-4xl overflow-hidden shadow-sm border border-[#f0ebe1]">
+    <div className="flex flex-col md:flex-row bg-[#FDFBF7] rounded-4xl overflow-hidden shadow-sm border border-[#f0ebe1]"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
         
         <div className="w-full md:w-[45%] p-10 md:p-16 flex flex-col justify-center">
           

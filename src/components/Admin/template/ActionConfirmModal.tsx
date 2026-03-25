@@ -1,5 +1,5 @@
 import ClientLoading from "@/components/Client/Client.Loading";
-import { RotateCcw, Trash2, X, Loader2, Check } from "lucide-react";
+import { RotateCcw, Trash2, X, Check } from "lucide-react";
 
 interface ActionConfirmModalProps {
   isOpen: boolean;
@@ -36,7 +36,9 @@ export const ActionConfirmModal = ({
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <h3 className="text-base font-semibold text-gray-800">
-            {title || (isDelete ? "Xác nhận xóa" : "Xác nhận khôi phục")}
+            {title || (isDelete ? "Xác nhận xóa" 
+                            : isConfirm ? "Xác nhận hành động"
+                            :"Xác nhận khôi phục" )}
           </h3>
 
           <button
@@ -62,17 +64,17 @@ export const ActionConfirmModal = ({
                 {!isDelete && !isConfirm && <RotateCcw className="w-7 h-7" />}
               </div>
 
-              <p className="text-sm text-gray-600 leading-relaxed max-w-xs">
-                {message ||
-                  (isDelete
-                    ? "Bạn có chắc chắn muốn xóa mục này không?"
-                    : isConfirm
-                      ? "Bạn có chắc chắn muốn xác nhận hành động này không?"
-                      : "Bạn có chắc chắn muốn khôi phục mục này không?")}
-              </p>
-            </>
-          )}
-        </div>
+                            <p className="text-sm text-gray-600 leading-relaxed max-w-xs">
+                                {message ||
+                                    (isDelete
+                                    ? "Bạn có chắc chắn muốn xóa mục này không?"
+                                    : isConfirm
+                                    ? "Bạn có chắc chắn muốn xác nhận hành động này không?"
+                                    : "Bạn có chắc chắn muốn khôi phục mục này không?")}
+                            </p>
+                        </>
+                    )}
+                </div>
 
         <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
           <button

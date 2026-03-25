@@ -4,13 +4,14 @@ import { toast } from "react-toastify";
 import type { ProductDetail } from "@/pages/client/product/models/product.models";
 import type { Product } from "@/components/Client/Product/models/product.model";
 import { getPublicProducts } from "@/components/Client/Product/services/product.service";
-import { getToppingCategoryId } from "@/components/Client/Product/utils/category.util";
 import type { AddCartRequest } from "@/components/Client/Product/models/addCart.model";
 import { addItemToCart } from "@/components/Client/Product/services/cart02.service";
 import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
 import { X, Minus, Plus, ShoppingBag } from "lucide-react";
+// import type { ProductFranchise } from "../../product/models/productFranchise/productFranchise.model";
 
 const MAX_ITEMS = 10;
+const MONGODB_ID_REGEX = /^[a-f\d]{24}$/i;
 
 type Sizes = {
     product_franchise_id: string;
@@ -32,15 +33,13 @@ type Props = {
         note: string;
         key?: string;
     };
+    franchiseId?: any; 
+    toppingId?: string;
 };
 
-const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData }: Props) => {
-    const [toppings, setToppings] = useState<Product[]>([]);
+const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData, franchiseId, toppingId }: Props) => {
+    const [toppings, setToppings] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
-
-    const toppingId = getToppingCategoryId();
-    const franchiseId = localStorage.getItem("selectedFranchise") || "";
-
     const [sizeSelected, setSizeSelected] = useState<Sizes | null>(null);
     const [quantity, setQuantity] = useState(1);
     const [toppingSelected, setToppingSelected] = useState<Record<string, number>>({});
@@ -48,6 +47,14 @@ const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData }:
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { customer } = useCustomerAuthStore();
+
+    const getValidToppingSize = (topping: any) => {
+        if (!Array.isArray(topping?.sizes)) return null;
+
+        return topping.sizes.find(
+            (size: any) => size?.is_available && MONGODB_ID_REGEX.test(size?.product_franchise_id || "")
+        ) || topping.sizes.find((size: any) => MONGODB_ID_REGEX.test(size?.product_franchise_id || "")) || null;
+    };
 
     // Fetch toppings
     useEffect(() => {
@@ -89,7 +96,7 @@ const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData }:
                 // Set selected toppings
                 const toppingMap: Record<string, number> = {};
                 initialData.toppings?.forEach((t: any) => {
-                    toppingMap[t.id] = t.quantity;
+                    toppingMap[t.product_id] = t.quantity;
                 });
                 setToppingSelected(toppingMap);
             } else {
@@ -108,7 +115,8 @@ const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData }:
     const sizePrice = sizeSelected?.price || 0;
     const toppingPrice = toppings.reduce((sum, t) => {
         const count = toppingSelected[t.product_id] || 0;
-        return sum + count * (t.sizes?.[0]?.price || 0);
+        const toppingSize = getValidToppingSize(t);
+        return sum + count * (toppingSize?.price || 0);
     }, 0);
     const totalPrice = (sizePrice + toppingPrice) * quantity;
 
@@ -144,13 +152,15 @@ const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData }:
             price: sizePrice,
             quantity: quantity,
             toppings: product?.is_have_topping ? toppings
-                .filter(t => toppingSelected[t.product_id] > 0)
+                .filter((t) => toppingSelected[t.product_id] > 0)
                 .map(t => ({
-                    id: t.product_id,
+                    id: getValidToppingSize(t)?.product_franchise_id,
+                    product_id: t.product_id,
                     name: t.name,
-                    price: t.sizes?.[0]?.price || 0,
+                    price: getValidToppingSize(t)?.price || 0,
                     quantity: toppingSelected[t.product_id]
-                })) : [],
+                }))
+                .filter((t) => MONGODB_ID_REGEX.test(t.id || "")) : [],
             note: note,
             total_price: totalPrice,
             is_have_topping: product?.is_have_topping || false // Thêm field này
@@ -164,9 +174,10 @@ const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData }:
             const options = toppings
                 .filter((t) => toppingSelected[t.product_id] > 0)
                 .map((t) => ({
-                    product_franchise_id: t.sizes?.[0]?.product_franchise_id || "",
+                    product_franchise_id: getValidToppingSize(t)?.product_franchise_id || "",
                     quantity: toppingSelected[t.product_id],
-                }));
+                }))
+                .filter((option) => MONGODB_ID_REGEX.test(option.product_franchise_id));
 
             const payload: AddCartRequest = {
                 franchise_id: franchiseId,
@@ -213,6 +224,7 @@ const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData }:
                             </p>
                         </div>
                         <button
+                            title="Đóng"
                             onClick={onClose}
                             className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
                         >
@@ -274,6 +286,7 @@ const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData }:
                         <p className="text-sm font-medium text-gray-700 mb-3">Số lượng</p>
                         <div className="flex items-center gap-3">
                             <button
+                                title="Giảm số lượng"
                                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
                                 className="w-8 h-8 rounded-lg border border-gray-200 hover:border-primary/30 hover:bg-primary/5 flex items-center justify-center"
                             >
@@ -281,6 +294,7 @@ const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData }:
                             </button>
                             <span className="w-12 text-center font-medium text-gray-800">{quantity}</span>
                             <button
+                                title="Tăng số lượng"
                                 onClick={() => setQuantity(quantity + 1)}
                                 className="w-8 h-8 rounded-lg border border-gray-200 hover:border-primary/30 hover:bg-primary/5 flex items-center justify-center"
                             >
@@ -309,7 +323,7 @@ const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData }:
                                 <div className="space-y-2">
                                     {toppings.map((t) => {
                                         const count = toppingSelected[t.product_id] || 0;
-                                        const size = t.sizes?.[0];
+                                        const size = getValidToppingSize(t);
                                         const soldOut = !size?.is_available;
 
                                         return (
@@ -336,6 +350,7 @@ const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData }:
                                                 {!soldOut && (
                                                     <div className="flex items-center gap-1.5">
                                                         <button
+                                                            title="Giảm số lượng"
                                                             onClick={() => decreaseTopping(t.product_id)}
                                                             className="w-6 h-6 rounded-md bg-white border border-gray-200 hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
                                                         >
@@ -345,6 +360,7 @@ const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData }:
                                                             {count}
                                                         </span>
                                                         <button
+                                                            title="Tăng số lượng"
                                                             onClick={() => increaseTopping(t.product_id)}
                                                             disabled={totalTopping >= MAX_ITEMS}
                                                             className="w-6 h-6 rounded-md bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center"

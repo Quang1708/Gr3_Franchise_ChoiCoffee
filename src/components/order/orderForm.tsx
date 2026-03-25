@@ -21,7 +21,7 @@ import { toast } from "react-toastify";
 import { ActionConfirmModal } from "../Admin/template/ActionConfirmModal";
 
 export type OrderFormProps = {
-  mode: "create" | "edit" | "view";
+  mode: "create" | "edit" | "view" | "checkout";
   isOpen: boolean;
   initialData?: Order;
   onSubmit: (data: any) => void;
@@ -54,6 +54,12 @@ const getStatusBadge = (status: string) => {
           Đã hủy
         </span>
       );
+      case "PREPARING":
+      return (
+        <span className="px-3 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-600">
+          Đang chuẩn bị
+        </span>
+      );
     case "CONFIRMED":
       return (
         <span className="px-3 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-600">
@@ -74,6 +80,9 @@ const OrderForm = (props: OrderFormProps) => {
   const [formData, setFormData] = useState<Order | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // BIẾN KIỂM TRA MODE VIEW
+  const isViewMode = props.mode === "view";
 
   const fetchOrderDetail = async () => {
     if (!props.initialData?._id) return;
@@ -128,6 +137,9 @@ const OrderForm = (props: OrderFormProps) => {
   };
 
   const handelConfirm = () => {
+    // Chặn click nếu đang ở mode view (đề phòng an toàn)
+    if (isViewMode) return; 
+
     if (formData && formData.status === "DRAFT") {
       setIsModalOpen(true);
     }
@@ -138,11 +150,11 @@ const OrderForm = (props: OrderFormProps) => {
   return (
     <CRUDModalTemplate
       title="Chi tiết đơn hàng"
-      mode={props.mode}
+      mode={props.mode === "edit" ? "checkout" : props.mode}
       isOpen={props.isOpen}
       onClose={props.onClose}
       onSave={handelConfirm}
-      maxWidth="max-w-7xl" // Đổi thành 7xl cho rộng rãi giống CartForm
+      maxWidth="max-w-7xl"
     >
       {isLoading ? (
         <Loader2
@@ -159,7 +171,6 @@ const OrderForm = (props: OrderFormProps) => {
           <div className="flex-[1.5] flex flex-col min-h-0">
             {/* KHU VỰC HEADER TĨNH (Không cuộn) */}
             <div className="shrink-0 flex flex-col gap-5 mb-3 pr-2">
-              {/* Box Mã đơn hàng & Trạng thái */}
               <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800 shadow-sm flex justify-between items-center">
                 <div>
                   <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-1">
@@ -172,7 +183,6 @@ const OrderForm = (props: OrderFormProps) => {
                 {getStatusBadge(formData.status)}
               </div>
 
-              {/* Tiêu đề danh sách */}
               <div className={`${labelClass} flex items-center gap-2`}>
                 <Package size={18} className="text-primary" /> Danh sách món (
                 {formData.order_items?.length || 0})
@@ -257,9 +267,6 @@ const OrderForm = (props: OrderFormProps) => {
 
           {/* CỘT PHẢI: THÔNG TIN ĐƠN & THANH TOÁN */}
           <div className="flex-1 flex flex-col gap-6 overflow-y-auto pr-1 custom-scroll">
-            {/* Header: Mã đơn & Trạng thái */}
-
-            {/* Khách hàng & Chi nhánh */}
             <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800 shadow-sm">
               <div
                 className={`${labelClass} mb-4 flex items-center gap-2 uppercase tracking-wider`}
@@ -303,7 +310,7 @@ const OrderForm = (props: OrderFormProps) => {
 
             {formData.status !== "CHECKED_OUT" &&
               formData.status !== "CANCELED" && (
-                <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm shrink-0">
+                <div className={`bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm shrink-0 ${isViewMode ? "opacity-80" : ""}`}>
                   <div
                     className={`${labelClass} flex items-center gap-2 uppercase tracking-wider text-[11px]`}
                   >
@@ -317,38 +324,22 @@ const OrderForm = (props: OrderFormProps) => {
 
                   <div className="flex flex-row gap-3 overflow-x-auto py-1 custom-scroll pb-2">
                     {[
-                      {
-                        id: "CASH",
-                        label: "Tiền mặt",
-                        icon: "payments",
-                        color: "text-amber-500",
-                      },
-                      {
-                        id: "CARD",
-                        label: "Thẻ ATM",
-                        icon: "credit_card",
-                        color: "text-blue-500",
-                      },
-                      {
-                        id: "MOMO",
-                        label: "Ví Momo",
-                        icon: "account_balance_wallet",
-                        color: "text-[#A50064]",
-                      },
-                      {
-                        id: "VNPAY",
-                        label: "VNPAY",
-                        icon: "qr_code_scanner",
-                        color: "text-[#005BAA]",
-                      },
+                      { id: "CASH", label: "Tiền mặt", icon: "payments", color: "text-amber-500" },
+                      { id: "CARD", label: "Thẻ ATM", icon: "credit_card", color: "text-blue-500" },
+                      { id: "MOMO", label: "Ví Momo", icon: "account_balance_wallet", color: "text-[#A50064]" },
+                      { id: "VNPAY", label: "VNPAY", icon: "qr_code_scanner", color: "text-[#005BAA]" },
                     ].map((pm) => (
                       <label
                         key={pm.id}
-                        className={`flex items-center gap-2 p-2 px-3 border cursor-pointer transition-all rounded-lg shrink-0
+                        // CẬP NHẬT: Thay đổi giao diện con trỏ khi ở mode view
+                        className={`flex items-center gap-2 p-2 px-3 border transition-all rounded-lg shrink-0
+                        ${isViewMode ? "cursor-default grayscale-[50%]" : "cursor-pointer"}
                         ${
                           paymentMethod === pm.id
                             ? "border-primary bg-primary/5 ring-1 ring-primary"
-                            : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                            : isViewMode
+                              ? "border-slate-100" 
+                              : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                         }`}
                       >
                         <div className="relative flex items-center justify-center shrink-0">
@@ -356,8 +347,9 @@ const OrderForm = (props: OrderFormProps) => {
                             type="radio"
                             name="payment"
                             checked={paymentMethod === pm.id}
-                            onChange={() => setPaymentMethod(pm.id)}
-                            className="appearance-none size-4 rounded-full border-2 border-slate-300 checked:border-primary cursor-pointer"
+                            onChange={() => !isViewMode && setPaymentMethod(pm.id)}
+                            disabled={isViewMode} // KHÓA CLICK CHUỘT
+                            className={`appearance-none size-4 rounded-full border-2 border-slate-300 checked:border-primary ${isViewMode ? "cursor-default" : "cursor-pointer"}`}
                           />
                           {paymentMethod === pm.id && (
                             <div className="absolute size-2 bg-primary rounded-full animate-in zoom-in duration-200"></div>

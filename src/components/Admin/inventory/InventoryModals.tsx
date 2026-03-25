@@ -81,7 +81,6 @@ export const CreateInventoryModal: React.FC<Props> = ({
   const {
     register,
     handleSubmit,
-    watch,
     reset,
     control,
     formState: { errors, isSubmitting },

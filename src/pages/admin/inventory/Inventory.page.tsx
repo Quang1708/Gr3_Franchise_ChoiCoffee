@@ -30,6 +30,7 @@ type InventoryRow = {
   id: string;
   product_franchise_id: string;
   productName: string;
+  franchiseId: string;
   franchiseName: string;
   quantity: number;
   alertThreshold: number;
@@ -67,7 +68,7 @@ const InventoryPage = () => {
   const [selectedItem, setSelectedItem] = useState<InventoryRow | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
   const [apiLoading, setApiLoading] = useState(false);
-
+  const [franchiseFilter, setFranchiseFilter] = useState<string>("ALL");
   const [excelErrors, setExcelErrors] = useState<string[]>([]);
   const [errorRowIds, setErrorRowIds] = useState<string[]>([]);
 
@@ -116,6 +117,21 @@ const InventoryPage = () => {
 
     return () => clearTimeout(timer);
   }, [excelErrors]);
+
+  const franchiseOptions = useMemo(() => {
+    const map = new Map<string, string>();
+
+    items?.forEach((i: any) => {
+      if (i.franchise_id && i.franchise_name) {
+        map.set(i.franchise_id, i.franchise_name);
+      }
+    });
+
+    return Array.from(map.entries()).map(([value, label]) => ({
+      value,
+      label,
+    }));
+  }, [items]);
   /* ===============================
      LOAD DATA
   =============================== */
@@ -145,6 +161,7 @@ const InventoryPage = () => {
           product_franchise_id: i.product_franchise_id,
           productName: i.product_name,
           franchiseName: i.franchise_name,
+          franchiseId: i.franchise_id,
           quantity,
           alertThreshold: alert,
           lowStock: quantity <= alert,
@@ -152,10 +169,18 @@ const InventoryPage = () => {
         };
       }) ?? [];
 
-    const filtered = lowOnly ? vm.filter((x) => x.lowStock) : vm;
+    let filtered = vm;
+
+    if (lowOnly) {
+      filtered = filtered.filter((x) => x.lowStock);
+    }
+
+    if (franchiseFilter !== "ALL") {
+      filtered = filtered.filter((x) => x.franchiseId === franchiseFilter);
+    }
 
     return filtered.sort((a, b) => a.productName.localeCompare(b.productName));
-  }, [items, lowOnly]);
+  }, [items, lowOnly, franchiseFilter]);
 
   useEffect(() => {
     setTableRows(rows);
@@ -506,17 +531,37 @@ const InventoryPage = () => {
             : undefined
         }
         searchRight={
-          <button
-            onClick={() => setLowOnly((v) => !v)}
-            className={`px-3 py-2 border rounded-lg text-sm
-            ${
-              lowOnly
-                ? "bg-red-50 border-red-300 text-red-600"
-                : "bg-white border-gray-200"
-            }`}
-          >
-            {lowOnly ? "Đang lọc sắp hết" : "Lọc sắp hết"}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* FILTER FRANCHISE */}
+            <select
+              value={franchiseFilter}
+              onChange={(e) => {
+                setFranchiseFilter(e.target.value);
+                setPage(1);
+              }}
+              className="px-3 py-2 border rounded-lg text-sm bg-white"
+            >
+              <option value="ALL">Tất cả chi nhánh</option>
+              {franchiseOptions.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+
+            {/* LOW STOCK FILTER */}
+            <button
+              onClick={() => setLowOnly((v) => !v)}
+              className={`px-3 py-2 border rounded-lg text-sm
+      ${
+        lowOnly
+          ? "bg-red-50 border-red-300 text-red-600"
+          : "bg-white border-gray-200"
+      }`}
+            >
+              {lowOnly ? "Đang lọc sắp hết" : "Lọc sắp hết"}
+            </button>
+          </div>
         }
       />
       <AdjustInventoryModal

@@ -25,6 +25,15 @@ export type PromotionSearchResponse = {
   message?: string;
 };
 
+type PromotionSearchParams = {
+  franchiseId?: string;
+  keyword?: string;
+  isDeleted?: boolean;
+  type?: "PERCENT" | "FIXED" | "";
+  pageNum?: number;
+  pageSize?: number;
+};
+
 export type PromotionCreatePayload = {
   name: string;
   franchise_id: string;
@@ -35,24 +44,35 @@ export type PromotionCreatePayload = {
   end_date: string;
 };
 
+function buildPromotionSearchPayload({
+  franchiseId,
+  keyword = "",
+  isDeleted = false,
+  type = "",
+  pageNum = 1,
+  pageSize = 200,
+}: PromotionSearchParams) {
+  return {
+    searchCondition: {
+      keyword,
+      name: keyword,
+      ...(franchiseId ? { franchise_id: franchiseId } : {}),
+      product_franchise_id: "",
+      type,
+      value: "",
+      start_date: "",
+      end_date: "",
+      is_active: "",
+      is_deleted: isDeleted,
+    },
+    pageInfo: { pageNum, pageSize },
+  };
+}
+
 export async function searchPromotionsService(franchiseId?: string) {
   const res = await axiosAdminClient.post<PromotionSearchResponse>(
     "/api/promotions/search",
-    {
-      searchCondition: {
-        keyword: "",
-        name: "",
-        ...(franchiseId ? { franchise_id: franchiseId } : {}),
-        product_franchise_id: "",
-        type: "",
-        value: "",
-        start_date: "",
-        end_date: "",
-        is_active: "",
-        is_deleted: false,
-      },
-      pageInfo: { pageNum: 1, pageSize: 200 },
-    },
+    buildPromotionSearchPayload({ franchiseId }),
   );
   return res.data;
 }
@@ -60,24 +80,19 @@ export async function searchPromotionsService(franchiseId?: string) {
 export async function searchPromotionsServiceByKeyword(
   franchiseId: string | undefined,
   keyword: string,
+  options?: {
+    isDeleted?: boolean;
+    type?: "PERCENT" | "FIXED" | "";
+  },
 ) {
   const res = await axiosAdminClient.post<PromotionSearchResponse>(
     "/api/promotions/search",
-    {
-      searchCondition: {
-        keyword: keyword ?? "",
-        name: keyword ?? "",
-        ...(franchiseId ? { franchise_id: franchiseId } : {}),
-        product_franchise_id: "",
-        type: "",
-        value: "",
-        start_date: "",
-        end_date: "",
-        is_active: "",
-        is_deleted: false,
-      },
-      pageInfo: { pageNum: 1, pageSize: 200 },
-    },
+    buildPromotionSearchPayload({
+      franchiseId,
+      keyword: keyword ?? "",
+      isDeleted: options?.isDeleted ?? false,
+      type: options?.type ?? "",
+    }),
   );
   return res.data;
 }

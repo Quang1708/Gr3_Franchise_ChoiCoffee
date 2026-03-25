@@ -25,6 +25,7 @@ export const useUserOrder = () => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState("");
 	const [canSearchByCode, setCanSearchByCode] = useState(true);
+	const [reloadTick, setReloadTick] = useState(0);
 
 	const loadOrders = useCallback(async (tab: OrderTab) => {
 		if (!customerId) {
@@ -49,7 +50,7 @@ export const useUserOrder = () => {
 
 	useEffect(() => {
 		void loadOrders(appliedTab);
-	}, [appliedTab, customerId, loadOrders]);
+	}, [appliedTab, customerId, loadOrders, reloadTick]);
 
 	useEffect(() => {
 		if (
@@ -101,16 +102,15 @@ export const useUserOrder = () => {
 		setAppliedFromDate(fromDate);
 		setAppliedToDate(toDate);
 		setCanSearchByCode(true);
-		await loadOrders(activeTab);
-	}, [activeTab, fromDate, loadOrders, toDate]);
+		setReloadTick((prev) => prev + 1);
+	}, [activeTab, fromDate, toDate]);
 
 	const handleTabChange = useCallback(async (tab: OrderTab) => {
 		setActiveTab(tab);
 		setAppliedTab(tab);
 		setCurrentPage(1);
 		setCanSearchByCode(true);
-		await loadOrders(tab);
-	}, [loadOrders]);
+	}, []);
 
 	const filteredOrders = useMemo(
 		() => filterOrdersByDateUsecase(orders, appliedFromDate, appliedToDate),

@@ -18,8 +18,7 @@ import {
   type PromotionFormInitialData,
   type PromotionFormValues,
 } from "./components/PromotionForm";
-import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
-import ClientLoading from "@/components/Client/Client.Loading";
+
 
 type PromotionRow = {
   id: string;
@@ -160,7 +159,6 @@ const PromotionPage = () => {
         });
 
       setList(rows);
-
     } catch {
       setError("Không thể tải danh sách promotion");
       setList([]);

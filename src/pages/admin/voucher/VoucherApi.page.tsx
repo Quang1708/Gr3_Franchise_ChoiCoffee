@@ -19,6 +19,7 @@ import {
 import { toastError, toastSuccess } from "@/utils/toast.util";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import { useAuthStore } from "@/stores/auth.store";
+import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
 
 type VoucherRow = Voucher & {
   is_deleted: boolean;
@@ -448,9 +449,8 @@ const VoucherApiPage = () => {
   }
 
   return (
-    <div className="p-6 transition-all animate-fade-in">
-    
-      <CRUDTable<VoucherRow>
+    <>  
+      <CRUDPageTemplate<VoucherRow>
         title="Danh sách voucher"
         data={filteredTableData}
         columns={columns}

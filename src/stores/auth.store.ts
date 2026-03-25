@@ -28,23 +28,23 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isInitialized: false,
 
-login: (user, token) => {
-  const normalizedUser = {
-    ...user,
-    roles: normalizeRoles(user.roles || []),
-  };
+      login: (user, token) => {
+        const normalizedUser = {
+          ...user,
+          roles: normalizeRoles(user.roles || []),
+        };
 
-  set({ user: normalizedUser, token, isInitialized: true });
-},
+        set({ user: normalizedUser, token, isInitialized: true });
+      },
 
-setAuth: (user, token) => {
-  const normalizedUser = {
-    ...user,
-    roles: normalizeRoles(user.roles || []),
-  };
+      setAuth: (user, token) => {
+        const normalizedUser = {
+          ...user,
+          roles: normalizeRoles(user.roles || []),
+        };
 
-  set({ user: normalizedUser, token, isInitialized: true });
-},
+        set({ user: normalizedUser, token, isInitialized: true });
+      },
 
       hydrate: () => {
         set((state) => ({ ...state, isInitialized: true }));

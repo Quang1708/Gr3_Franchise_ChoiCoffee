@@ -3,6 +3,24 @@ import type {
   ShiftAssignmentStatus,
 } from "../models/shiftAssignment.model";
 
+export const normalizeWorkDate = (value: unknown): string => {
+  if (value == null) return "";
+  const text = String(value).trim();
+  if (!text) return "";
+
+  // Keep calendar date as sent by backend if it's already in ISO-like form.
+  const datePrefixMatch = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (datePrefixMatch) return datePrefixMatch[1];
+
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return text;
+
+  const y = parsed.getFullYear();
+  const m = String(parsed.getMonth() + 1).padStart(2, "0");
+  const d = String(parsed.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 // ── Response Extraction Helpers ──────────────────────────────────────────────
 
 export const extractArray = (payload: unknown): ShiftAssignmentItem[] => {
@@ -45,7 +63,7 @@ export const extractItem = (payload: unknown): ShiftAssignmentItem | null => {
     shift_id: String(raw.shift_id ?? ""),
     start_time: raw.start_time ? String(raw.start_time) : undefined,
     end_time: raw.end_time ? String(raw.end_time) : undefined,
-    work_date: String(raw.work_date ?? ""),
+    work_date: normalizeWorkDate(raw.work_date),
     assigned_by: raw.assigned_by ? String(raw.assigned_by) : undefined,
     note: raw.note ? String(raw.note) : undefined,
     status: String(raw.status ?? "ASSIGNED") as ShiftAssignmentStatus,
@@ -62,7 +80,7 @@ export const toRow = (raw: ShiftAssignmentItem): ShiftAssignmentItem => ({
   shift_id: String(raw.shift_id),
   start_time: raw.start_time,
   end_time: raw.end_time,
-  work_date: String(raw.work_date),
+  work_date: normalizeWorkDate(raw.work_date),
   assigned_by: raw.assigned_by,
   assigned_by_name: raw.assigned_by_name,
   note: raw.note,

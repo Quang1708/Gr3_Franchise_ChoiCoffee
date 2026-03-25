@@ -88,6 +88,7 @@ const OrderDetailPage = () => {
   const badge = ORDER_STATUS_BADGE[orderDetail.status];
   const { orderDate, orderTime } = formatDateTime(orderDetail.createdAt);
   const isCanceled = orderDetail.status === "canceled";
+  const isDraft = orderDetail.status === "draft";
   const canceledDateTime = orderDetail.canceledAt
     ? formatDateTime(orderDetail.canceledAt)
     : null;
@@ -421,8 +422,25 @@ const OrderDetailPage = () => {
               </p>
               <p className="text-sm font-semibold text-charcoal flex items-center gap-2">
                 <CircleDollarSign size={16} className="text-primary" />
-                Đã thanh toán / Đối soát
+                {isDraft ? "Chưa thanh toán" : "Đã thanh toán / Đối soát"}
               </p>
+              {isDraft ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(ROUTER_URL.CLIENT_ROUTER.CHECKOUT, {
+                      state: {
+                        orderId: orderDetail.id,
+                        orderCode: orderDetail.orderCode,
+                        finalAmount: orderDetail.total,
+                      },
+                    })
+                  }
+                  className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+                >
+                  Đi đến trang thanh toán
+                </button>
+              ) : null}
             </article>
           </div>
         </section>

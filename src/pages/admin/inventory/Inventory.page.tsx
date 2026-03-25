@@ -30,6 +30,7 @@ type InventoryRow = {
   id: string;
   product_franchise_id: string;
   productName: string;
+  franchiseId: string;
   franchiseName: string;
   quantity: number;
   alertThreshold: number;
@@ -67,7 +68,7 @@ const InventoryPage = () => {
   const [selectedItem, setSelectedItem] = useState<InventoryRow | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
   const [apiLoading, setApiLoading] = useState(false);
-
+  const [franchiseFilter, setFranchiseFilter] = useState<string>("ALL");
   const [excelErrors, setExcelErrors] = useState<string[]>([]);
   const [errorRowIds, setErrorRowIds] = useState<string[]>([]);
 
@@ -116,6 +117,21 @@ const InventoryPage = () => {
 
     return () => clearTimeout(timer);
   }, [excelErrors]);
+
+  const franchiseOptions = useMemo(() => {
+    const map = new Map<string, string>();
+
+    items?.forEach((i: any) => {
+      if (i.franchise_id && i.franchise_name) {
+        map.set(i.franchise_id, i.franchise_name);
+      }
+    });
+
+    return Array.from(map.entries()).map(([value, label]) => ({
+      value,
+      label,
+    }));
+  }, [items]);
   /* ===============================
      LOAD DATA
   =============================== */
@@ -145,6 +161,7 @@ const InventoryPage = () => {
           product_franchise_id: i.product_franchise_id,
           productName: i.product_name,
           franchiseName: i.franchise_name,
+          franchiseId: i.franchise_id,
           quantity,
           alertThreshold: alert,
           lowStock: quantity <= alert,
@@ -152,10 +169,18 @@ const InventoryPage = () => {
         };
       }) ?? [];
 
-    const filtered = lowOnly ? vm.filter((x) => x.lowStock) : vm;
+    let filtered = vm;
+
+    if (lowOnly) {
+      filtered = filtered.filter((x) => x.lowStock);
+    }
+
+    if (franchiseFilter !== "ALL") {
+      filtered = filtered.filter((x) => x.franchiseId === franchiseFilter);
+    }
 
     return filtered.sort((a, b) => a.productName.localeCompare(b.productName));
-  }, [items, lowOnly]);
+  }, [items, lowOnly, franchiseFilter]);
 
   useEffect(() => {
     setTableRows(rows);
@@ -374,58 +399,9 @@ const InventoryPage = () => {
   if (pageLoading || apiLoading) return <ClientLoading />;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      {/* BULK TOOLS */}
-      <div className="flex items-center gap-3 flex-wrap shrink-0">
-        <InventoryExcelTools
-          rows={tableRows}
-          selectedIds={selectedIds}
-          setSelectedIds={setSelectedIds}
-          onErrorsChange={setExcelErrors}
-          onErrorRowIdsChange={setErrorRowIds}
-          onImportApply={(excelRows: any[]) => {
-            setTableRows((prev) =>
-              prev.map((row) => {
-                const excel = excelRows.find(
-                  (e: any) =>
-                    e.product_name?.toLowerCase().trim() ===
-                      row.productName.toLowerCase().trim() &&
-                    e.franchise_name?.toLowerCase().trim() ===
-                      row.franchiseName.toLowerCase().trim(),
-                );
-
-                if (!excel) return row;
-
-                const quantity = Number(excel.quantity);
-                const alert = Number(excel.alert_threshold);
-
-                const index = prev.findIndex((r) => r.id === row.id);
-
-                setValue(`rows.${index}.quantity`, quantity);
-                setValue(`rows.${index}.alertThreshold`, alert);
-
-                return {
-                  ...row,
-                  quantity,
-                  alertThreshold: alert,
-                };
-              }),
-            );
-          }}
-        />
-
-        <button
-          onClick={updateSelected}
-          disabled={!hasSelection}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer
-          ${hasSelection && canUpdate ? "bg-primary text-white" : "bg-gray-200 text-gray-400"}`}
-        >
-          <Save size={16} />
-          Update Selected {hasSelection && `(${selectedIds.length})`}
-        </button>
-      </div>
+    <>
       {excelErrors.length > 0 && (
-        <div className="px-6 py-4 border-b bg-orange-50 space-y-2">
+        <div className="mx-6 mt-3 mb-2 p-4 border rounded-xl bg-orange-50 space-y-2">
           {" "}
           <div className="flex items-center justify-between">
             {" "}
@@ -458,77 +434,145 @@ const InventoryPage = () => {
           </div>{" "}
         </div>
       )}
-      <div className="flex-1 min-h-0 flex flex-col">
-        <CRUDPageTemplate
-          title="Quản lý tồn kho"
-          data={paginatedRows}
-          columns={columns}
-          currentPage={page}
-          pageSize={pageSize}
-          totalItems={tableRows.length}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-          tableMaxHeightClass="flex-1 overflow-auto"
-          isTableLoading={loading}
-          onSearch={handleSearch}
-          selectedRowId={selectedItem?.id}
-          onRowClick={(item) => setSelectedItem(item)}
-          onRefresh={async () => {
-            setPage(1);
-            setKeyword("");
-            await fetchAll();
-          }}
-          onAdd={canUpdate ? () => setCreateOpen(true) : undefined}
-          onEdit={
-            canUpdate
-              ? (row) =>
-                  setAdjustItem({
-                    id: row.id,
-                    product_franchise_id: row.product_franchise_id,
-                    quantity: row.quantity,
-                    alert_threshold: row.alertThreshold,
-                  })
-              : undefined
-          }
-          onDelete={canUpdate ? (row) => setDeleteItem(row) : undefined}
-          onView={(row) => setLogInventoryId(row.id)}
-          onRestore={
-            canUpdate
-              ? async (row) => {
-                  setApiLoading(true);
-                  await restore(row.id);
-                  await fetchAll();
-                  setApiLoading(false);
-                }
-              : undefined
-          }
-          searchRight={
+      <CRUDPageTemplate
+        title="Quản lý tồn kho"
+        data={paginatedRows}
+        columns={columns}
+        currentPage={page}
+        pageSize={pageSize}
+        totalItems={tableRows.length}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        isTableLoading={loading}
+        headerRight={
+          <div className="flex items-center gap-2 flex-wrap">
+            <InventoryExcelTools
+              rows={tableRows}
+              selectedIds={selectedIds}
+              setSelectedIds={setSelectedIds}
+              onErrorsChange={setExcelErrors}
+              onErrorRowIdsChange={setErrorRowIds}
+              onImportApply={(excelRows: any[]) => {
+                setTableRows((prev) =>
+                  prev.map((row) => {
+                    const excel = excelRows.find(
+                      (e: any) =>
+                        e.product_name?.toLowerCase().trim() ===
+                          row.productName.toLowerCase().trim() &&
+                        e.franchise_name?.toLowerCase().trim() ===
+                          row.franchiseName.toLowerCase().trim(),
+                    );
+
+                    if (!excel) return row;
+
+                    const quantity = Number(excel.quantity);
+                    const alert = Number(excel.alert_threshold);
+
+                    const index = prev.findIndex((r) => r.id === row.id);
+
+                    setValue(`rows.${index}.quantity`, quantity);
+                    setValue(`rows.${index}.alertThreshold`, alert);
+
+                    return {
+                      ...row,
+                      quantity,
+                      alertThreshold: alert,
+                    };
+                  }),
+                );
+              }}
+            />
+
+            <button
+              onClick={updateSelected}
+              disabled={!hasSelection || !canUpdate}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg
+    ${
+      hasSelection && canUpdate
+        ? "bg-primary text-white hover:opacity-90 active:scale- cursor-pointer"
+        : "bg-gray-200 text-gray-400 cursor-not-allowed"
+    }`}
+            >
+              <Save size={16} />
+              Update Selected {hasSelection && `(${selectedIds.length})`}
+            </button>
+          </div>
+        }
+        onSearch={handleSearch}
+        selectedRowId={selectedItem?.id}
+        onRowClick={(item) => setSelectedItem(item)}
+        onRefresh={async () => {
+          setPage(1);
+          setKeyword("");
+          await fetchAll();
+        }}
+        onAdd={canUpdate ? () => setCreateOpen(true) : undefined}
+        onEdit={
+          canUpdate
+            ? (row) =>
+                setAdjustItem({
+                  id: row.id,
+                  product_franchise_id: row.product_franchise_id,
+                  quantity: row.quantity,
+                  alert_threshold: row.alertThreshold,
+                })
+            : undefined
+        }
+        onDelete={canUpdate ? (row) => setDeleteItem(row) : undefined}
+        onView={(row) => setLogInventoryId(row.id)}
+        onRestore={
+          canUpdate
+            ? async (row) => {
+                setApiLoading(true);
+                await restore(row.id);
+                await fetchAll();
+                setApiLoading(false);
+              }
+            : undefined
+        }
+        searchRight={
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* FILTER FRANCHISE */}
+            <select
+              value={franchiseFilter}
+              onChange={(e) => {
+                setFranchiseFilter(e.target.value);
+                setPage(1);
+              }}
+              className="px-3 py-2 border rounded-lg text-sm bg-white"
+            >
+              <option value="ALL">Tất cả chi nhánh</option>
+              {franchiseOptions.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+
+            {/* LOW STOCK FILTER */}
             <button
               onClick={() => setLowOnly((v) => !v)}
               className={`px-3 py-2 border rounded-lg text-sm
-            ${
-              lowOnly
-                ? "bg-red-50 border-red-300 text-red-600"
-                : "bg-white border-gray-200"
-            }`}
+      ${
+        lowOnly
+          ? "bg-red-50 border-red-300 text-red-600"
+          : "bg-white border-gray-200"
+      }`}
             >
               {lowOnly ? "Đang lọc sắp hết" : "Lọc sắp hết"}
             </button>
-          }
-        />
-      </div>
+          </div>
+        }
+      />
       <AdjustInventoryModal
         isOpen={!!adjustItem}
         inventory={adjustItem}
         onClose={() => setAdjustItem(null)}
         onSubmit={async (data: any) => {
           setApiLoading(true);
-
           await adjust(data);
           await fetchAll();
-
           setAdjustItem(null);
-
           setApiLoading(false);
         }}
       />
@@ -575,7 +619,7 @@ const InventoryPage = () => {
         inventoryId={logInventoryId}
         onClose={() => setLogInventoryId(null)}
       />
-    </div>
+    </>
   );
 };
 

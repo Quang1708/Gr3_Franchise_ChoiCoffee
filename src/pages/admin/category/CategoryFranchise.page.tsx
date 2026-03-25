@@ -8,11 +8,16 @@ import { can } from "@/auth/rbac";
 import { PERM } from "@/auth/rbac.permissions";
 import type { CategoryItem } from "./models/categoryFranchise02.model";
 import { getCategoryFranchise } from "./services/categoryFranchise02.service";
-import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
+import {
+  CRUDPageTemplate,
+  type Column,
+} from "@/components/Admin/template/CRUDPage.template";
 import ClientLoading from "@/components/Client/Client.Loading";
 import CategoryFranchiseCreateModal from "@/components/categoryFranchise/CategoryFranchise.Modal";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
-import EditCategoryFranchise, { type EditCategoryFranchiseRef } from "@/components/categoryFranchise/EditCategoryFranchise";
+import EditCategoryFranchise, {
+  type EditCategoryFranchiseRef,
+} from "@/components/categoryFranchise/EditCategoryFranchise";
 import { updateStatusCategoryFranchsie } from "./services/categoryFranchise06.service";
 import { restoreCategoryFranchise } from "./services/categoryFranchise05.service";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
@@ -20,16 +25,15 @@ import { deleteCategoryFranchise } from "./services/categoryFranchise04.service"
 
 import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";
 import type { FieldError } from "node_modules/react-hook-form/dist/types/errors";
-import { useForm} from "react-hook-form";
+import { useForm } from "react-hook-form";
 import type { CategorySelectItem } from "@/models/category.model";
 import { getCategorySelectUsecase } from "./usecases";
-import FormSelect from "@/components/Admin/Form/FormSelect";
-
+import FormSelect from "@/components/Admin/form/FormSelect";
 
 const CategoryPage = () => {
   const user = useAuthStore((s) => s.user);
   const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId) || "";
-  const isAdmin = franchiseId === ""; // Nếu không chọn chi nhánh nào, tức là đang ở chế độ Admin 
+  const isAdmin = franchiseId === ""; // Nếu không chọn chi nhánh nào, tức là đang ở chế độ Admin
   const canWrite = useMemo(
     () => can(user, PERM.CATEGORY_FRANCHISE_WRITE, franchiseId || undefined),
     [user, franchiseId],
@@ -38,9 +42,13 @@ const CategoryPage = () => {
     () => !franchiseId && can(user, PERM.CATEGORY_FRANCHISE_WRITE, undefined),
     [user, franchiseId],
   );
-  const [categoryFranchiseList, setCategoryFranchiseList] = useState<CategoryItem[]>([]);
+  const [categoryFranchiseList, setCategoryFranchiseList] = useState<
+    CategoryItem[]
+  >([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
+  const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(
+    null,
+  );
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -52,10 +60,13 @@ const CategoryPage = () => {
     null,
   );
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [restoringCategory, setRestoringCategory] = useState<CategoryItem | null>(
-    null,
-  );
-   const {register, watch, formState: { errors }, } = useForm();
+  const [restoringCategory, setRestoringCategory] =
+    useState<CategoryItem | null>(null);
+  const {
+    register,
+    watch,
+    formState: { errors },
+  } = useForm();
   const [isRestoreOpen, setIsRestoreOpen] = useState(false);
   const editRef = useRef<EditCategoryFranchiseRef>(null);
   const [franchises, setFranchises] = useState<any>();
@@ -63,39 +74,38 @@ const CategoryPage = () => {
   const categoryIdSelected = watch("category_id");
   const [categories, setCategories] = useState<CategorySelectItem[]>([]);
   // Extract fetch function để có thể gọi lại sau khi create và phân trang
-  const fetchCategoryFranchise = useCallback(async (
-    pageNum = 1,
-    type: "full" | "table" = "full",
-    size = pageSize
-  ) => {
-    try {
-      if (type === "full") setIsLoading(true);
-      if (type === "table") setIsTableLoading(true);
+  const fetchCategoryFranchise = useCallback(
+    async (pageNum = 1, type: "full" | "table" = "full", size = pageSize) => {
+      try {
+        if (type === "full") setIsLoading(true);
+        if (type === "table") setIsTableLoading(true);
 
-      const response = await getCategoryFranchise({
-        searchCondition: {
-          franchise_id: franchiseId || franchiseIdSelected  || "",
-          is_deleted: false // Mặc định chỉ lấy những mục chưa bị xóa, trừ khi filter có is_deleted
-        },
-        pageInfo: {
-          pageNum,
-          pageSize: size,
-        },
-      });
-      if (response) {   
-        setCategoryFranchiseList(response.data || []);
-        setTotalItems(response.pageInfo?.totalItems || 0);
-        setPage(response.pageInfo?.pageNum || pageNum);
-        setPageSize(response.pageInfo?.pageSize || size);
+        const response = await getCategoryFranchise({
+          searchCondition: {
+            franchise_id: franchiseId || franchiseIdSelected || "",
+            is_deleted: false, // Mặc định chỉ lấy những mục chưa bị xóa, trừ khi filter có is_deleted
+          },
+          pageInfo: {
+            pageNum,
+            pageSize: size,
+          },
+        });
+        if (response) {
+          setCategoryFranchiseList(response.data || []);
+          setTotalItems(response.pageInfo?.totalItems || 0);
+          setPage(response.pageInfo?.pageNum || pageNum);
+          setPageSize(response.pageInfo?.pageSize || size);
+        }
+      } catch (error) {
+        console.error("Error fetching category franchise data:", error);
+        toast.error("Có lỗi xảy ra khi tải danh mục");
+      } finally {
+        setIsLoading(false);
+        setIsTableLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching category franchise data:", error);
-      toast.error("Có lỗi xảy ra khi tải danh mục");
-    } finally {
-      setIsLoading(false);
-      setIsTableLoading(false);
-    }
-  }, [franchiseId, pageSize]);
+    },
+    [franchiseId, pageSize],
+  );
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -114,48 +124,50 @@ const CategoryPage = () => {
   }, [fetchCategories]);
 
   useEffect(() => {
-      const loadFranchises = async () => {
-        try{
-            setIsLoading(true);
-           const data = await getAllFranchises();
+    const loadFranchises = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getAllFranchises();
         if (data) setFranchises(data);
-        }catch(error) {
-          console.error("Error fetching franchises:", error);
-        }
-      };
+      } catch (error) {
+        console.error("Error fetching franchises:", error);
+      }
+    };
 
-      void loadFranchises();
-    }, []);
-
-   
+    void loadFranchises();
+  }, []);
 
   // Search
-  const handleSearchCategoryFranchise = async (searchTerm: string, filter: any) => {
-    try{
+  const handleSearchCategoryFranchise = async (
+    searchTerm: string,
+    filter: any,
+  ) => {
+    try {
       setIsTableLoading(true);
       const response = await getCategoryFranchise({
         searchCondition: {
-          franchise_id: franchiseId || franchiseIdSelected  || "",
+          franchise_id: franchiseId || franchiseIdSelected || "",
           category_id: searchTerm || categoryIdSelected || "",
-          is_active: filter?.is_active  === "true"
-            ? true
-            : filter?.is_active === "false"
-            ? false
-            : "",
-          is_deleted: filter?.is_deleted === "true"
-            ? true
-            : filter?.is_deleted === "false"
-            ? false
-            : "",
+          is_active:
+            filter?.is_active === "true"
+              ? true
+              : filter?.is_active === "false"
+                ? false
+                : "",
+          is_deleted:
+            filter?.is_deleted === "true"
+              ? true
+              : filter?.is_deleted === "false"
+                ? false
+                : "",
         },
         pageInfo: {
           pageNum: 1,
           pageSize: pageSize,
         },
       });
-      
 
-      if (response) {   
+      if (response) {
         setCategoryFranchiseList(response.data || []);
         setTotalItems(response.pageInfo?.totalItems || 0);
         setPage(response.pageInfo?.pageNum || 1);
@@ -172,7 +184,6 @@ const CategoryPage = () => {
 
   useEffect(() => {
     fetchCategoryFranchise(1, "full");
-  
   }, [fetchCategoryFranchise]);
 
   const columns: Column<CategoryItem>[] = [
@@ -193,7 +204,7 @@ const CategoryPage = () => {
       accessor: (item) => new Date(item.created_at).toLocaleDateString("vi-VN"),
       sortable: true,
     },
-    
+
     {
       header: "Ngày cập nhật",
       accessor: (item) => new Date(item.updated_at).toLocaleDateString("vi-VN"),
@@ -210,12 +221,12 @@ const CategoryPage = () => {
   // Edit
   const handleEditOpen = (
     // mode: "create" | "edit" | "view",
-    item: CategoryItem) => {
+    item: CategoryItem,
+  ) => {
     if (!canWrite) return;
     setEditingCategory(item);
     setIsEditOpen(true);
   };
-
 
   const handleRestore = (item: CategoryItem) => {
     if (!canWrite) return;
@@ -252,7 +263,7 @@ const CategoryPage = () => {
       await deleteCategoryFranchise(deletingCategory.id);
 
       setCategoryFranchiseList((prev) =>
-        prev.filter((c) => c.category_id !== deletingCategory.category_id)
+        prev.filter((c) => c.category_id !== deletingCategory.category_id),
       );
 
       toast.success("Đã xóa danh mục thành công");
@@ -282,11 +293,8 @@ const CategoryPage = () => {
       value: f.value,
     })) || [];
 
-
   if (isLoading || isTableLoading) {
-    return (
-        <ClientLoading/>
-    );
+    return <ClientLoading />;
   }
 
   // Status
@@ -295,15 +303,19 @@ const CategoryPage = () => {
 
     try {
       await updateStatusCategoryFranchsie(item.id, newStatus);
-      
+
       setCategoryFranchiseList((prev) =>
         prev.map((c) =>
           c.id === item.id
-            ? { ...c, is_active: newStatus, updated_at: new Date().toISOString() }
+            ? {
+                ...c,
+                is_active: newStatus,
+                updated_at: new Date().toISOString(),
+              }
             : c,
         ),
       );
-      
+
       toast.success(
         `Đã cập nhật trạng thái: ${newStatus ? "Hoạt động" : "Ngưng hoạt động"}`,
       );
@@ -313,13 +325,9 @@ const CategoryPage = () => {
     }
   };
 
-    
-
-
   return (
-    < >       
+    <>
       <CRUDPageTemplate<CategoryItem>
-        
         title="Quản lý Danh mục"
         data={categoryFranchiseList}
         columns={columns}
@@ -335,7 +343,7 @@ const CategoryPage = () => {
         // ✅ RBAC: STAFF không thấy Add/Edit/Delete
         // onView={}
         onStatusChange={handleStatusChange}
-        onSearch={ handleSearchCategoryFranchise}
+        onSearch={handleSearchCategoryFranchise}
         onAdd={canWrite ? handleCreateOpen : undefined}
         onEdit={canWrite ? handleEditOpen : undefined}
         onDelete={canWrite ? handleDeleteOpen : undefined}
@@ -351,17 +359,17 @@ const CategoryPage = () => {
           <div className="flex gap-3 w-full">
             {isAdmin && (
               <FormSelect
-              label=""
-              key="franchise_id"
-              name="chi nhánh"
-              options={franchiseOptions || []}
-              register={register("franchise_id")}
-              error={errors.franchise_id as FieldError}
-              value={franchiseIdSelected}
-              placeholder="Chọn chi nhánh"
-              // onChange={(val) => setSelectedFranchiseId(val)}
-            />
-            )}         
+                label=""
+                key="franchise_id"
+                name="chi nhánh"
+                options={franchiseOptions || []}
+                register={register("franchise_id")}
+                error={errors.franchise_id as FieldError}
+                value={franchiseIdSelected}
+                placeholder="Chọn chi nhánh"
+                // onChange={(val) => setSelectedFranchiseId(val)}
+              />
+            )}
             <FormSelect
               key="category_id"
               label=""
@@ -394,7 +402,6 @@ const CategoryPage = () => {
         ]}
       />
 
-      
       {canWrite ? (
         <>
           <CategoryFranchiseCreateModal
@@ -424,7 +431,7 @@ const CategoryPage = () => {
             maxWidth="max-w-1/2"
             children={
               <EditCategoryFranchise
-                onView={false} 
+                onView={false}
                 ref={editRef}
                 category={editingCategory as CategoryItem}
                 onClose={() => {
@@ -450,7 +457,7 @@ const CategoryPage = () => {
             isLoading={false}
             maxWidth="max-w-1/2"
             children={
-              <EditCategoryFranchise 
+              <EditCategoryFranchise
                 onView={true}
                 ref={editRef}
                 category={editingCategory as CategoryItem}

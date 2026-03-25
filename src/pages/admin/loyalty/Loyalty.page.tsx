@@ -4,7 +4,10 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useAdminContextStore } from "@/stores";
 
-import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
+import {
+  CRUDPageTemplate,
+  type Column,
+} from "@/components/Admin/template/CRUDPage.template";
 import ClientLoading from "@/components/Client/Client.Loading";
 
 import type { LoyaltyRule } from "@/pages/admin/loyalty/models/loyalty.model";
@@ -13,14 +16,16 @@ import { getLoyaltyDetailUsecase } from "@/pages/admin/loyalty/usecases/getLoyal
 import { createLoyaltyUsecase } from "@/pages/admin/loyalty/usecases/createLoyalty01.usecase";
 import { updateLoyaltyUsecase } from "@/pages/admin/loyalty/usecases/updateLoyalty04.usecase";
 
-import FormSelect from "@/components/Admin/Form/FormSelect";
+import FormSelect from "@/components/Admin/form/FormSelect";
 import { FormInput } from "@/components/Admin/form/FormInput";
 import { LoyaltyForm } from "@/pages/admin/loyalty/components/LoyaltyForm";
 import type { SearchLoyaltyRequest } from "@/pages/admin/loyalty/models/searchLoyalty.model";
 
 const LoyaltyPage = () => {
   // --- Kiểm tra quyền Admin & franchise được chọn ---
-  const selectedFranchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
+  const selectedFranchiseId = useAdminContextStore(
+    (s) => s.selectedFranchiseId,
+  );
   const isAdmin = selectedFranchiseId === null;
 
   // --- Form ---
@@ -34,7 +39,9 @@ const LoyaltyPage = () => {
 
   // --- State ---
   const [rules, setRules] = useState<LoyaltyRule[]>([]);
-  const [franchiseOptions, setFranchiseOptions] = useState<{ value: string; label: string }[]>([]);
+  const [franchiseOptions, setFranchiseOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [tiers, setTiers] = useState<{ value: string; label: string }[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -45,7 +52,9 @@ const LoyaltyPage = () => {
 
   // --- State Modal ---
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
+  const [formMode, setFormMode] = useState<"create" | "edit" | "view">(
+    "create",
+  );
   const [selectedRule, setSelectedRule] = useState<LoyaltyRule | null>(null);
 
   const fetchFilterOptions = useCallback(async () => {
@@ -54,20 +63,24 @@ const LoyaltyPage = () => {
         searchCondition: {
           franchise_id: selectedFranchiseId || "",
           is_active: "",
-          is_deleted: "false"
+          is_deleted: "false",
         },
-        pageInfo: { pageNum: 1, pageSize: 10000 }, 
+        pageInfo: { pageNum: 1, pageSize: 10000 },
       });
 
       if (res.success && res.data) {
         const fMap = new Map();
         const tMap = new Map();
         res.data.forEach((rule: any) => {
-          if (rule.franchise_id) fMap.set(String(rule.franchise_id), rule.franchise_name);
+          if (rule.franchise_id)
+            fMap.set(String(rule.franchise_id), rule.franchise_name);
           rule.tier_rules?.forEach((t: any) => tMap.set(t.tier, t.tier));
         });
 
-        setFranchiseOptions([{ label: "Tất cả chi nhánh", value: "" }, ...Array.from(fMap, ([value, label]) => ({ value, label }))]);
+        setFranchiseOptions([
+          { label: "Tất cả chi nhánh", value: "" },
+          ...Array.from(fMap, ([value, label]) => ({ value, label })),
+        ]);
         setTiers(Array.from(tMap, ([value, label]) => ({ value, label })));
       }
     } catch (e) {
@@ -81,7 +94,7 @@ const LoyaltyPage = () => {
       pageNum = 1,
       type: "full" | "table" = "full",
       size = pageSize,
-      searchParams?: { searchTerm?: string; filters?: any; formData?: any }
+      searchParams?: { searchTerm?: string; filters?: any; formData?: any },
     ) => {
       try {
         if (type === "full") setIsLoading(true);
@@ -92,13 +105,25 @@ const LoyaltyPage = () => {
 
         const payload: SearchLoyaltyRequest = {
           searchCondition: {
-            franchise_id: currentFormData.franchise_id || selectedFranchiseId || "",
+            franchise_id:
+              currentFormData.franchise_id || selectedFranchiseId || "",
             earn_amount_per_point: currentFormData.earn_amount_per_point || "",
-            redeem_value_per_point: currentFormData.redeem_value_per_point || "",
+            redeem_value_per_point:
+              currentFormData.redeem_value_per_point || "",
 
             tier: filters.tier || "",
-            is_active: filters.is_active === "true" ? true : filters.is_active === "false" ? false : "",
-            is_deleted: filters.is_deleted === "true" ? true : filters.is_deleted === "false" ? false : "",
+            is_active:
+              filters.is_active === "true"
+                ? true
+                : filters.is_active === "false"
+                  ? false
+                  : "",
+            is_deleted:
+              filters.is_deleted === "true"
+                ? true
+                : filters.is_deleted === "false"
+                  ? false
+                  : "",
           },
           pageInfo: { pageNum, pageSize: size },
         };
@@ -117,7 +142,7 @@ const LoyaltyPage = () => {
         setIsTableLoading(false);
       }
     },
-    [pageSize, selectedFranchiseId, getValues]
+    [pageSize, selectedFranchiseId, getValues],
   );
 
   useEffect(() => {
@@ -126,7 +151,10 @@ const LoyaltyPage = () => {
   }, [fetchFilterOptions]);
 
   // --- Xử lý mở Modal ---
-  const handleOpenForm = async (mode: "create" | "edit" | "view", rule?: LoyaltyRule) => {
+  const handleOpenForm = async (
+    mode: "create" | "edit" | "view",
+    rule?: LoyaltyRule,
+  ) => {
     setFormMode(mode);
     if (mode === "create") {
       setSelectedRule(null);
@@ -159,13 +187,17 @@ const LoyaltyPage = () => {
       fetchLoyaltyRules(page, "table");
     } catch (error: any) {
       const errorData = error?.response?.data || error;
-      if (errorData?.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
-        errorData.errors.forEach((e: any) => toast.error(e.message || "Lỗi không xác định"));
-      }
-      else if (errorData?.message) {
+      if (
+        errorData?.errors &&
+        Array.isArray(errorData.errors) &&
+        errorData.errors.length > 0
+      ) {
+        errorData.errors.forEach((e: any) =>
+          toast.error(e.message || "Lỗi không xác định"),
+        );
+      } else if (errorData?.message) {
         toast.error(errorData.message);
-      }
-      else {
+      } else {
         toast.error("Thao tác thất bại");
       }
     } finally {
@@ -180,7 +212,7 @@ const LoyaltyPage = () => {
     fetchLoyaltyRules(1, "table", pageSize, {
       searchTerm: term,
       filters,
-      formData: currentForm
+      formData: currentForm,
     });
   };
 
@@ -193,7 +225,7 @@ const LoyaltyPage = () => {
     reset(defaults);
     fetchLoyaltyRules(1, "full", pageSize, {
       formData: defaults,
-      filters: { tier: "", is_active: "", is_deleted: "false" }
+      filters: { tier: "", is_active: "", is_deleted: "false" },
     });
     toast.success("Làm mới thành công");
   };
@@ -213,16 +245,16 @@ const LoyaltyPage = () => {
     return [
       ...(isAdmin
         ? [
-          {
-            header: "Chi Nhánh",
-            accessor: "franchise_name" as keyof LoyaltyRule,
-            render: (item: any) => (
-              <div className="text-[14px] font-semibold text-gray-800">
-                {item.franchise_name || "N/A"}
-              </div>
-            ),
-          },
-        ]
+            {
+              header: "Chi Nhánh",
+              accessor: "franchise_name" as keyof LoyaltyRule,
+              render: (item: any) => (
+                <div className="text-[14px] font-semibold text-gray-800">
+                  {item.franchise_name || "N/A"}
+                </div>
+              ),
+            },
+          ]
         : []),
       // {
       //   header: "Mô tả quy tắc",
@@ -257,18 +289,22 @@ const LoyaltyPage = () => {
           const tierColorMap = new Map<string, string>();
           item.tier_rules?.forEach((t: any) => {
             if (!tierColorMap.has(t.tier)) {
-              tierColorMap.set(t.tier, tierColors[tierColorMap.size % tierColors.length]);
+              tierColorMap.set(
+                t.tier,
+                tierColors[tierColorMap.size % tierColors.length],
+              );
             }
           });
 
           return (
             <div className="flex flex-wrap gap-2">
               {item.tier_rules?.map((t: any) => {
-                const range = t.min_points && t.max_points
-                  ? `${t.min_points.toLocaleString()} – ${t.max_points.toLocaleString()} points`
-                  : t.min_points
-                    ? `Từ ${t.min_points.toLocaleString()} points`
-                    : "";
+                const range =
+                  t.min_points && t.max_points
+                    ? `${t.min_points.toLocaleString()} – ${t.max_points.toLocaleString()} points`
+                    : t.min_points
+                      ? `Từ ${t.min_points.toLocaleString()} points`
+                      : "";
                 return (
                   <span
                     key={t.tier}
@@ -303,7 +339,10 @@ const LoyaltyPage = () => {
         totalItems={totalItems}
         currentPage={page}
         onPageChange={(p) => fetchLoyaltyRules(p, "table")}
-        onPageSizeChange={(s) => { setPageSize(s); fetchLoyaltyRules(1, "full", s); }}
+        onPageSizeChange={(s) => {
+          setPageSize(s);
+          fetchLoyaltyRules(1, "full", s);
+        }}
         searchContent={
           <div className="flex flex-wrap items-center gap-3 w-full">
             {isAdmin && (
@@ -343,8 +382,22 @@ const LoyaltyPage = () => {
         isTableLoading={isTableLoading}
         filters={[
           { key: "tier" as any, label: "Hạng thành viên", options: tiers },
-          { key: "is_active", label: "Trạng thái", options: [{ value: "true", label: "Đang hoạt động" }, { value: "false", label: "Tạm ngưng" }] },
-          { key: "is_deleted", label: "Trạng thái xóa", options: [{ value: "false", label: "Còn tồn tại" }, { value: "true", label: "Đã xóa" }] },
+          {
+            key: "is_active",
+            label: "Trạng thái",
+            options: [
+              { value: "true", label: "Đang hoạt động" },
+              { value: "false", label: "Tạm ngưng" },
+            ],
+          },
+          {
+            key: "is_deleted",
+            label: "Trạng thái xóa",
+            options: [
+              { value: "false", label: "Còn tồn tại" },
+              { value: "true", label: "Đã xóa" },
+            ],
+          },
         ]}
       />
 
@@ -358,7 +411,7 @@ const LoyaltyPage = () => {
         isAdmin={isAdmin}
         selectedFranchiseId={selectedFranchiseId || undefined}
         existingFranchiseIds={rules
-          .map(r => r.franchise_id)
+          .map((r) => r.franchise_id)
           .filter((id): id is string => typeof id === "string")}
       />
     </>

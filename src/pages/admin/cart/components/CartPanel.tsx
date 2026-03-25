@@ -1,22 +1,16 @@
 import CheckoutModal from "@/pages/admin/cart/components/CheckoutModal";
 import { Minus, Plus, Trash2, ShoppingBag, Edit2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "react-toastify";
 
-const CartPanel = ({ cart, updateQty, total, onEditItem }: any) => {
+const CartPanel = ({ cart, updateQty, total, onEditItem, franchise }: any) => {
     const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
     const handleCheckout = async (customerInfo: any) => {
-        // Xử lý checkout ở đây
-        console.log("Customer Info:", customerInfo);
-        console.log("Cart:", cart);
-        console.log("Total:", total);
-
-        // Gọi API thanh toán
-        // toast.success("Đặt hàng thành công!");
-
-        // Reset cart sau khi thanh toán thành công
-        // updateQty(null, -Infinity); // Xóa toàn bộ cart
+       toast.success(`Đơn hàng đã được tạo cho ${customerInfo.name}!`);
+       setShowCheckoutModal(false);
     };
+    
 
     return (
         <div className="w-95 bg-white flex flex-col">
@@ -33,7 +27,7 @@ const CartPanel = ({ cart, updateQty, total, onEditItem }: any) => {
             </div>
 
             {/* Cart Items - Scrollable */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scroll">
                 {cart.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12">
                         <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-3">
@@ -119,6 +113,7 @@ const CartPanel = ({ cart, updateQty, total, onEditItem }: any) => {
                             <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200">
                                 <div className="flex items-center gap-2">
                                     <button
+                                        title="Giảm số lượng"
                                         onClick={() => updateQty(item.key, -1)}
                                         className="w-7 h-7 rounded-lg bg-white border border-gray-200 hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
                                     >
@@ -128,6 +123,7 @@ const CartPanel = ({ cart, updateQty, total, onEditItem }: any) => {
                                         {item.quantity}
                                     </span>
                                     <button
+                                        title="Tăng số lượng"
                                         onClick={() => updateQty(item.key, 1)}
                                         className="w-7 h-7 rounded-lg bg-white border border-gray-200 hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center justify-center"
                                     >
@@ -149,7 +145,7 @@ const CartPanel = ({ cart, updateQty, total, onEditItem }: any) => {
             {/* Footer */}
             {cart.length > 0 && (
                 <div className="p-5 border-t border-gray-100 bg-white shrink-0">
-                    <div className="flex f justify-between items-end mb-4">
+                    <div className="flex items-center justify-between mb-4">
                         <p className="text-xs text-gray-500">Tổng cộng</p>
                         <p className="text-xl font-bold text-primary">
                             {total.toLocaleString()}đ
@@ -158,7 +154,9 @@ const CartPanel = ({ cart, updateQty, total, onEditItem }: any) => {
 
                     <button
                         onClick={() => setShowCheckoutModal(true)}
-                        className="w-full py-2 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+                        className="w-full py-2 bg-primary hover:bg-primary/90 text-white rounded-xl font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+                        title="Kiểm tra đơn hàng"
+                    >
                         Kiểm tra đơn hàng
                     </button>
                 </div>
@@ -166,6 +164,7 @@ const CartPanel = ({ cart, updateQty, total, onEditItem }: any) => {
 
             {showCheckoutModal && (
                 <CheckoutModal
+                    franchise={franchise}
                     isOpen={showCheckoutModal}
                     onClose={() => setShowCheckoutModal(false)}
                     cart={cart}

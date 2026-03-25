@@ -241,7 +241,7 @@ export default function InventoryExcelTools({
 
   return (
     <>
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-2 py-1 ">
         <button
           onClick={() => exportExcel(false)}
           className="flex items-center gap-2 px-4 py-2 border rounded-lg bg-white hover:bg-gray-50 cursor-pointer"
@@ -253,12 +253,12 @@ export default function InventoryExcelTools({
         <button
           onClick={() => exportExcel(true)}
           disabled={!selectedIds.length}
-          className={`flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer
-          ${
-            selectedIds.length
-              ? "bg-white hover:bg-gray-50"
-              : "bg-gray-200 text-gray-400"
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition
+    ${
+      selectedIds.length
+        ? "bg-white hover:bg-gray-50 text-gray-800 cursor-pointer"
+        : "bg-gray-200 text-gray-400 cursor-not-allowed"
+    }`}
         >
           <Download size={16} />
           Export Selected {selectedIds.length > 0 && `(${selectedIds.length})`}

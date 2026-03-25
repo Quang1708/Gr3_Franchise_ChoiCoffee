@@ -52,7 +52,13 @@ const OrderPage = () => {
 
   const handleOrderAction = (order: OrderListRow) => {
     if (order.status === "draft") {
-      navigate(ROUTER_URL.CLIENT_ROUTER.CART);
+      navigate(ROUTER_URL.CLIENT_ROUTER.CHECKOUT, {
+        state: {
+          orderId: order.id,
+          orderCode: order.orderCode,
+          finalAmount: order.totalAmount,
+        },
+      });
       return;
     }
 

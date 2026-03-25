@@ -56,6 +56,9 @@ export const PERM = {
   // Cart
   CART_READ: "cart.read",
   CART_WRITE: "cart.write",
+
+  POS_READ: "pos.read",
+  POS_WRITE: "pos.write",
 } as const;
 
 export type PermissionCode = (typeof PERM)[keyof typeof PERM];

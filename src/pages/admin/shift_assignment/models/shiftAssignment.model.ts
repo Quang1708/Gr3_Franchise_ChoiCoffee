@@ -32,6 +32,7 @@ export interface ShiftAssignmentCreatePayload {
   user_id: string;
   shift_id: string;
   work_date: string;
+  status?: ShiftAssignmentStatus;
   note?: string;
 }
 

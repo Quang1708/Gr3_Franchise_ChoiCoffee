@@ -25,7 +25,7 @@ import {
 } from "./components/ProductCategoryFranchiseForm";
 
 import type { ProductCategoryFranchiseSearchInput } from "./schema/productCategoryFranchise.schema";
-import FormSelect from "@/components/Admin/Form/FormSelect";
+import FormSelect from "@/components/Admin/form/FormSelect";
 import { useForm, type FieldError } from "react-hook-form";
 
 type ProductCategoryFranchiseRow = ProductCategoryFranchise & {

@@ -58,6 +58,17 @@ export type ApiOrder = {
   updated_at?: string;
   updatedAt?: string;
 
+  canceled_at?: string;
+  canceledAt?: string;
+  cancelled_at?: string;
+  cancelledAt?: string;
+
+  failed_reason?: string;
+  failedReason?: string;
+  cancel_reason?: string;
+  canceled_reason?: string;
+  cancelled_reason?: string;
+
   order_items?: ApiOrderItem[];
   cart_items?: ApiOrderItem[];
 };
@@ -109,8 +120,10 @@ export type OrderDetailView = {
   orderCode: string;
   status: ClientOrderStatus;
   createdAt: string;
+  canceledAt?: string;
   franchiseName: string;
   customerName: string;
+  cancelReason: string;
   subtotal: number;
   total: number;
   items: Array<{
@@ -205,14 +218,31 @@ export const mapOrderToListRow = (order: ApiOrder): OrderListRow => {
 
 export const mapOrderToDetail = (order: ApiOrder): OrderDetailView => {
   const items = order.order_items ?? order.cart_items ?? [];
+  const canceledAt = String(
+    order.canceled_at ??
+      order.canceledAt ??
+      order.cancelled_at ??
+      order.cancelledAt ??
+      "",
+  ).trim();
+  const cancelReason = String(
+    order.failed_reason ??
+      order.failedReason ??
+      order.cancel_reason ??
+      order.canceled_reason ??
+      order.cancelled_reason ??
+      "",
+  ).trim();
 
   return {
     id: getOrderId(order),
     orderCode: getOrderCode(order),
     status: toClientStatus(order.status),
     createdAt: getCreatedAt(order),
+    canceledAt,
     franchiseName: order.franchise_name ?? "",
     customerName: order.customer_name ?? "",
+    cancelReason,
     subtotal: order.subtotal_amount ?? 0,
     total: getTotalAmount(order),
     items: items.map(mapOrderItem),

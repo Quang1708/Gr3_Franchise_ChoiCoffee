@@ -71,9 +71,10 @@ const InventoryPage = () => {
   const [franchiseFilter, setFranchiseFilter] = useState<string>("ALL");
   const [excelErrors, setExcelErrors] = useState<string[]>([]);
   const [errorRowIds, setErrorRowIds] = useState<string[]>([]);
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const franchiseLoading = loading || pageLoading || apiLoading;
+
   const hasSelection = selectedIds.length > 0;
   const user = useAuthStore((s) => s.user);
   const canUpdate = can(user, PERM.INVENTORY_UPDATE, selectedFranchiseId);
@@ -131,7 +132,6 @@ const InventoryPage = () => {
       label,
     }));
   }, [items]);
-
   /* ===============================
      LOAD DATA
   =============================== */
@@ -144,7 +144,7 @@ const InventoryPage = () => {
     };
 
     load();
-  }, [fetchAll, selectedFranchiseId]);
+  }, [selectedFranchiseId]);
 
   /* ===============================
      VIEW MODEL
@@ -533,30 +533,21 @@ const InventoryPage = () => {
         searchRight={
           <div className="flex items-center gap-2 flex-wrap">
             {/* FILTER FRANCHISE */}
-            <div className="relative">
-              {franchiseLoading && (
-                <div className="absolute inset-0 bg-white/60 flex items-center justify-center rounded-lg z-10">
-                  <ClientLoading />
-                </div>
-              )}
-
-              <select
-                value={franchiseFilter}
-                onChange={(e) => {
-                  setFranchiseFilter(e.target.value);
-                  setPage(1);
-                }}
-                disabled={franchiseLoading}
-                className="px-3 py-2 border rounded-lg text-sm bg-white cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="ALL">Tất cả chi nhánh</option>
-                {franchiseOptions.map((f) => (
-                  <option key={f.value} value={f.value}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={franchiseFilter}
+              onChange={(e) => {
+                setFranchiseFilter(e.target.value);
+                setPage(1);
+              }}
+              className="px-3 py-2 border rounded-lg text-sm bg-white"
+            >
+              <option value="ALL">Tất cả chi nhánh</option>
+              {franchiseOptions.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
 
             {/* LOW STOCK FILTER */}
             <button
@@ -564,8 +555,8 @@ const InventoryPage = () => {
               className={`px-3 py-2 border rounded-lg text-sm
       ${
         lowOnly
-          ? "bg-red-50 border-red-300 text-red-600 cursor-pointer"
-          : "bg-white border-gray-200 cursor-pointer"
+          ? "bg-red-50 border-red-300 text-red-600"
+          : "bg-white border-gray-200"
       }`}
             >
               {lowOnly ? "Đang lọc sắp hết" : "Lọc sắp hết"}

@@ -72,7 +72,7 @@ export function isMenuVisible(
       can(user, PERM.SHIFT_ASSIGNMENT_READ, fid)
     );
   }
-  
+  return true;
 
   if (path === "user") return can(user, PERM.USER_READ, fid);
 
@@ -81,5 +81,5 @@ export function isMenuVisible(
   if (path === "promotion") return can(user, PERM.PROMOTION_READ, fid);
 
   if (path === "pos") return can(user, PERM.POS_READ, fid);
-  return true;
+  return false;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CRUDTable,
   type Column,
@@ -6,22 +6,30 @@ import {
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
 import ClientLoading from "@/components/Client/Client.Loading";
 import {
+  confirmPaymentById,
+  getPaymentByCode,
+  getPaymentById,
+  getPaymentByOrderId,
   getPayments,
-  getRefundsByPayment,
+  getPaymentsByCustomerId,
+  refundPaymentById,
   type PaymentListItem,
 } from "@/services/payment.service";
 import {
   franchiseService,
   type FranchiseSelectItem,
 } from "@/services/franchise.service";
+import { getOrdersByFranchiseId } from "@/pages/admin/order/services/searchOrder.service";
 import { toastError } from "@/utils/toast.util";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import type { Payment } from "@/models/payment.model";
-import type { Refund } from "@/models/refund.model";
+import { searchCustomersUsecase } from "../customer/usecases/searchCustomers.usecase";
+import type { Customer } from "@/models/customer.model";
 
 type PaymentRow = PaymentListItem & {
   franchise: string;
   orderCode: string;
+  customerDisplay: string;
   createdByName: string;
 };
 
@@ -51,12 +59,9 @@ const methodLabel: Record<Payment["method"], string> = {
   VNPAY: "VNPAY",
 };
 
-const refundStatusLabel: Record<Refund["status"], string> = {
-  REQUESTED: "Đã yêu cầu",
-  APPROVED: "Đã duyệt",
-  REJECTED: "Từ chối",
-  COMPLETED: "Hoàn tất",
-};
+type SearchType = "id" | "code" | "orderId" | "customerId" | "customer_dropdown";
+
+const DEMO_CUSTOMER_ID = "69a682072b4323c52ff49bc5";
 
 const formatDateTime = (value?: string) => {
   if (!value) return "--";
@@ -72,28 +77,31 @@ const formatDateTime = (value?: string) => {
       });
 };
 
-/**
- * Trang quản lý thanh toán (admin) — mapping API.
- */
+
 const PaymentPage = () => {
   const selectedFranchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
   const isAdminMode = selectedFranchiseId === null;
 
   const [payments, setPayments] = useState<PaymentListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchType, setSearchType] = useState<SearchType>("customerId");
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [isLoadingList, setIsLoadingList] = useState(true);
 
   const [franchises, setFranchises] = useState<FranchiseSelectItem[]>([]);
 
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedCustomerForSearch, setSelectedCustomerForSearch] = useState<Customer | null>(null);
+
   const [selectedPayment, setSelectedPayment] = useState<PaymentRow | null>(
     null,
   );
-  const [refunds, setRefunds] = useState<Refund[]>([]);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isRefundLoading, setIsRefundLoading] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   const franchiseNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -110,46 +118,187 @@ const PaymentPage = () => {
     }
   };
 
-  const fetchPayments = async () => {
+  const loadCustomersForDropdown = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
-      const data = await getPayments();
-      let list = data ?? [];
-      if (!isAdminMode && selectedFranchiseId != null) {
-        const fid = String(selectedFranchiseId);
-        list = list.filter((p) => String(p.franchiseId) === fid);
+      const res = await searchCustomersUsecase({
+        searchCondition: {
+          keyword: "",
+          is_active: "",
+          is_deleted: false
+        },
+        pageInfo: {
+          pageNum: 1,
+          pageSize: 100,
+        }
+      });
+      if (res.success) {
+        setCustomers(res.data || []);
       }
-      setPayments(list);
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách khách hàng:", err);
+    }
+  };
+
+  const applyFranchiseScope = useCallback(
+    (data: PaymentListItem[]) => {
+      if (isAdminMode || selectedFranchiseId == null) return data;
+      const fid = String(selectedFranchiseId);
+      const filtered = data.filter((p) => String(p.franchiseId) === fid);
+      if (filtered.length === 0 && data.length > 0) return data;
+      return filtered;
+    },
+    [isAdminMode, selectedFranchiseId],
+  );
+
+  const loadAllPayments = useCallback(async () => {
+    try {
+      setIsLoadingList(true);
+      setError(null);
+      setPayments([]);
+
+      let ordersRaw: unknown;
+      try {
+        ordersRaw = await getOrdersByFranchiseId(
+          isAdminMode ? null : selectedFranchiseId,
+        );
+      } catch (orderErr) {
+        const fallbackError = orderErr as Error;
+        console.warn("Lỗi order API, fallback sang payment API:", fallbackError.message);
+        const paymentData = await getPayments();
+        setPayments(applyFranchiseScope(paymentData));
+        return;
+      }
+
+      const extractOrders = (data: unknown): Array<{ _id?: string; id?: string }> => {
+        if (Array.isArray(data)) return data;
+        if (!data || typeof data !== "object") return [];
+        const obj = data as Record<string, unknown>;
+        const candidates = [obj.data, obj.items, obj.results, obj.rows, obj.orders];
+        for (const c of candidates) {
+          if (Array.isArray(c)) return c;
+        }
+        return [];
+      };
+
+      const orders = extractOrders(ordersRaw);
+      if (orders.length === 0) {
+        const fallbackPayments = await getPayments();
+        setPayments(applyFranchiseScope(fallbackPayments));
+        return;
+      }
+
+      const paymentPromises = orders.map((order) => {
+        const orderId = order._id || order.id;
+        if (!orderId) return Promise.resolve<PaymentListItem[]>([]);
+        return getPaymentByOrderId(orderId).catch(() => []);
+      });
+
+      const paymentResults = await Promise.all(paymentPromises);
+
+      const allPayments = paymentResults.flat();
+      setPayments(applyFranchiseScope(allPayments));
     } catch (e) {
       const msg =
         typeof (e as { message?: string })?.message === "string"
           ? (e as { message: string }).message
-          : "Không thể tải danh sách thanh toán";
+          : "Không thể tải danh sách đơn hàng / thanh toán";
       setError(msg);
       toastError(msg);
+      setPayments([]);
     } finally {
-      setIsLoading(false);
+      setIsLoadingList(false);
     }
-  };
+  }, [isAdminMode, selectedFranchiseId, applyFranchiseScope]);
 
   useEffect(() => {
     void fetchFranchises();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void loadCustomersForDropdown();
   }, []);
 
   useEffect(() => {
-    void fetchPayments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFranchiseId, isAdminMode]);
+    void loadAllPayments();
+  }, [loadAllPayments]);
+
+  const searchWithParams = async (type: SearchType, kwRaw: string) => {
+    const kw = kwRaw.trim();
+    if (!kw) {
+      toastError("Vui lòng nhập từ khóa tìm kiếm");
+      return;
+    }
+    try {
+      setIsSearching(true);
+      setError(null);
+      const selectedSearch = async (): Promise<PaymentListItem[]> => {
+        if (type === "id") {
+          const item = await getPaymentById(kw);
+          return item && String(item.id) !== "0" ? [item] : [];
+        }
+        if (type === "code") {
+          const item = await getPaymentByCode(kw);
+          return item && String(item.id) !== "0" ? [item] : [];
+        }
+        if (type === "orderId") return getPaymentByOrderId(kw);
+        return getPaymentsByCustomerId(kw);
+      };
+
+      let list = await selectedSearch();
+
+      if (list.length === 0) {
+        const [byId, byCode, byOrder, byCustomer] = await Promise.allSettled([
+          getPaymentById(kw).then((x) =>
+            x && String(x.id) !== "0" ? [x] : [],
+          ),
+          getPaymentByCode(kw).then((x) =>
+            x && String(x.id) !== "0" ? [x] : [],
+          ),
+          getPaymentByOrderId(kw),
+          getPaymentsByCustomerId(kw),
+        ]);
+        const merged = new Map<string, PaymentListItem>();
+        const add = (items: PaymentListItem[]) => {
+          items.forEach((it) => merged.set(String(it.id), it));
+        };
+        if (byId.status === "fulfilled") add(byId.value);
+        if (byCode.status === "fulfilled") add(byCode.value);
+        if (byOrder.status === "fulfilled") add(byOrder.value);
+        if (byCustomer.status === "fulfilled") add(byCustomer.value);
+        list = Array.from(merged.values());
+      }
+
+      const scoped = applyFranchiseScope(list);
+      setPayments(scoped);
+      if (scoped.length === 0) {
+        toastError(
+          list.length === 0
+            ? "Không tìm thấy thanh toán / không có dữ liệu từ server"
+            : "Có dữ liệu nhưng không khớp chi nhánh đang chọn — thử chọn Tất cả chi nhánh hoặc đúng franchise",
+        );
+      }
+    } catch (e) {
+      const msg =
+        typeof (e as { message?: string })?.message === "string"
+          ? (e as { message: string }).message
+          : "Không thể tìm kiếm thanh toán";
+      setError(msg);
+      toastError(msg);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearch = () => void searchWithParams(searchType, searchKeyword);
 
   const prepared = useMemo<PaymentRow[]>(() => {
     return payments.map((p) => ({
       ...p,
       franchise:
-        franchiseNameById.get(String(p.franchiseId)) ?? `#${p.franchiseId}`,
+        p.franchiseName ??
+        franchiseNameById.get(String(p.franchiseId)) ??
+        `#${p.franchiseId}`,
       orderCode: `#${p.orderId}`,
-      createdByName: p.createdBy ? `User #${p.createdBy}` : "Hệ thống",
+      customerDisplay:
+        p.customerName ?? (p.customerId ? `#${p.customerId}` : "--"),
+      createdByName: p.createdBy ? `User #${String(p.createdBy)}` : "Hệ thống",
     }));
   }, [payments, franchiseNameById]);
 
@@ -175,22 +324,55 @@ const PaymentPage = () => {
   const handleView = async (item: PaymentRow) => {
     setSelectedPayment(item);
     setIsDetailOpen(true);
-    setIsRefundLoading(true);
-    try {
-      const r = await getRefundsByPayment(item.id);
-      setRefunds(r);
-    } catch {
-      toastError("Không thể tải thông tin hoàn tiền");
-      setRefunds([]);
-    } finally {
-      setIsRefundLoading(false);
-    }
   };
 
   const handleCloseDetail = () => {
     setIsDetailOpen(false);
     setSelectedPayment(null);
-    setRefunds([]);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!selectedPayment) return;
+    try {
+      setIsActionLoading(true);
+      const updated = await confirmPaymentById(selectedPayment.id);
+      setPayments((prev) =>
+        prev.map((it) => (it.id === updated.id ? updated : it)),
+      );
+      setSelectedPayment((prev) =>
+        prev ? ({ ...prev, ...updated } as PaymentRow) : prev,
+      );
+    } catch (e) {
+      const msg =
+        typeof (e as { message?: string })?.message === "string"
+          ? (e as { message: string }).message
+          : "Xác nhận thanh toán thất bại";
+      toastError(msg);
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleRefundPayment = async () => {
+    if (!selectedPayment) return;
+    try {
+      setIsActionLoading(true);
+      const updated = await refundPaymentById(selectedPayment.id);
+      setPayments((prev) =>
+        prev.map((it) => (it.id === updated.id ? updated : it)),
+      );
+      setSelectedPayment((prev) =>
+        prev ? ({ ...prev, ...updated } as PaymentRow) : prev,
+      );
+    } catch (e) {
+      const msg =
+        typeof (e as { message?: string })?.message === "string"
+          ? (e as { message: string }).message
+          : "Hoàn tiền thất bại";
+      toastError(msg);
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   const columns: Column<PaymentRow>[] = useMemo(
@@ -199,6 +381,19 @@ const PaymentPage = () => {
         header: "Mã đơn",
         accessor: "orderCode",
         className: "min-w-[150px]",
+        sortable: true,
+      },
+      {
+        header: "Mã thanh toán",
+        accessor: "paymentCode",
+        className: "min-w-[160px]",
+        sortable: true,
+        render: (it) => it.paymentCode ?? "--",
+      },
+      {
+        header: "Khách hàng",
+        accessor: "customerDisplay",
+        className: "min-w-[160px]",
         sortable: true,
       },
       {
@@ -248,103 +443,153 @@ const PaymentPage = () => {
     [],
   );
 
-  if (isLoading && payments.length === 0) {
-    return (
-      <div className="flex min-h-[320px] items-center justify-center p-6">
-        <ClientLoading />
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 transition-all animate-fade-in">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">
         Quản lý thanh toán
       </h1>
 
-      {error && payments.length === 0 && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <p>{error}</p>
-          <button
-            type="button"
-            onClick={() => void fetchPayments()}
-            className="mt-2 rounded-lg bg-red-100 px-3 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200"
+      <div className="mb-4 flex flex-wrap items-end gap-2 rounded-lg border border-gray-100 bg-white p-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">
+            Kiểu tra cứu
+          </label>
+          <select
+            value={searchType}
+            onChange={(e) => setSearchType(e.target.value as SearchType)}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
           >
-            Thử lại
-          </button>
+            <option value="customer_dropdown">Chọn từ danh sách khách hàng</option>
+            <option value="orderId">Theo Order ID</option>
+            <option value="customerId">Theo Customer ID</option>
+            <option value="code">Theo Payment Code</option>
+            <option value="id">Theo Payment ID</option>
+          </select>
         </div>
-      )}
-
-      <CRUDTable<PaymentRow>
-        title="Danh sách thanh toán"
-        data={dataForTable}
-        columns={columns}
-        pageSize={5}
-        onView={handleView}
-        searchKeys={[
-          "orderCode",
-          "franchise",
-          "createdByName",
-          "providerTxnId",
-        ]}
-        searchRight={
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              aria-label="Lọc từ ngày"
-            />
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              aria-label="Lọc đến ngày"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setFromDate("");
-                setToDate("");
+        <div className="min-w-[260px] flex-1">
+          <label className="mb-1 block text-xs font-medium text-gray-600">
+            {searchType === "customer_dropdown" ? "Chọn khách hàng" : "Từ khóa"}
+          </label>
+          {searchType === "customer_dropdown" ? (
+            <select
+              value={selectedCustomerForSearch?.id || ""}
+              onChange={(e) => {
+                const customer = customers.find((c) => c.id === e.target.value);
+                setSelectedCustomerForSearch(customer || null);
+                if (customer) {
+                  void searchWithParams("customerId", customer.id);
+                }
               }}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
             >
-              Xóa ngày
-            </button>
-            <button
-              type="button"
-              onClick={() => void fetchPayments()}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              Làm mới
-            </button>
-          </div>
-        }
-        filters={[
-          {
-            key: "method",
-            label: "Phương thức",
-            options: [
-              { value: "CASH", label: "Tiền mặt" },
-              { value: "CARD", label: "Thẻ" },
-              { value: "MOMO", label: "MOMO" },
-              { value: "VNPAY", label: "VNPAY" },
-            ],
-          },
-          {
-            key: "status",
-            label: "Trạng thái",
-            options: [
-              { value: "PENDING", label: "Chờ xử lý" },
-              { value: "SUCCESS", label: "Thành công" },
-              { value: "FAILED", label: "Thất bại" },
-              { value: "REFUNDED", label: "Hoàn tiền" },
-            ],
-          },
-        ]}
-      />
+              <option value="">-- Chọn khách hàng --</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleSearch();
+              }}
+              placeholder="Nhập ID / code..."
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            />
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => void handleSearch()}
+          disabled={isSearching || searchType === "customer_dropdown"}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
+        >
+          {isSearching ? "Đang tìm..." : "Tìm kiếm"}
+        </button>
+      </div>
+
+      {isLoadingList && payments.length === 0 ? (
+        <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-gray-100 bg-white">
+          <ClientLoading />
+        </div>
+      ) : (
+        <CRUDTable<PaymentRow>
+          title="Danh sách thanh toán"
+          data={dataForTable}
+          columns={columns}
+          pageSize={5}
+          onView={handleView}
+          searchKeys={[
+            "orderCode",
+            "paymentCode",
+            "customerDisplay",
+            "franchise",
+            "createdByName",
+            "providerTxnId",
+          ]}
+          searchRight={
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                aria-label="Lọc từ ngày"
+              />
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                aria-label="Lọc đến ngày"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setFromDate("");
+                  setToDate("");
+                }}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Xóa ngày
+              </button>
+              <button
+                type="button"
+                onClick={() => void loadAllPayments()}
+                disabled={isLoadingList}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Làm mới
+              </button>
+            </div>
+          }
+          filters={[
+            {
+              key: "method",
+              label: "Phương thức",
+              options: [
+                { value: "CASH", label: "Tiền mặt" },
+                { value: "CARD", label: "Thẻ" },
+                { value: "MOMO", label: "MOMO" },
+                { value: "VNPAY", label: "VNPAY" },
+              ],
+            },
+            {
+              key: "status",
+              label: "Trạng thái",
+              options: [
+                { value: "PENDING", label: "Chờ xử lý" },
+                { value: "SUCCESS", label: "Thành công" },
+                { value: "FAILED", label: "Thất bại" },
+                { value: "REFUNDED", label: "Hoàn tiền" },
+              ],
+            },
+          ]}
+        />
+      )}
 
       <CRUDModalTemplate
         isOpen={isDetailOpen && !!selectedPayment}
@@ -364,6 +609,24 @@ const PaymentPage = () => {
                 <p>
                   <span className="font-medium text-gray-600">Mã đơn:</span>{" "}
                   {selectedPayment.orderCode}
+                </p>
+                <p>
+                  <span className="font-medium text-gray-600">
+                    Mã thanh toán:
+                  </span>{" "}
+                  {selectedPayment.paymentCode ?? "--"}
+                </p>
+                <p>
+                  <span className="font-medium text-gray-600">
+                    Khách hàng:
+                  </span>{" "}
+                  {selectedPayment.customerDisplay}
+                  {selectedPayment.customerName &&
+                  selectedPayment.customerId ? (
+                    <span className="ml-1 text-xs text-gray-400">
+                      #{selectedPayment.customerId}
+                    </span>
+                  ) : null}
                 </p>
                 <p>
                   <span className="font-medium text-gray-600">Chi nhánh:</span>{" "}
@@ -408,49 +671,26 @@ const PaymentPage = () => {
 
             <div className="rounded-lg border border-gray-100 bg-white p-4">
               <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">
-                Hoàn tiền
+                Thao tác với thanh toán
               </p>
-              {isRefundLoading ? (
-                <p className="text-sm text-gray-500">Đang tải...</p>
-              ) : refunds.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full table-auto text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-500">
-                        <th className="px-2 py-2">ID</th>
-                        <th className="px-2 py-2">Số tiền</th>
-                        <th className="px-2 py-2">Lý do</th>
-                        <th className="px-2 py-2">Trạng thái</th>
-                        <th className="px-2 py-2">Ngày tạo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {refunds.map((r) => (
-                        <tr
-                          key={r.id}
-                          className="border-b border-gray-50 last:border-0"
-                        >
-                          <td className="px-2 py-2">{r.id}</td>
-                          <td className="px-2 py-2">
-                            {currency.format(r.amount)}
-                          </td>
-                          <td className="px-2 py-2">{r.reason || "--"}</td>
-                          <td className="px-2 py-2">
-                            {refundStatusLabel[r.status]}
-                          </td>
-                          <td className="px-2 py-2">
-                            {formatDateTime(r.createdAt)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  Không có dữ liệu hoàn tiền.
-                </p>
-              )}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleConfirmPayment()}
+                  disabled={isActionLoading}
+                  className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  Xác nhận thanh toán
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleRefundPayment()}
+                  disabled={isActionLoading}
+                  className="rounded-lg bg-orange-600 px-3 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+                >
+                  Hoàn tiền
+                </button>
+              </div>
             </div>
           </div>
         )}

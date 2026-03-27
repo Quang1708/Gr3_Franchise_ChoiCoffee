@@ -1,14 +1,14 @@
-import React, { useEffect, useState, type ReactElement } from "react";
+import React, { useEffect, useState } from "react";
 import { CRUDModalTemplate } from "../Admin/template/CRUDModal.template";
 import { toast } from "react-toastify";
-import { 
-  CheckCircle2, 
-  ClipboardCheck, 
-  ChefHat, 
-  PackageCheck, 
-  Truck, 
-  CheckSquare, 
-  Ban 
+import {
+  CheckCircle2,
+  ClipboardCheck,
+  ChefHat,
+  PackageCheck,
+  Truck,
+  CheckSquare,
+  Ban
 } from "lucide-react";
 import type { Order } from "@/pages/admin/order/models/searchOrderResponse.model";
 import { completeStatus, pickupStatus, prepareStatus, readyPickupStatus } from "./services/changeStatsus.service";
@@ -21,51 +21,62 @@ export type OrderStatusFormProps = {
   isOpen: boolean;
   onClose: () => void;
   order: Order | null;
-  onSuccess: () => void;
+  onSuccess: (newStatus?: string) => void;
 };
 
+// Thứ tự các trạng thái (theo thứ tự tiến trình)
+const STATUS_ORDER = [
+  "DRAFT",
+  "CONFIRMED",
+  "PREPARING",
+  "READY_FOR_PICKUP",
+  "OUT_FOR_DELIVERY",
+  "COMPLETED"
+];
 
-// const user = useAdminContextStore((state) => );
+// Các trạng thái cho phép hủy đơn (chỉ hủy được ở DRAFT và CONFIRMED)
+const CANCELABLE_STATUSES = ["DRAFT", "CONFIRMED"];
+
 const STATUS_OPTIONS = [
-  { 
-    value: "CONFIRMED", 
-    label: "Đã xác nhận", 
-    icon: <ClipboardCheck className="w-5 h-5" />, 
+  {
+    value: "CONFIRMED",
+    label: "Đã xác nhận",
+    icon: <ClipboardCheck className="w-5 h-5" />,
     colorClass: "text-blue-600 bg-blue-50 border-blue-200 ring-blue-500",
     hoverClass: "hover:bg-blue-50 hover:border-blue-300"
   },
-  { 
-    value: "PREPARING", 
-    label: "Đang chuẩn bị", 
-    icon: <ChefHat className="w-5 h-5" />, 
+  {
+    value: "PREPARING",
+    label: "Đang chuẩn bị",
+    icon: <ChefHat className="w-5 h-5" />,
     colorClass: "text-orange-600 bg-orange-50 border-orange-200 ring-orange-500",
     hoverClass: "hover:bg-orange-50 hover:border-orange-300"
   },
-  { 
-    value: "READY_FOR_PICKUP", 
-    label: "Sẵn sàng giao", 
-    icon: <PackageCheck className="w-5 h-5" />, 
+  {
+    value: "READY_FOR_PICKUP",
+    label: "Sẵn sàng giao",
+    icon: <PackageCheck className="w-5 h-5" />,
     colorClass: "text-teal-600 bg-teal-50 border-teal-200 ring-teal-500",
     hoverClass: "hover:bg-teal-50 hover:border-teal-300"
   },
-  { 
-    value: "OUT_FOR_DELIVERY", 
-    label: "Đang giao", 
-    icon: <Truck className="w-5 h-5" />, 
+  {
+    value: "OUT_FOR_DELIVERY",
+    label: "Đang giao",
+    icon: <Truck className="w-5 h-5" />,
     colorClass: "text-purple-600 bg-purple-50 border-purple-200 ring-purple-500",
     hoverClass: "hover:bg-purple-50 hover:border-purple-300"
   },
-  { 
-    value: "COMPLETED", 
-    label: "Hoàn tất", 
-    icon: <CheckSquare className="w-5 h-5" />, 
+  {
+    value: "COMPLETED",
+    label: "Hoàn tất",
+    icon: <CheckSquare className="w-5 h-5" />,
     colorClass: "text-green-600 bg-green-50 border-green-200 ring-green-500",
     hoverClass: "hover:bg-green-50 hover:border-green-300"
   },
-  { 
-    value: "CANCELED", 
-    label: "Hủy đơn", 
-    icon: <Ban className="w-5 h-5" />, 
+  {
+    value: "CANCELED",
+    label: "Hủy đơn",
+    icon: <Ban className="w-5 h-5" />,
     colorClass: "text-red-600 bg-red-50 border-red-200 ring-red-500",
     hoverClass: "hover:bg-red-50 hover:border-red-300"
   },
@@ -79,57 +90,73 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
   const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
   const [staffs, setStaffs] = useState<StaffUser[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+
   useEffect(() => {
     if (order && isOpen) {
       setSelectedStatus(order.status);
     }
   }, [order, isOpen]);
-  
 
   useEffect(() => {
-  if (isOpen && franchiseId) {
-    const fetchStaffInfo = async () => {
-      const staffRoleId = "69a1aa8be6a85d288f9b4a28";
-      try {
-        const res = await getStaffByFranchiseId({
-          searchCondition: {
-            user_id: "",
-            franchise_id: franchiseId,
-            role_id: staffRoleId,
-            is_deleted: false,
-          },
-          pageInfo: {
-            pageNum: 1,
-            pageSize: 50,
-          },
-        });
+    if (isOpen && franchiseId) {
+      const fetchStaffInfo = async () => {
+        const staffRoleId = "69a1aa8be6a85d288f9b4a28";
+        try {
+          const res = await getStaffByFranchiseId({
+            searchCondition: {
+              user_id: "",
+              franchise_id: franchiseId,
+              role_id: staffRoleId,
+              is_deleted: false,
+            },
+            pageInfo: {
+              pageNum: 1,
+              pageSize: 50,
+            },
+          });
 
-        setStaffs(res.data || []);
-      } catch (error) {
-        console.error("Lỗi khi lấy staff:", error);
-      }
-    };
+          setStaffs(res.data || []);
+        } catch (error) {
+          console.error("Lỗi khi lấy staff:", error);
+        }
+      };
 
-    fetchStaffInfo();
-  }
-}, [isOpen, franchiseId]);
+      fetchStaffInfo();
+    }
+  }, [isOpen, franchiseId]);
+
+  // Kiểm tra xem status có được phép chọn không
+  const isStatusSelectable = (statusValue: string, currentStatus: string) => {
+    // Nếu là hủy đơn
+    if (statusValue === "CANCELED") {
+      return CANCELABLE_STATUSES.includes(currentStatus);
+    }
+    
+    // Nếu là các trạng thái bình thường: chỉ cho phép chọn các trạng thái LỚN HƠN trạng thái hiện tại
+    const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+    const targetIndex = STATUS_ORDER.indexOf(statusValue);
+    
+    // Không cho phép chọn trạng thái nhỏ hơn hoặc bằng trạng thái hiện tại
+    return targetIndex > currentIndex;
+  };
 
   const handleSave = async () => {
     if (!order || !selectedStatus) return;
-    
+
     if (selectedStatus === order.status) {
       onClose();
       return;
     }
 
-
     const toastId = toast.loading("Đang cập nhật trạng thái...");
     setIsLoading(true);
+
     if (selectedStatus === "READY_FOR_PICKUP" && !selectedStaffId) {
       toast.error("Vui lòng chọn nhân viên giao hàng!");
+      setIsLoading(false);
       return;
     }
-    
+
     try {
       switch (selectedStatus) {
         case "PREPARING":
@@ -138,29 +165,20 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
         case "READY_FOR_PICKUP":
           await readyPickupStatus(order._id, selectedStaffId);
           break;
-          
         case "OUT_FOR_DELIVERY": {
-          
           const deliveryInfo = await getDeliveryByOrderId(order._id);
-          console.log(deliveryInfo.data);
-         
-          const deliveryId = deliveryInfo?.data?._id; 
-          
+          const deliveryId = deliveryInfo?.data?._id;
           if (!deliveryId) throw new Error("Không tìm thấy mã giao hàng (deliveryId)!");
-          
-          
           await pickupStatus(deliveryId);
           break;
         }
-          
         case "COMPLETED": {
-          const deliveryInfo = await getDeliveryByOrderId(order._id);      
-          const deliveryId = deliveryInfo?.data?._id || deliveryInfo?._id || deliveryInfo?.id;      
+          const deliveryInfo = await getDeliveryByOrderId(order._id);
+          const deliveryId = deliveryInfo?.data?._id || deliveryInfo?._id || deliveryInfo?.id;
           if (!deliveryId) throw new Error("Không tìm thấy mã giao hàng (deliveryId)!");
           await completeStatus(deliveryId);
           break;
         }
-
         default:
           throw new Error("Trạng thái này hiện chưa có API hỗ trợ!");
       }
@@ -171,9 +189,9 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
         isLoading: false,
         autoClose: 2000,
       });
-      
-      onSuccess(); 
-      onClose();   
+
+      onSuccess(selectedStatus);
+      onClose();
     } catch (error: any) {
       console.error("Lỗi cập nhật trạng thái:", error);
       toast.update(toastId, {
@@ -187,7 +205,6 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
     }
   };
 
-  
   const currentIndex = PROGRESS_STEPS.findIndex(s => s.value === selectedStatus);
   const isCanceled = selectedStatus === "CANCELED";
   const maxIndex = PROGRESS_STEPS.length - 1;
@@ -235,23 +252,21 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
           ></div>
 
           {PROGRESS_STEPS.map((step, index) => {
-            const isActive = index <= currentIndex && !isCanceled; 
-            const isPast = index < currentIndex && !isCanceled; 
+            const isActive = index <= currentIndex && !isCanceled;
+            const isPast = index < currentIndex && !isCanceled;
 
             return (
               <div
                 key={step.value}
                 className="relative z-10 flex flex-col items-center"
               >
-                {/* Vòng tròn Icon */}
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-500
-                    ${
-                      isPast
-                        ? "bg-primary border-primary text-white" 
-                        : isActive
-                          ? "bg-white border-primary text-primary shadow-sm" 
-                          : "bg-white border-gray-200 text-gray-300" 
+                    ${isPast
+                      ? "bg-primary border-primary text-white"
+                      : isActive
+                        ? "bg-white border-primary text-primary shadow-sm"
+                        : "bg-white border-gray-200 text-gray-300"
                     }
                   `}
                 >
@@ -264,7 +279,6 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
                   )}
                 </div>
 
-                {/* Chữ mô tả bên dưới */}
                 <span
                   className={`absolute top-10 text-[10px] font-bold uppercase tracking-wider text-center w-24 transition-colors duration-300
                     ${isActive ? "text-primary" : isCanceled ? "text-red-400" : "text-gray-400"}
@@ -276,7 +290,7 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
             );
           })}
         </div>
-        {/* --- KẾT THÚC THANH TIẾN TRÌNH --- */}
+
         {selectedStatus === "READY_FOR_PICKUP" && (
           <div className="mt-4">
             <p className="text-sm font-bold text-gray-700 mb-2">
@@ -308,28 +322,29 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
             {STATUS_OPTIONS.map((status) => {
               const isSelected = selectedStatus === status.value;
               const isCurrentStatus = order?.status === status.value;
+              const isDisabled = !isStatusSelectable(status.value, order?.status || "");
 
               return (
-                <label
+                <div
                   key={status.value}
                   className={`
-                    relative flex flex-col items-center justify-center gap-2 p-4 border rounded-xl cursor-pointer transition-all duration-200
-                    ${
-                      isSelected
-                        ? `ring-2 border-transparent shadow-sm ${status.colorClass}`
-                        : `border-gray-200 bg-white ${status.hoverClass} text-gray-500`
+                    relative flex flex-col items-center justify-center gap-2 p-4 border rounded-xl transition-all duration-200
+                    ${isDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+                    ${isSelected
+                      ? `ring-2 border-transparent shadow-sm ${status.colorClass}`
+                      : `border-gray-200 bg-white ${status.hoverClass} text-gray-500`
                     }
                   `}
+                  onClick={() => {
+                    if (!isDisabled) {
+                      setSelectedStatus(status.value);
+                    } else if (status.value === "CANCELED") {
+                      toast.info("Không thể hủy đơn ở trạng thái này!");
+                    } else {
+                      toast.info("Không thể quay lại trạng thái cũ!");
+                    }
+                  }}
                 >
-                  <input
-                    type="radio"
-                    name="orderStatus"
-                    value={status.value}
-                    checked={isSelected}
-                    onChange={() => setSelectedStatus(status.value)}
-                    className="hidden"
-                  />
-
                   <div
                     className={`transition-transform duration-200 ${isSelected ? "scale-110" : "scale-100"}`}
                   >
@@ -351,7 +366,7 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
                       Hiện tại
                     </div>
                   )}
-                </label>
+                </div>
               );
             })}
           </div>

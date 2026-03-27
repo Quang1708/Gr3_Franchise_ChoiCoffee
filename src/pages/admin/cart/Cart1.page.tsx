@@ -203,6 +203,7 @@ const CartPage = () => {
                     {
                         label: "Trạng thái",
                         key: "status",
+                        defaultValue: "ACTIVE",
                         options: [
                             { label: "Chưa checkout", value: "ACTIVE" },
                             { label: "Đã hủy", value: "CANCELED" },

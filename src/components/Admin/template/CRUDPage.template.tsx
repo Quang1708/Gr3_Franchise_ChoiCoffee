@@ -160,7 +160,7 @@ export function CRUDPageTemplate<
       if (f.key === "is_deleted") {
         initial[f.key] = "false";
       } else if (f.defaultValue) {
-      initial[f.key] = f.defaultValue;
+        initial[f.key] = f.defaultValue;
       } else {
         initial[f.key] = "";
       }
@@ -454,7 +454,7 @@ export function CRUDPageTemplate<
             type="button"
             onClick={handleRefresh}
             className="px-3 py-2 text-sm rounded-lg bg-gray-200 text-gray-600 
-              transition-all duration-200 active:scale-95 hover:bg-gray-300 cursor-pointer" 
+              transition-all duration-200 active:scale-95 hover:bg-gray-300 cursor-pointer"
           >
             <RotateCw className="w-4 h-4" />
           </button>
@@ -639,13 +639,12 @@ export function CRUDPageTemplate<
                               <button
                                 title="Đổi trạng thái"
                                 onClick={(e) => {
-                                  e.stopPropagation(); 
+                                  e.stopPropagation();
                                   onChangeOrderStatus(item);
                                 }}
                                 className="p-2 text-orange-500 hover:bg-orange-50 rounded-lg transition active:scale-90 cursor-pointer"
                               >
                                 <CircleCheckBig className="w-5 h-5" />{" "}
-                                
                               </button>
                             )}
 

@@ -50,9 +50,12 @@ export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERM.MENU_READ,
     PERM.MENU_WRITE,
     PERM.PRODUCT_READ,
-
+    PERM.PRODUCT_WRITE,
+    PERM.CATEGORY_READ,
+    PERM.CATEGORY_WRITE,
     // ❌ REMOVE:
-    // PERM.CATEGORY_READ
+    // PERM.PRODUCT_READ
+    // PERM.CATEGORY_READf
 
     // ✅ ONLY franchise
     PERM.PRODUCT_FRANCHISE_READ,

@@ -18,7 +18,7 @@ import {
   ChevronRight,
   ChevronDown,
 } from "lucide-react";
-
+import ChoiCoffeLogo from "@/components/Logo/ChoiCoffe.logo";
 import { useAuthStore } from "@/stores/auth.store";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import { isMenuVisible } from "@/auth/menu.guard";
@@ -164,11 +164,15 @@ const AdminSidebar = ({ collapsed = false, onToggle }: any) => {
     >
       {/* HEADER */}
       <div className="h-16 flex items-center justify-between px-3 border-b bg-white">
-        {!collapsed && (
-          <div className="font-semibold text-lg tracking-tight flex items-center gap-2">
-            ☕ <span>ChoiCoffee</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <ChoiCoffeLogo />
+
+          {!collapsed && (
+            <span className="font-semibold text-lg tracking-tight">
+              ChoiCoffee
+            </span>
+          )}
+        </div>
 
         <button
           onClick={onToggle}

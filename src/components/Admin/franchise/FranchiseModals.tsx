@@ -104,7 +104,6 @@ const FranchiseModal: React.FC<FranchiseModalProps> = ({
     clearErrors();
   }, [defaultValues, reset, clearErrors]);
 
-  // ✅ handle submit giống inventory (có BE error)
   const submitHandler = async (data: FranchiseFormData) => {
     try {
       await onSubmit(data);
@@ -250,7 +249,7 @@ const FranchiseModal: React.FC<FranchiseModalProps> = ({
           type="button"
           onClick={onCancel}
           disabled={isSubmitting}
-          className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100 transition"
+          className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         >
           Hủy
         </button>
@@ -258,7 +257,7 @@ const FranchiseModal: React.FC<FranchiseModalProps> = ({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="px-5 py-2 rounded-xl bg-primary text-white font-medium hover:opacity-90 transition"
+          className="px-5 py-2 rounded-xl bg-primary text-white font-medium hover:opacity-90 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? "Đang xử lý..." : submitLabel}
         </button>
@@ -358,7 +357,7 @@ export const DeleteFranchiseModal: React.FC<{
         <div className="flex justify-end gap-3 pt-3 border-t">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100"
+            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer"
           >
             Hủy
           </button>
@@ -368,7 +367,7 @@ export const DeleteFranchiseModal: React.FC<{
               onConfirm();
               onClose();
             }}
-            className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700"
+            className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 cursor-pointer"
           >
             Xóa
           </button>
@@ -416,7 +415,7 @@ export const RestoreFranchiseModal: React.FC<{
         <div className="flex justify-end gap-3 pt-3 border-t">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100"
+            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100 cursor-pointer"
           >
             Hủy
           </button>
@@ -426,7 +425,7 @@ export const RestoreFranchiseModal: React.FC<{
               onConfirm();
               onClose();
             }}
-            className="px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700"
+            className="px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 cursor-pointer"
           >
             Khôi phục
           </button>

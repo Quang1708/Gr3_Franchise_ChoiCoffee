@@ -196,6 +196,7 @@ const ProductFranchisePage = () => {
     setIsProcessing(true);
     try {
       if (formMode === "create") {
+        setIsLoading(true);
         await createProductFranchiseUsecase(data);
         toast.success("Thêm sản phẩm thành công");
       } else {
@@ -218,6 +219,7 @@ const ProductFranchisePage = () => {
       }
     } finally {
       setIsProcessing(false);
+      setIsLoading(false);
     }
   };
 

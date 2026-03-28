@@ -38,7 +38,7 @@ const OrderPage = () => {
   // State cho search customer
   const [customerSearchKey, setCustomerSearchKey] = useState("");
   // State cho filter hiện tại
-  const [currentFilterStatus, setCurrentFilterStatus] = useState<string>();
+  const [currentFilterStatus, setCurrentFilterStatus] = useState<string>("CONFIRMED");
 
   // Key để force remount CRUDPageTemplate (cập nhật filter UI)
   const [filterKey, setFilterKey] = useState(0);
@@ -249,7 +249,7 @@ const OrderPage = () => {
   useEffect(() => {
     if (selectedFranchise && !customerSelected && !isFetching.current) {
       isFetching.current = true;
-      fetchOrdersByFranchise("", 1, pageSize);
+      fetchOrdersByFranchise("CONFIRMED", 1, pageSize);
     }
   }, [selectedFranchise]);
 

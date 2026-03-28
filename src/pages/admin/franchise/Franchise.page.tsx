@@ -98,7 +98,6 @@ const FranchisePage = () => {
     [],
   );
 
-  // client pagination (vì API của bạn chưa hỗ trợ page)
   const paginatedData = useMemo(() => {
     const start = (page - 1) * pageSize;
     return items.slice(start, start + pageSize);

@@ -11,6 +11,23 @@ import type { CategoryFranchiseOption } from "../services/searchCategoryFranchis
 import { useAuthStore } from "@/stores/auth.store";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import { toastError } from "@/utils/toast.util";
+import { getFranchiseName } from "@/components/categoryFranchise/services/client06.service";
+
+const normalizeScope = (scope: unknown) => String(scope ?? "").toUpperCase();
+
+const getRoleCode = (roleItem: Record<string, unknown>) =>
+  String(roleItem.role ?? roleItem.role_code ?? "").toUpperCase();
+
+const getRoleFranchiseId = (roleItem: Record<string, unknown>) => {
+  const franchiseId = roleItem.franchise_id ?? roleItem.franchiseId;
+  return franchiseId == null ? "" : String(franchiseId);
+};
+
+const getRoleFranchiseName = (roleItem: Record<string, unknown>) => {
+  const franchiseName = roleItem.franchise_name ?? roleItem.franchiseName;
+  if (franchiseName == null) return "";
+  return String(franchiseName).trim();
+};
 
 export type ProductCategoryFranchiseFormValues = {
   franchise_id?: string;
@@ -68,9 +85,6 @@ export const ProductCategoryFranchiseForm = ({
     },
   });
 
-  const [franchiseOptions, setFranchiseOptions] = useState<
-    Array<{ id: string; name: string }>
-  >([]);
   const [categoryOptions, setCategoryOptions] = useState<
     CategoryFranchiseOption[]
   >([]);
@@ -80,35 +94,48 @@ export const ProductCategoryFranchiseForm = ({
   const [usedDisplayOrders, setUsedDisplayOrders] = useState<Set<number>>(
     () => new Set(),
   );
+  const [resolvedFranchiseName, setResolvedFranchiseName] = useState("");
 
   const formRef = useRef<HTMLFormElement>(null);
 
   // Check if user is ADMIN (GLOBAL)
   const { user } = useAuthStore();
-  const { selectedFranchiseId: ctxFranchiseId } = useAdminContextStore();
+  const { selectedFranchiseId: ctxFranchiseId, franchises } =
+    useAdminContextStore();
 
   const roleManagedFranchiseId = useMemo(() => {
     const franchiseRole = user?.roles?.find((r) => {
-      const roleFranchiseId =
-        r.franchise_id ??
-        (r as { franchiseId?: string | number } | undefined)?.franchiseId;
-      return r.scope === "FRANCHISE" && roleFranchiseId != null;
+      const roleRecord = r as Record<string, unknown>;
+      const roleFranchiseId = getRoleFranchiseId(roleRecord);
+      return (
+        normalizeScope(roleRecord.scope) === "FRANCHISE" &&
+        roleFranchiseId !== ""
+      );
     });
 
-    const resolvedFranchiseId =
-      franchiseRole?.franchise_id ??
-      (franchiseRole as { franchiseId?: string | number } | undefined)
-        ?.franchiseId;
+    const resolvedFranchiseId = getRoleFranchiseId(
+      (franchiseRole ?? {}) as Record<string, unknown>,
+    );
 
-    return resolvedFranchiseId != null ? String(resolvedFranchiseId) : "";
+    return resolvedFranchiseId;
   }, [user]);
+
+  const roleManagedFranchiseName = useMemo(() => {
+    const franchiseRole = user?.roles?.find((r) => {
+      const roleRecord = r as Record<string, unknown>;
+      return getRoleFranchiseId(roleRecord) === roleManagedFranchiseId;
+    });
+
+    return getRoleFranchiseName(
+      (franchiseRole ?? {}) as Record<string, unknown>,
+    );
+  }, [roleManagedFranchiseId, user]);
 
   const contextFranchiseId = useMemo(() => {
     if (!ctxFranchiseId || ctxFranchiseId === "ALL") return "";
     return String(ctxFranchiseId);
   }, [ctxFranchiseId]);
 
-  const formFranchiseId = watch("franchise_id");
   const formProductFranchiseId = watch("product_franchise_id");
   const formDisplayOrder = watch("display_order");
 
@@ -116,29 +143,125 @@ export const ProductCategoryFranchiseForm = ({
     return (
       user?.roles?.some(
         (r) =>
-          (r.role_code === "ADMIN" || r.role === "ADMIN") &&
-          r.scope === "GLOBAL",
+          getRoleCode(r as Record<string, unknown>) === "ADMIN" &&
+          normalizeScope((r as Record<string, unknown>).scope) === "GLOBAL",
       ) ?? false
     );
   }, [user]);
 
   const managedFranchiseId =
     contextFranchiseId || (!isGlobalAdmin ? roleManagedFranchiseId : "");
-  const requiresFranchiseSelection =
-    isGlobalAdmin && !String(formFranchiseId || "").trim();
+  const requiresFranchiseSelection = !String(managedFranchiseId).trim();
 
-  const activeFranchiseId = formFranchiseId || managedFranchiseId;
+  const activeFranchiseId = managedFranchiseId;
 
   const createDefaultFranchiseId = managedFranchiseId;
 
   // Get franchise name for display
   const currentFranchiseName = useMemo(() => {
     if (!activeFranchiseId || activeFranchiseId === "ALL") return null;
-    const franchise = franchiseOptions.find(
-      (f) => String(f.id) === String(activeFranchiseId),
-    );
-    return franchise?.name || activeFranchiseId;
-  }, [activeFranchiseId, franchiseOptions]);
+
+    if (resolvedFranchiseName) {
+      return resolvedFranchiseName;
+    }
+
+    const contextFranchiseName = franchises.find(
+      (item) => String(item.id) === String(activeFranchiseId),
+    )?.name;
+
+    if (contextFranchiseName) {
+      return contextFranchiseName;
+    }
+
+    if (
+      roleManagedFranchiseId === String(activeFranchiseId) &&
+      roleManagedFranchiseName
+    ) {
+      return roleManagedFranchiseName;
+    }
+
+    return activeFranchiseId;
+  }, [
+    activeFranchiseId,
+    franchises,
+    roleManagedFranchiseId,
+    roleManagedFranchiseName,
+    resolvedFranchiseName,
+  ]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const resolveFranchiseName = async () => {
+      if (!activeFranchiseId || activeFranchiseId === "ALL") {
+        if (isMounted) setResolvedFranchiseName("");
+        return;
+      }
+
+      const hasContextName = franchises.some(
+        (item) =>
+          String(item.id) === String(activeFranchiseId) &&
+          Boolean(String(item.name ?? "").trim()),
+      );
+
+      const hasRoleName =
+        roleManagedFranchiseId === String(activeFranchiseId) &&
+        Boolean(roleManagedFranchiseName);
+
+      if (hasContextName || hasRoleName) {
+        if (isMounted) setResolvedFranchiseName("");
+        return;
+      }
+
+      const categoryFranchiseName = categoryOptions.find(
+        (item) => String(item.franchise_id) === String(activeFranchiseId),
+      )?.franchise_name;
+
+      if (String(categoryFranchiseName ?? "").trim()) {
+        if (isMounted) {
+          setResolvedFranchiseName(String(categoryFranchiseName).trim());
+        }
+        return;
+      }
+
+      const productFranchiseName = productOptions.find(
+        (item) => String(item.franchise_id) === String(activeFranchiseId),
+      )?.franchise_name;
+
+      if (String(productFranchiseName ?? "").trim()) {
+        if (isMounted) {
+          setResolvedFranchiseName(String(productFranchiseName).trim());
+        }
+        return;
+      }
+
+      try {
+        const franchise = await getFranchiseName(String(activeFranchiseId));
+        const nextName = String(franchise?.name ?? "").trim();
+        if (isMounted) {
+          setResolvedFranchiseName(nextName);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setResolvedFranchiseName("");
+        }
+        console.error("Không thể lấy tên chi nhánh từ franchise_id:", error);
+      }
+    };
+
+    resolveFranchiseName();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    activeFranchiseId,
+    categoryOptions,
+    franchises,
+    productOptions,
+    roleManagedFranchiseId,
+    roleManagedFranchiseName,
+  ]);
 
   // categoryOptions is loaded server-side by franchise_id
   const filteredCategoryOptions = categoryOptions;
@@ -153,26 +276,6 @@ export const ProductCategoryFranchiseForm = ({
       ),
     [filteredCategoryOptions, selectedCategoryFranchiseId],
   );
-
-  const hasBootstrappedFranchises = useRef(false);
-
-  const loadFranchiseOptions = async () => {
-    const res = await searchCategoryFranchisesService("");
-    if (!res.success) return;
-    const map = new Map<string, string>();
-    (res.data ?? []).forEach((item) => {
-      if (!item.franchise_id) return;
-      map.set(
-        String(item.franchise_id),
-        String(item.franchise_name ?? item.franchise_id),
-      );
-    });
-    setFranchiseOptions(
-      Array.from(map.entries())
-        .map(([id, name]) => ({ id, name }))
-        .sort((a, b) => a.name.localeCompare(b.name, "vi")),
-    );
-  };
 
   const loadOptionsForFranchise = async (franchiseId: string) => {
     try {
@@ -197,25 +300,15 @@ export const ProductCategoryFranchiseForm = ({
     if (mode === "view") return;
     if (!isOpen) return;
 
-    // GLOBAL admin: build franchise dropdown without /api/franchises
-    if (isGlobalAdmin && !hasBootstrappedFranchises.current) {
-      hasBootstrappedFranchises.current = true;
-      loadFranchiseOptions();
-    }
-
-    const franchiseIdToLoad = isGlobalAdmin
-      ? String(formFranchiseId || "")
-      : managedFranchiseId;
-
-    if (isGlobalAdmin && !franchiseIdToLoad) {
+    if (!managedFranchiseId) {
       setCategoryOptions([]);
       setProductOptions([]);
       return;
     }
 
-    loadOptionsForFranchise(franchiseIdToLoad);
+    loadOptionsForFranchise(managedFranchiseId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, isGlobalAdmin, managedFranchiseId]);
+  }, [isOpen, managedFranchiseId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -223,27 +316,6 @@ export const ProductCategoryFranchiseForm = ({
 
     setValue("franchise_id", createDefaultFranchiseId);
   }, [isOpen, mode, createDefaultFranchiseId, setValue]);
-
-  useEffect(() => {
-    if (mode === "view") return;
-    if (!isOpen) return;
-    if (!isGlobalAdmin) return;
-
-    // When GLOBAL franchise changes, reset downstream fields and reload options server-side
-    setValue("category_franchise_id", "");
-    setValue("product_franchise_id", "");
-    setValue("display_order", "");
-
-    const franchiseIdToLoad = String(formFranchiseId || "");
-    if (!franchiseIdToLoad) {
-      setCategoryOptions([]);
-      setProductOptions([]);
-      return;
-    }
-
-    loadOptionsForFranchise(franchiseIdToLoad);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formFranchiseId, isOpen, isGlobalAdmin, mode, setValue]);
 
   const filteredProductOptions = useMemo(() => {
     if (!selectedCategoryFranchiseId || !selectedCategoryOption?.id) {
@@ -466,31 +538,7 @@ export const ProductCategoryFranchiseForm = ({
             </>
           ) : (
             <>
-              {/* Chi nhánh */}
-              {isGlobalAdmin && (
-                <FormSelect
-                  label="Chi nhánh"
-                  options={[
-                    {
-                      value: "",
-                      label: loadingOptions
-                        ? "Đang tải..."
-                        : "-- Chọn chi nhánh --",
-                    },
-                    ...franchiseOptions.map((f) => ({
-                      value: String(f.id),
-                      label: f.name,
-                    })),
-                  ]}
-                  register={register("franchise_id")}
-                  value={String(formFranchiseId || "")}
-                  error={errors.franchise_id}
-                  placeholder="Chọn chi nhánh"
-                />
-              )}
-
-              {/* Danh mục chi nhánh */}
-              {!isGlobalAdmin && currentFranchiseName && (
+              {currentFranchiseName && (
                 <p className="text-xs text-blue-600 mb-2">
                   Chi nhánh:{" "}
                   <span className="font-semibold">{currentFranchiseName}</span>

@@ -22,9 +22,11 @@ import {
 import { getOrdersByFranchiseId } from "@/pages/admin/order/services/searchOrder.service";
 import { toastError } from "@/utils/toast.util";
 import { useAdminContextStore } from "@/stores/adminContext.store";
+import { useAuthStore } from "@/stores/auth.store";
 import type { Payment } from "@/models/payment.model";
 import { searchCustomersUsecase } from "../customer/usecases/searchCustomers.usecase";
 import type { Customer } from "@/models/customer.model";
+import FranchiseSelector from "@/pages/admin/cart/components/FranchiseSelector";
 
 type PaymentRow = PaymentListItem & {
   franchise: string;
@@ -61,8 +63,6 @@ const methodLabel: Record<Payment["method"], string> = {
 
 type SearchType = "id" | "code" | "orderId" | "customerId" | "customer_dropdown";
 
-const DEMO_CUSTOMER_ID = "69a682072b4323c52ff49bc5";
-
 const formatDateTime = (value?: string) => {
   if (!value) return "--";
   const parsed = new Date(value);
@@ -80,7 +80,31 @@ const formatDateTime = (value?: string) => {
 
 const PaymentPage = () => {
   const selectedFranchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
-  const isAdminMode = selectedFranchiseId === null;
+  const user = useAuthStore((s) => s.user);
+  const hasGlobalAdminRole = useMemo(
+    () =>
+      (user?.roles ?? []).some(
+        (r) => (r.role ?? r.role_code) === "ADMIN" && r.scope === "GLOBAL",
+      ),
+    [user],
+  );
+  const managerFranchiseId = useMemo(() => {
+    if (selectedFranchiseId) return String(selectedFranchiseId);
+    const frRole = (user?.roles ?? []).find(
+      (r) =>
+        r.scope === "FRANCHISE" &&
+        (r.franchise_id ?? (r as any).franchiseId),
+    );
+    const roleFranchiseId = frRole?.franchise_id ?? (frRole as any)?.franchiseId;
+    return roleFranchiseId ? String(roleFranchiseId) : null;
+  }, [selectedFranchiseId, user]);
+
+  const [selectedPageFranchiseId, setSelectedPageFranchiseId] = useState<string>("");
+  const isAdminMode = hasGlobalAdminRole && selectedFranchiseId === null;
+  const effectiveFranchiseId = isAdminMode ? null : managerFranchiseId;
+  const selectedContextFranchiseId = isAdminMode
+    ? selectedPageFranchiseId || null
+    : effectiveFranchiseId;
 
   const [payments, setPayments] = useState<PaymentListItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +114,7 @@ const PaymentPage = () => {
   const [isLoadingList, setIsLoadingList] = useState(true);
 
   const [franchises, setFranchises] = useState<FranchiseSelectItem[]>([]);
+  const [isFranchiseLoading, setIsFranchiseLoading] = useState(false);
 
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -111,10 +136,13 @@ const PaymentPage = () => {
 
   const fetchFranchises = async () => {
     try {
+      setIsFranchiseLoading(true);
       const data = await franchiseService.getAllSelect();
       setFranchises(Array.isArray(data) ? data : []);
     } catch {
       toastError("Không thể tải danh sách chi nhánh");
+    } finally {
+      setIsFranchiseLoading(false);
     }
   };
 
@@ -141,16 +169,20 @@ const PaymentPage = () => {
 
   const applyFranchiseScope = useCallback(
     (data: PaymentListItem[]) => {
-      if (isAdminMode || selectedFranchiseId == null) return data;
-      const fid = String(selectedFranchiseId);
-      const filtered = data.filter((p) => String(p.franchiseId) === fid);
-      if (filtered.length === 0 && data.length > 0) return data;
-      return filtered;
+      if (selectedContextFranchiseId == null) return data;
+      const fid = String(selectedContextFranchiseId);
+      return data.filter((p) => String(p.franchiseId) === fid);
     },
-    [isAdminMode, selectedFranchiseId],
+    [selectedContextFranchiseId],
   );
 
   const loadAllPayments = useCallback(async () => {
+    if (!selectedContextFranchiseId) {
+      setPayments([]);
+      setIsLoadingList(false);
+      return;
+    }
+
     try {
       setIsLoadingList(true);
       setError(null);
@@ -159,7 +191,7 @@ const PaymentPage = () => {
       let ordersRaw: unknown;
       try {
         ordersRaw = await getOrdersByFranchiseId(
-          isAdminMode ? null : selectedFranchiseId,
+          selectedContextFranchiseId,
         );
       } catch (orderErr) {
         const fallbackError = orderErr as Error;
@@ -252,7 +284,7 @@ const PaymentPage = () => {
     } finally {
       setIsLoadingList(false);
     }
-  }, [isAdminMode, selectedFranchiseId, applyFranchiseScope]);
+  }, [isAdminMode, selectedContextFranchiseId, applyFranchiseScope]);
 
   useEffect(() => {
     void fetchFranchises();
@@ -260,8 +292,13 @@ const PaymentPage = () => {
   }, []);
 
   useEffect(() => {
-    void loadAllPayments();
-  }, [loadAllPayments]);
+    if (!isAdminMode || selectedPageFranchiseId) {
+      void loadAllPayments();
+    } else {
+      setPayments([]);
+      setIsLoadingList(false);
+    }
+  }, [loadAllPayments, isAdminMode, selectedPageFranchiseId]);
 
   const searchWithParams = async (type: SearchType, kwRaw: string) => {
     const kw = kwRaw.trim();
@@ -550,7 +587,51 @@ const PaymentPage = () => {
         Quản lý thanh toán
       </h1>
 
-      <div className="mb-4 flex flex-wrap items-end gap-2 rounded-lg border border-gray-100 bg-white p-3">
+      {isAdminMode ? (
+        selectedPageFranchiseId ? (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-100 bg-white p-4">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-gray-500">Chi nhánh đã chọn</p>
+              <p className="mt-1 text-base font-semibold text-gray-800">
+                {franchiseNameById.get(selectedPageFranchiseId) || selectedPageFranchiseId}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedPageFranchiseId("")}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              Chọn lại chi nhánh
+            </button>
+          </div>
+        ) : (
+          <div className="mb-4 rounded-lg border border-gray-100 bg-white p-4">
+            <h2 className="mb-4 text-lg font-semibold text-gray-800">
+              Chọn chi nhánh để xem danh sách thanh toán
+            </h2>
+            <FranchiseSelector
+              data={franchises}
+              onSelect={(id) => setSelectedPageFranchiseId(String(id))}
+              loading={isFranchiseLoading}
+              onRefresh={fetchFranchises}
+            />
+          </div>
+        )
+      ) : null}
+
+      {!isAdminMode && selectedContextFranchiseId ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-100 bg-white p-4">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Chi nhánh đang dùng</p>
+            <p className="mt-1 text-base font-semibold text-gray-800">
+              {franchiseNameById.get(selectedContextFranchiseId) || selectedContextFranchiseId}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {( !isAdminMode || selectedPageFranchiseId ) && (
+        <div className="mb-4 flex flex-wrap items-end gap-2 rounded-lg border border-gray-100 bg-white p-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">
             Kiểu tra cứu
@@ -605,14 +686,26 @@ const PaymentPage = () => {
         <button
           type="button"
           onClick={() => void handleSearch()}
-          disabled={isSearching || searchType === "customer_dropdown" || (!searchKeyword.trim() && !["customerId", "orderId", "code", "id"].includes(searchType))}  
+          disabled={
+            isSearching ||
+            searchType === "customer_dropdown" ||
+            (!searchKeyword.trim() && !["customerId", "orderId", "code", "id"].includes(searchType)) ||
+            (isAdminMode && !selectedPageFranchiseId)
+          }
           className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
         >
           {isSearching ? "Đang tìm..." : (!searchKeyword.trim() && ["customerId", "orderId", "code", "id"].includes(searchType) ? "Tải tất cả thanh toán" : "Tìm kiếm")}
         </button>
       </div>
+      )}
 
-      {isLoadingList && payments.length === 0 ? (
+      {error ? (
+        <div className="mb-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      {isAdminMode && !selectedPageFranchiseId ? null : isLoadingList && payments.length === 0 ? (
         <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-gray-100 bg-white">
           <ClientLoading />
         </div>

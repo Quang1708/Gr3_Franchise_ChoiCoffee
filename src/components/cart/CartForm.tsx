@@ -33,11 +33,18 @@ import { createPortal } from "react-dom";
 import { addOption } from "./usecase/addOption.usecase";
 import type { AddOptionRequest } from "./services/addOption.service";
 import { getCustomer } from "./services/getCustome.service";
+import CartVoucherModal from "@/pages/client/cart/components/CartVoucherModal";
+import type { CartVoucher } from "@/pages/client/cart/models/cartVoucher.model";
+import { getVouchersByFranchiseId } from "@/services/voucher.service";
+import { applyVoucherCart11Service } from "@/pages/client/cart/services/cart11.service";
+import { removeVoucherCart12Service } from "@/pages/client/cart/services/cart12.service";
 
 
 const CartForm = (props: CartFormProps) => {
   const [customerInfor, setCustomerInfor] = useState<any | null>(null);
   const { state, form, handlers, initialData } = useCartForm(props);
+  const isViewMode = props.mode === "view";
+  const canEditExistingCart = props.mode === "edit";
   const [cart, setCart] = useState<CartData | null>(
     initialData ? (initialData as any) : null,
   );
@@ -80,6 +87,13 @@ const CartForm = (props: CartFormProps) => {
   ]);
 
   const [loading, setLoading] = useState(false);
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [isLoadingVouchers, setIsLoadingVouchers] = useState(false);
+  const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
+  const [voucherOptions, setVoucherOptions] = useState<CartVoucher[]>([]);
+  const [selectedVoucher, setSelectedVoucher] = useState<CartVoucher | null>(
+    null,
+  );
   const [activePopover, setActivePopover] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isCheckout, setIsCheckout] = useState(false);
@@ -225,12 +239,13 @@ const CartForm = (props: CartFormProps) => {
   };
 
   useEffect(() => {
-    if (props.mode === "edit" && props.initialData?._id) {
+    if ((props.mode === "edit" || props.mode === "view") && props.initialData?._id) {
       const fetchCartDetail = async () => {
-        if (!initialData?._id) return;
+        const cartId = props.initialData?._id;
+        if (!cartId) return;
         setLoading(true);
         try {
-          const response = await getCartDetail(initialData._id);
+          const response = await getCartDetail(cartId);
           {
             setCart(response.data);
             setTempData({
@@ -246,7 +261,7 @@ const CartForm = (props: CartFormProps) => {
       };
       fetchCartDetail();
     }
-  }, [props.isOpen]);
+  }, [props.isOpen, props.mode, props.initialData?._id]);
 
   const handleAddOptions = async (data: AddOptionRequest) => {
     const toastId = toast.loading("Đang thêm tùy chọn...");
@@ -322,6 +337,173 @@ const CartForm = (props: CartFormProps) => {
     }
   };
 
+  const refreshVoucherOptions = async (franchiseId?: string) => {
+    const targetFranchiseId = franchiseId || cart?.franchise_id || "";
+    if (!targetFranchiseId) {
+      setVoucherOptions([]);
+      return [] as CartVoucher[];
+    }
+    console.log(targetFranchiseId);
+    setIsLoadingVouchers(true);
+    try {
+      const vouchers = await getVouchersByFranchiseId(targetFranchiseId);
+      console.log(vouchers);
+      const now = Date.now();
+      const mapped = vouchers
+        .map(
+          (item) =>
+            ({
+              id: String(item.id),
+              code: item.code,
+              type: item.type,
+              value: Number(item.value ?? 0),
+              startTime: item.startTime,
+              endTime: item.endTime,
+              quotaTotal: Number(item.quotaTotal ?? 0),
+              quotaUsed: Number(item.quotaUsed ?? 0),
+              isActive: Boolean(item.isActive),
+            }) satisfies CartVoucher,
+        )
+        .filter((voucher) => {
+          if (!voucher.isActive) return false;
+
+          const remainingQuota = voucher.quotaTotal - voucher.quotaUsed;
+          if (remainingQuota <= 0) return false;
+
+          const startAt = voucher.startTime
+            ? new Date(voucher.startTime).getTime()
+            : null;
+          if (startAt !== null && Number.isFinite(startAt) && now < startAt) {
+            return false;
+          }
+
+          const endAt = voucher.endTime ? new Date(voucher.endTime).getTime() : null;
+          if (endAt !== null && Number.isFinite(endAt) && now > endAt) {
+            return false;
+          }
+
+          return true;
+        });
+
+      setVoucherOptions(mapped);
+      return mapped;
+    } catch {
+      setVoucherOptions([]);
+      return [] as CartVoucher[];
+    } finally {
+      setIsLoadingVouchers(false);
+    }
+  };
+
+  const handleOpenVoucherModal = async () => {
+    if (isViewMode) return;
+    if (!cart?._id) {
+      toast.error("Không tìm thấy giỏ hàng để áp dụng voucher");
+      return;
+    }
+
+    setIsVoucherModalOpen(true);
+    const vouchers = await refreshVoucherOptions(cart.franchise_id);
+    if (cart.voucher_code) {
+      const matched = vouchers.find((voucher) => voucher.code === cart.voucher_code);
+      setSelectedVoucher(matched ?? null);
+    } else {
+      setSelectedVoucher(null);
+    }
+  };
+
+  const handleApplyVoucher = async (voucher: CartVoucher) => {
+    if (!cart?._id) return;
+
+    const toastId = toast.loading("Đang áp dụng voucher...");
+    setIsApplyingVoucher(true);
+    try {
+      const response = await applyVoucherCart11Service(cart._id, voucher.code);
+      const isSuccess = Boolean(
+        response &&
+          typeof response === "object" &&
+          "success" in (response as Record<string, unknown>)
+          ? (response as { success?: unknown }).success
+          : true,
+      );
+
+      if (!isSuccess) {
+        toast.update(toastId, {
+          render: "Không thể áp dụng voucher",
+          type: "error",
+          isLoading: false,
+          autoClose: 1500,
+        });
+        return;
+      }
+
+      setSelectedVoucher(voucher);
+      await fetchCartDetailData();
+      setIsVoucherModalOpen(false);
+      toast.update(toastId, {
+        render: "Áp dụng voucher thành công",
+        type: "success",
+        isLoading: false,
+        autoClose: 1500,
+      });
+    } catch {
+      toast.update(toastId, {
+        render: "Có lỗi xảy ra khi áp dụng voucher",
+        type: "error",
+        isLoading: false,
+        autoClose: 1500,
+      });
+    } finally {
+      setIsApplyingVoucher(false);
+    }
+  };
+
+  const handleRemoveVoucher = async () => {
+    if (isViewMode) return;
+    if (!cart?._id) return;
+
+    const toastId = toast.loading("Đang gỡ voucher...");
+    setIsApplyingVoucher(true);
+    try {
+      const response = await removeVoucherCart12Service(cart._id);
+      const isSuccess = Boolean(
+        response &&
+          typeof response === "object" &&
+          "success" in (response as Record<string, unknown>)
+          ? (response as { success?: unknown }).success
+          : true,
+      );
+
+      if (!isSuccess) {
+        toast.update(toastId, {
+          render: "Không thể gỡ voucher",
+          type: "error",
+          isLoading: false,
+          autoClose: 1500,
+        });
+        return;
+      }
+
+      setSelectedVoucher(null);
+      await fetchCartDetailData();
+      toast.update(toastId, {
+        render: "Gỡ voucher thành công",
+        type: "success",
+        isLoading: false,
+        autoClose: 1500,
+      });
+    } catch {
+      toast.update(toastId, {
+        render: "Có lỗi xảy ra khi gỡ voucher",
+        type: "error",
+        isLoading: false,
+        autoClose: 1500,
+      });
+    } finally {
+      setIsApplyingVoucher(false);
+    }
+  };
+
   const onSubmitCheckout = async () => {
     if (!cart?._id) return;
     if (!tempData.phone || !tempData.address) {
@@ -369,7 +551,20 @@ const CartForm = (props: CartFormProps) => {
     fetchCustomerInfor();
   }, [cart?.customer_id]);
 
+  useEffect(() => {
+    if (!cart?.voucher_code) {
+      setSelectedVoucher(null);
+      return;
+    }
+
+    const matched = voucherOptions.find((voucher) => voucher.code === cart.voucher_code);
+    if (matched) {
+      setSelectedVoucher(matched);
+    }
+  }, [cart?.voucher_code, voucherOptions]);
+
   const handleModalSave = () => {
+    if (isViewMode) return;
     if (props.mode === "edit") {
       setIsCheckout(true);
     } else {
@@ -419,7 +614,7 @@ const CartForm = (props: CartFormProps) => {
                       key={item.cart_item_id}
                       className=" group relative flex gap-4 p-4 rounded-xl border border-gray-100 dark:border-zinc-800 hover:shadow-md hover:bg-primary/10 transition-shadow bg-white dark:bg-zinc-900/50"
                     >
-                      {props.mode === "edit" && (
+                      {canEditExistingCart && (
                         <button
                           title="Xóa món khỏi giỏ hàng"
                           onClick={() => handleDeleteItem(item.cart_item_id)}
@@ -445,36 +640,42 @@ const CartForm = (props: CartFormProps) => {
                         </div>
 
                         <div className="mt-3 flex items-center gap-4">
-                          <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden h-8">
-                            <button
-                              title="Giảm số lượng"
-                              disabled={item.quantity <= 1}
-                              onClick={() =>
-                                handleUpdateQuantityItem(
-                                  item.cart_item_id,
-                                  item.quantity - 1,
-                                )
-                              }
-                              className="px-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30"
-                            >
-                              <Minus size={14} />
-                            </button>
-                            <span className="w-10 text-center text-sm font-bold border-x border-zinc-200 dark:border-zinc-700">
-                              {item.quantity}
+                          {isViewMode ? (
+                            <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200">
+                              Số lượng: {item.quantity}
                             </span>
-                            <button
-                              title="Tăng số lượng"
-                              onClick={() =>
-                                handleUpdateQuantityItem(
-                                  item.cart_item_id,
-                                  item.quantity + 1,
-                                )
-                              }
-                              className="px-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                            >
-                              <Plus size={14} />
-                            </button>
-                          </div>
+                          ) : (
+                            <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden h-8">
+                              <button
+                                title="Giảm số lượng"
+                                disabled={item.quantity <= 1}
+                                onClick={() =>
+                                  handleUpdateQuantityItem(
+                                    item.cart_item_id,
+                                    item.quantity - 1,
+                                  )
+                                }
+                                className="px-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30"
+                              >
+                                <Minus size={14} />
+                              </button>
+                              <span className="w-10 text-center text-sm font-bold border-x border-zinc-200 dark:border-zinc-700">
+                                {item.quantity}
+                              </span>
+                              <button
+                                title="Tăng số lượng"
+                                onClick={() =>
+                                  handleUpdateQuantityItem(
+                                    item.cart_item_id,
+                                    item.quantity + 1,
+                                  )
+                                }
+                                className="px-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                              >
+                                <Plus size={14} />
+                              </button>
+                            </div>
+                          )}
                           <span className="text-xs text-zinc-400 italic">
                             Đơn giá: {item.product_cart_price.toLocaleString()}đ
                           </span>
@@ -507,162 +708,172 @@ const CartForm = (props: CartFormProps) => {
                                     ).toLocaleString()}
                                     đ
                                   </span>
-                                  <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 h-6">
-                                    <button
-                                      title="Giảm số lượng topping"
-                                      disabled={opt.quantity <= 1}
-                                      onClick={() =>
-                                        handleUpdateOptionQuantity(
-                                          item.cart_item_id,
-                                          opt.product_franchise_id,
-                                          opt.quantity - 1,
-                                        )
-                                      }
-                                      className="px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                    >
-                                      <Minus size={10} />
-                                    </button>
-                                    <span className="w-6 text-center text-[11px] font-bold">
-                                      {opt.quantity}
+                                  {isViewMode ? (
+                                    <span className="text-[11px] font-bold text-zinc-500">
+                                      x{opt.quantity}
                                     </span>
-                                    <button
-                                      title="Tăng số lượng topping"
-                                      onClick={() =>
-                                        handleUpdateOptionQuantity(
-                                          item.cart_item_id,
-                                          opt.product_franchise_id,
-                                          opt.quantity + 1,
-                                        )
-                                      }
-                                      className="px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                                    >
-                                      <Plus size={10} />
-                                    </button>
-                                  </div>
-                                  {/* Nút Xóa Option (API Remove Option) */}
-                                  <button
-                                    title="Xóa topping khỏi món"
-                                    onClick={() =>
-                                      handleRemoveOption(
-                                        item.cart_item_id,
-                                        opt.product_franchise_id,
-                                      )
-                                    }
-                                    className="text-red-300 hover:text-red-600 transition-colors"
-                                  >
-                                    <Trash size={12} />
-                                  </button>
+                                  ) : (
+                                    <>
+                                      <div className="flex items-center border border-zinc-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 h-6">
+                                        <button
+                                          title="Giảm số lượng topping"
+                                          disabled={opt.quantity <= 1}
+                                          onClick={() =>
+                                            handleUpdateOptionQuantity(
+                                              item.cart_item_id,
+                                              opt.product_franchise_id,
+                                              opt.quantity - 1,
+                                            )
+                                          }
+                                          className="px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                        >
+                                          <Minus size={10} />
+                                        </button>
+                                        <span className="w-6 text-center text-[11px] font-bold">
+                                          {opt.quantity}
+                                        </span>
+                                        <button
+                                          title="Tăng số lượng topping"
+                                          onClick={() =>
+                                            handleUpdateOptionQuantity(
+                                              item.cart_item_id,
+                                              opt.product_franchise_id,
+                                              opt.quantity + 1,
+                                            )
+                                          }
+                                          className="px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                        >
+                                          <Plus size={10} />
+                                        </button>
+                                      </div>
+                                      {/* Nút Xóa Option (API Remove Option) */}
+                                      <button
+                                        title="Xóa topping khỏi món"
+                                        onClick={() =>
+                                          handleRemoveOption(
+                                            item.cart_item_id,
+                                            opt.product_franchise_id,
+                                          )
+                                        }
+                                        className="text-red-300 hover:text-red-600 transition-colors"
+                                      >
+                                        <Trash size={12} />
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             ))}
 
                             {/* Nút Thêm Option */}
-                            <div className="relative mt-2">
-                              <button
-                                onClick={() =>
-                                  setActivePopover(
-                                    activePopover === item.cart_item_id
-                                      ? null
-                                      : item.cart_item_id,
-                                  )
-                                }
-                                className="w-full py-1.5 border border-dashed border-primary/40 text-primary text-[11px] font-bold rounded hover:bg-primary/5 transition-colors flex items-center justify-center gap-1"
-                              >
-                                <Plus size={12} /> Thêm Topping
-                              </button>
+                            {!isViewMode && (
+                              <div className="relative mt-2">
+                                <button
+                                  onClick={() =>
+                                    setActivePopover(
+                                      activePopover === item.cart_item_id
+                                        ? null
+                                        : item.cart_item_id,
+                                    )
+                                  }
+                                  className="w-full py-1.5 border border-dashed border-primary/40 text-primary text-[11px] font-bold rounded hover:bg-primary/5 transition-colors flex items-center justify-center gap-1"
+                                >
+                                  <Plus size={12} /> Thêm Topping
+                                </button>
 
-                              {/* --- PHẦN POPOVER ĐÃ ĐƯỢC SỬA BẰNG PORTAL --- */}
-                              {activePopover === item.cart_item_id &&
-                                typeof window !== "undefined" &&
-                                createPortal(
-                                  <>
-                                    <div
-                                      className="fixed inset-0 z-9998 bg-black/5 dark:bg-black/40"
-                                      onClick={() => setActivePopover(null)}
-                                    />
+                                {/* --- PHẦN POPOVER ĐÃ ĐƯỢC SỬA BẰNG PORTAL --- */}
+                                {activePopover === item.cart_item_id &&
+                                  typeof window !== "undefined" &&
+                                  createPortal(
+                                    <>
+                                      <div
+                                        className="fixed inset-0 z-9998 bg-black/5 dark:bg-black/40"
+                                        onClick={() => setActivePopover(null)}
+                                      />
 
-                                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl z-9999 overflow-hidden animate-in zoom-in-95 duration-200">
-                                      <div className="p-3 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center bg-gray-50 dark:bg-zinc-800/50">
-                                        <span className="text-xs font-bold uppercase text-gray-500">
-                                          Chọn Topping thêm
-                                        </span>
-                                        <button
-                                          title="Đóng"
-                                          onClick={() => setActivePopover(null)}
-                                          className="text-gray-400 hover:text-gray-600"
-                                        >
-                                          <Plus
-                                            size={14}
-                                            className="rotate-45"
-                                          />
-                                        </button>
+                                      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-2xl z-9999 overflow-hidden animate-in zoom-in-95 duration-200">
+                                        <div className="p-3 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center bg-gray-50 dark:bg-zinc-800/50">
+                                          <span className="text-xs font-bold uppercase text-gray-500">
+                                            Chọn Topping thêm
+                                          </span>
+                                          <button
+                                            title="Đóng"
+                                            onClick={() => setActivePopover(null)}
+                                            className="text-gray-400 hover:text-gray-600"
+                                          >
+                                            <Plus
+                                              size={14}
+                                              className="rotate-45"
+                                            />
+                                          </button>
+                                        </div>
+
+                                        <div className="max-h-[60vh] overflow-y-auto p-2 space-y-1 custom-scroll">
+                                          {/* BƯỚC 2: RENDER RA TỪ DANH SÁCH ĐÃ LỌC (availableToppings) */}
+                                          {availableToppings.length > 0 ? (
+                                            availableToppings.map((topping) => (
+                                              <button
+                                                key={topping.value}
+                                                onClick={() => {
+                                                  const currentOptions =
+                                                    item.options.map((opt) => ({
+                                                      product_franchise_id:
+                                                        opt.product_franchise_id,
+                                                      quantity: opt.quantity,
+                                                    }));
+
+                                                  const updatedOptions = [
+                                                    ...currentOptions,
+                                                    {
+                                                      product_franchise_id:
+                                                        topping.value,
+                                                      quantity: 1,
+                                                    },
+                                                  ];
+                                                  handleAddOptions({
+                                                    cart_item_id:
+                                                      item.cart_item_id,
+                                                    options: updatedOptions,
+                                                  });
+                                                  setActivePopover(null);
+                                                }}
+                                                className="w-full flex items-center gap-3 p-2 hover:bg-primary/5 rounded-lg transition-colors group"
+                                              >
+                                                <img
+                                                  src={
+                                                    topping.product_data.image_url
+                                                  }
+                                                  className="w-10 h-10 rounded object-cover border border-gray-100"
+                                                  alt=""
+                                                />
+                                                <div className="flex-1 text-left">
+                                                  <p className="text-xs font-bold text-gray-700 dark:text-gray-200 group-hover:text-primary transition-colors">
+                                                    {topping.product_data.name}
+                                                  </p>
+                                                  <p className="text-[10px] text-gray-400">
+                                                    +
+                                                    {topping.product_data.price.toLocaleString()}
+                                                    đ
+                                                  </p>
+                                                </div>
+                                                <Plus
+                                                  size={14}
+                                                  className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                                                />
+                                              </button>
+                                            ))
+                                          ) : (
+                                            <p className="text-[10px] text-center py-4 text-gray-400 italic">
+                                              Không còn topping khả dụng
+                                            </p>
+                                          )}
+                                        </div>
                                       </div>
-
-                                      <div className="max-h-[60vh] overflow-y-auto p-2 space-y-1 custom-scroll">
-                                        {/* BƯỚC 2: RENDER RA TỪ DANH SÁCH ĐÃ LỌC (availableToppings) */}
-                                        {availableToppings.length > 0 ? (
-                                          availableToppings.map((topping) => (
-                                            <button
-                                              key={topping.value}
-                                              onClick={() => {
-                                                const currentOptions =
-                                                  item.options.map((opt) => ({
-                                                    product_franchise_id:
-                                                      opt.product_franchise_id,
-                                                    quantity: opt.quantity,
-                                                  }));
-
-                                                const updatedOptions = [
-                                                  ...currentOptions,
-                                                  {
-                                                    product_franchise_id:
-                                                      topping.value,
-                                                    quantity: 1,
-                                                  },
-                                                ];
-                                                handleAddOptions({
-                                                  cart_item_id:
-                                                    item.cart_item_id,
-                                                  options: updatedOptions,
-                                                });
-                                                setActivePopover(null);
-                                              }}
-                                              className="w-full flex items-center gap-3 p-2 hover:bg-primary/5 rounded-lg transition-colors group"
-                                            >
-                                              <img
-                                                src={
-                                                  topping.product_data.image_url
-                                                }
-                                                className="w-10 h-10 rounded object-cover border border-gray-100"
-                                                alt=""
-                                              />
-                                              <div className="flex-1 text-left">
-                                                <p className="text-xs font-bold text-gray-700 dark:text-gray-200 group-hover:text-primary transition-colors">
-                                                  {topping.product_data.name}
-                                                </p>
-                                                <p className="text-[10px] text-gray-400">
-                                                  +
-                                                  {topping.product_data.price.toLocaleString()}
-                                                  đ
-                                                </p>
-                                              </div>
-                                              <Plus
-                                                size={14}
-                                                className="text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                                              />
-                                            </button>
-                                          ))
-                                        ) : (
-                                          <p className="text-[10px] text-center py-4 text-gray-400 italic">
-                                            Không còn topping khả dụng
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </>,
-                                  document.body,
-                                )}
-                            </div>
+                                    </>,
+                                    document.body,
+                                  )}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -689,7 +900,7 @@ const CartForm = (props: CartFormProps) => {
                     <User size={18} className="text-primary" /> Khách hàng
                   </div>
 
-                  {props.mode === "edit" && (
+                  {canEditExistingCart && (
                     <button
                       title="Cập nhật sdt và địa chỉ"
                       type="button"
@@ -719,7 +930,7 @@ const CartForm = (props: CartFormProps) => {
                     <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm">
                       <Phone size={14} />
                     </div>
-                    {isEditing ? (
+                    {isEditing && canEditExistingCart ? (
                       <input
                         title="Cập nhật số điện thoại"
                         type="text"
@@ -737,7 +948,7 @@ const CartForm = (props: CartFormProps) => {
                     <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm shrink-0">
                       <MapPin size={14} />
                     </div>
-                    {isEditing ? (
+                    {isEditing && canEditExistingCart ? (
                       <textarea
                         title="Cập nhật địa chỉ"
                         className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 focus:ring-1 focus:ring-primary outline-none min-h-15"
@@ -753,7 +964,7 @@ const CartForm = (props: CartFormProps) => {
                       <span className="leading-relaxed">{cart?.address}</span>
                     )}
                   </div>
-                  {isEditing && (
+                  {isEditing && canEditExistingCart && (
                     <div className="flex gap-2 pt-2 justify-end">
                       <button
                         onClick={() => setIsEditing(false)}
@@ -789,13 +1000,14 @@ const CartForm = (props: CartFormProps) => {
                       <input
                         type="text"
                         placeholder="Nhập mã voucher..."
-                        disabled={!!cart?.voucher_discount} // Khóa nếu đã có voucher
+                        readOnly
+                        disabled={isViewMode || !!cart?.voucher_discount} // Khóa nếu ở mode xem hoặc đã có voucher
                         className={`w-full pl-3 pr-10 py-2 border rounded-lg outline-none text-sm transition-all ${
                           cart?.voucher_code
                             ? "bg-green-50 border-green-200 text-green-700 font-bold"
                             : "border-gray-200 focus:border-primary"
                         }`}
-                        value={cart?.voucher_code}
+                        value={cart?.voucher_code ?? ""}
                         onChange={() => {}}
                       />
                       {(cart?.voucher_discount ?? 0) > 0 && (
@@ -806,23 +1018,23 @@ const CartForm = (props: CartFormProps) => {
                       )}
                     </div>
 
-                    {(cart?.voucher_discount ?? 0) > 0 ? (
+                    {!isViewMode && (cart?.voucher_discount ?? 0) > 0 ? (
                       <button
                         type="button"
-                        onClick={() => {}}
+                        onClick={handleRemoveVoucher}
                         className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors"
                       >
                         Xóa
                       </button>
-                    ) : (
+                    ) : !isViewMode ? (
                       <button
                         type="button"
-                        onClick={() => {}}
+                        onClick={handleOpenVoucherModal}
                         className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary-dark transition-all active:scale-95"
                       >
                         Áp dụng
                       </button>
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Hiển thị tên voucher nếu có */}
@@ -861,12 +1073,12 @@ const CartForm = (props: CartFormProps) => {
                       </span>
                     </div>
                   ) : null}
-                  <div className="flex justify-between text-zinc-500 italic border-b pb-3">
+                  {/* <div className="flex justify-between text-zinc-500 italic border-b pb-3">
                     <span>Loyalty Points</span>
                     <span className="text-red-500">
                       -{(cart?.loyalty_discount ?? 0).toLocaleString()}đ
                     </span>
-                  </div>
+                  </div> */}
                   <div className="pt-3 flex flex-col gap-1">
                     <div className="flex justify-between items-center text-zinc-500">
                       <span className="text-base font-bold">Tổng cộng</span>
@@ -888,9 +1100,20 @@ const CartForm = (props: CartFormProps) => {
           isOpen={isCheckout}
           onClose={() => setIsCheckout(false)}
           type="confirm"
-          title="Xác nhận thanh toán"
-          message="Bạn có chắc chắn muốn thanh toán đơn hàng này không? Vui lòng kiểm tra kỹ thông tin trước khi xác nhận."
+          title="Xác nhận đơn hàng"
+          message="Bạn có chắc chắn muốn xác nhận hàng này không? Vui lòng kiểm tra kỹ thông tin trước khi xác nhận."
           onConfirm={onSubmitCheckout}
+        />
+
+        <CartVoucherModal
+          isOpen={isVoucherModalOpen}
+          onClose={() => setIsVoucherModalOpen(false)}
+          isLoading={isLoadingVouchers || isApplyingVoucher}
+          vouchers={voucherOptions}
+          selectedVoucher={selectedVoucher}
+          onApply={(voucher) => {
+            void handleApplyVoucher(voucher);
+          }}
         />
       </>
     </CRUDModalTemplate>

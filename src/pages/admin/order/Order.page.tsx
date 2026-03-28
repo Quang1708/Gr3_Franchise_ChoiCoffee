@@ -30,7 +30,6 @@ const OrderPage = () => {
   const [loadingFranchises, setLoadingFranchises] = useState(false);
   const franchise_id = useAdminContextStore((s) => s.selectedFranchiseId);
   const isAdmin = !franchise_id;
-
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -512,6 +511,7 @@ const OrderPage = () => {
       />
 
       <OrderStatusForm
+        franchiseId={franchise_id || selectedFranchise?.value || ""}
         isOpen={isStatusModalOpen}
         onClose={() => setIsStatusModalOpen(false)}
         order={orderForStatus}

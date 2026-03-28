@@ -15,7 +15,7 @@ interface PageInfo {
 }
 
 interface CustomSelectProps {
-  searchKey?: string; // thêm prop searchKey để hỗ trợ tìm kiếm theo key khác với value
+  searchKey?: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
@@ -29,6 +29,7 @@ interface CustomSelectProps {
     searchKey?: string;
   }) => Promise<{ data: Option[]; pageInfo: PageInfo }>;
   position?: "top" | "bottom";
+  fetchOnSearchOnly?: boolean;
 }
 
 const PAGE_SIZE = 10;
@@ -43,6 +44,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
   icon,
   className,
   position = "bottom",
+  fetchOnSearchOnly = false,
 }: CustomSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -56,11 +58,12 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
 
   const combinedOptions = useMemo(() => {
     const combined = [...staticOptions, ...apiOptions];
-    // Loại bỏ các phần tử trùng value (ưu tiên staticOptions)
     return combined.filter(
       (v, i, a) => a.findIndex((t) => t.value === v.value) === i,
     );
   }, [staticOptions, apiOptions]);
+
+  const selectedOption = combinedOptions.find((opt) => String(opt.value) === String(value));
 
   const lastOptionRef = useCallback(
     (node: HTMLDivElement) => {
@@ -93,12 +96,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
 
       const { data, pageInfo } = response || {
         data: [],
-        pageInfo: {
-          pageNum: 1,
-          pageSize: PAGE_SIZE,
-          totalItems: 0,
-          totalPages: 0,
-        },
+        pageInfo: { pageNum: 1, pageSize: PAGE_SIZE, totalItems: 0, totalPages: 0 },
       };
 
       setApiOptions((prev) => (isNewSearch ? data : [...prev, ...data]));
@@ -111,81 +109,112 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
   };
 
   React.useEffect(() => {
+    if (fetchOnSearchOnly && !debouncedSearch.trim()) {
+      setApiOptions([]);
+      setHasMore(false);
+      return;
+    }
     setPage(1);
     loadData(debouncedSearch, 1, true);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, fetchOnSearchOnly]);
 
-  // Load thêm dữ liệu khi page tăng (do infinite scroll trigger)
   React.useEffect(() => {
     if (page > 1) {
       loadData(debouncedSearch, page, false);
     }
   }, [page]);
 
+  // LOGIC ĐỒNG BỘ: Tự động khôi phục chữ khi click ra ngoài (đóng dropdown)
   React.useEffect(() => {
-    if (!value) {
-      setSearch("");
-      setApiOptions([]);
-      setPage(1);
-      setHasMore(true);
+    if (!isOpen) {
+      if (fetchOnSearchOnly) {
+        if (value && selectedOption) {
+          setSearch(selectedOption.label); // Khôi phục lại label của voucher đang chọn
+        } else if (!value) {
+          setSearch(""); // Nếu không có value thì mới xoá chữ
+        }
+      } else {
+        setSearch(""); // Reset cho select thông thường khi đóng
+      }
     }
-  }, [value]);
+  }, [isOpen, value, selectedOption, fetchOnSearchOnly]);
 
 
+  // Bắt sự kiện Click Outside
   React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      )
-        setIsOpen(false);
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false); // Khi set lại false, useEffect đồng bộ bên trên sẽ tự chạy để khôi phục chữ
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const selectedOption = combinedOptions.find((opt) => opt.value === value);
-
   return (
-    <div
-      className={`relative w-full ${className || "sm:min-w-[200px]"}`}
-      ref={containerRef}
-    >
+    <div className={`relative w-full ${className || "sm:min-w-[200px]"}`} ref={containerRef}>
       <div
         onClick={() => {
           if (disabled) return;
           setIsOpen(!isOpen);
         }}
-        className={`flex items-center gap-2 w-full px-3 py-2 text-sm bg-white border rounded-lg cursor-pointer transition-all select-none
-            ${disabled
-              ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
-              : isOpen
-                ? "border-primary ring-2 ring-primary/20"
-                : "border-gray-200 hover:border-gray-300"}`}
+        className={`flex items-center gap-2 w-full px-3 py-2 text-sm bg-white border rounded-lg transition-all 
+            ${
+              disabled
+                ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                : isOpen
+                  ? "border-primary ring-2 ring-primary/20"
+                  : "border-gray-200 hover:border-gray-300 cursor-pointer"
+            }`}
       >
         {icon && <span className="text-gray-500">{icon}</span>}
-        <span
-          className={`flex-1 truncate ${
-            disabled
-              ? "text-gray-500"
-              : !selectedOption
-                ? "text-gray-500"
-                : "text-gray-700"
-          }`}
-        >
-          {selectedOption ? selectedOption.label : placeholder || "Chọn..."}
-        </span>
-        <ChevronDown
-          className={`w-4 h-4 text-gray-500 transition-transform ${isOpen && !disabled ? "rotate-180" : ""}`}
-        />
+        
+        {/* Render input text nếu là fetchOnSearchOnly, ngược lại render span text */}
+        {fetchOnSearchOnly ? (
+          <input
+            className="flex-1 w-full bg-transparent outline-none truncate text-gray-700 placeholder-gray-400"
+            placeholder={placeholder || "Tìm kiếm..."}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              // CHỈ XOÁ value khi người dùng xoá sạch text trong ô input
+              if (e.target.value.trim() === "" && value) {
+                onChange("");
+              }
+              if (!isOpen) setIsOpen(true);
+            }}
+            onFocus={() => setIsOpen(true)}
+            disabled={disabled}
+          />
+        ) : (
+          <span
+            className={`flex-1 truncate select-none ${
+              disabled || !selectedOption ? "text-gray-500" : "text-gray-700"
+            }`}
+          >
+            {selectedOption ? selectedOption.label : placeholder || "Chọn..."}
+          </span>
+        )}
+
+        {/* Thay đổi icon mủi tên thành kính lúp nếu ở dạng thanh tìm kiếm */}
+        {fetchOnSearchOnly ? (
+          <Search className="w-4 h-4 text-gray-400" />
+        ) : (
+          <ChevronDown
+            className={`w-4 h-4 text-gray-500 transition-transform ${isOpen && !disabled ? "rotate-180" : ""}`}
+          />
+        )}
       </div>
 
       {isOpen && !disabled && (
         <div
-          className={`absolute z-50 w-full bg-white border border-gray-100 rounded-lg shadow-lg max-h-60 overflow-auto mt-1 ${position === "top" ? "bottom-full mb-1" : "mt-1"}`}
+          className={`absolute z-50 w-full bg-white border border-gray-100 rounded-lg shadow-lg max-h-60 overflow-auto mt-1 ${
+            position === "top" ? "bottom-full mb-1" : "mt-1"
+          }`}
         >
-          {fetchOptions && (
+          {/* Chỉ hiện thanh search bên trong nếu KHÔNG PHẢI chế độ fetchOnSearchOnly */}
+          {fetchOptions && !fetchOnSearchOnly && (
             <div className="p-2 border-b border-gray-50 flex items-center gap-2 bg-gray-50/50">
               <Search className="w-4 h-4 text-gray-400" />
               <input
@@ -202,17 +231,20 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
             {combinedOptions.map((opt, index) => (
               <div
                 key={opt.value}
-                ref={
-                  index === combinedOptions.length - 1 ? lastOptionRef : null
-                }
+                ref={index === combinedOptions.length - 1 ? lastOptionRef : null}
                 onClick={() => {
                   onChange(opt.value);
+                  if (fetchOnSearchOnly) setSearch(opt.label); // Gán thẳng label vào thanh search chính
                   setIsOpen(false);
                 }}
-                className={`flex items-center justify-between px-3 py-2 text-sm rounded-md cursor-pointer ${opt.value === value ? "bg-primary/10 text-primary font-medium" : "text-gray-700 hover:bg-gray-50"}`}
+                className={`flex items-center justify-between px-3 py-2 text-sm rounded-md cursor-pointer ${
+                  String(opt.value) === String(value)
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
               >
                 <span className="truncate">{opt.label}</span>
-                {opt.value === value && <Check className="w-3.5 h-3.5" />}
+                {String(opt.value) === String(value) && <Check className="w-3.5 h-3.5" />}
               </div>
             ))}
 
@@ -224,7 +256,9 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
 
             {!loading && combinedOptions.length === 0 && (
               <div className="p-3 text-center text-xs text-gray-400">
-                Không tìm thấy dữ liệu
+                {fetchOnSearchOnly && !search.trim()
+                  ? "Vui lòng nhập từ khóa để tìm kiếm..."
+                  : "Không tìm thấy dữ liệu"}
               </div>
             )}
           </div>

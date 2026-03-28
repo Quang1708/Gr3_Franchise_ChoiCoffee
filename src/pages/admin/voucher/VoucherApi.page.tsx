@@ -1,41 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
-import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
 import ClientLoading from "@/components/Client/Client.Loading";
-import type { Voucher, VoucherType } from "@/models/voucher.model";
+import type { Voucher } from "./model/voucher.model";
 import {
   changeVoucherStatus,
-  createVoucher,
   deleteVoucher,
-  getVoucher,
   restoreVoucher,
-  searchVouchers,
 } from "@/services/voucher.service";
-import {
-  franchiseService,
-  type FranchiseSelectItem,
-} from "@/services/franchise.service";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 import { useAdminContextStore } from "@/stores/adminContext.store";
 import { useAuthStore } from "@/stores/auth.store";
 import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
+import FranchiseSelector from "../cart/components/FranchiseSelector";
+import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";
+import { toast } from "react-toastify";
+import { searchVoucer } from "./service/searchVoucer.service";
+import CustomSelect from "@/components/Admin/filters/CustomSelect";
+import VoucherForm from "./components/VoucherForm";
+import { createVoucher } from "./service/createVoucher.service";
+import { updateVoucher } from "./service/updateVoucher.service";
 
-type VoucherRow = Voucher & {
-  is_deleted: boolean;
-  /** Tên chi nhánh để hiển thị / sort / search */
-  franchiseDisplay: string;
-};
-
-/** Badge loại voucher — cùng phong cách Loại đơn (Order page) */
-const voucherTypeColor: Record<VoucherType, string> = {
-  PERCENT: "bg-indigo-100 text-indigo-800",
-  FIXED: "bg-emerald-100 text-emerald-800",
-};
-
-const voucherTypeLabel: Record<VoucherType, string> = {
-  PERCENT: "Giảm %",
-  FIXED: "Giảm tiền",
-};
 
 const formatDate = (value?: string) => {
   if (!value) return "--";
@@ -65,118 +49,75 @@ const VoucherApiPage = () => {
   const effectiveFranchiseId = isAdminMode ? null : managerFranchiseId;
 
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [franchises, setFranchises] = useState<FranchiseSelectItem[]>([]);
-  const [isFranchisesLoading, setIsFranchisesLoading] = useState(false);
-
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isCreateLoading, setIsCreateLoading] = useState(false);
-  const [createForm, setCreateForm] = useState<{
-    franchiseId: string;
-    code: string;
-    name: string;
-    description: string;
-    type: VoucherType;
-    value: number;
-    productFranchiseId: string;
-    quotaTotal: number;
-    startTime: string;
-    endTime: string;
-    isActive: boolean;
-  }>({
-    franchiseId: "",
-    code: "",
-    name: "",
-    description: "",
-    type: "FIXED",
-    value: 0,
-    productFranchiseId: "",
-    quotaTotal: 0,
-    startTime: "",
-    endTime: "",
-    isActive: true,
-  });
-
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detail, setDetail] = useState<Voucher | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [franchises, setFranchises] = useState<any[]>([]);
+  const [posFranchise, setPosFranchise] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [isFormLoading, setIsFormLoading] = useState(false);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmType, setConfirmType] = useState<"delete" | "restore">("delete");
-  const [confirmItem, setConfirmItem] = useState<VoucherRow | null>(null);
+  const [confirmItem, setConfirmItem] = useState<Voucher| null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
-
+  const isAdmin = !selectedFranchiseId;
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-
-  const franchiseLabelById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const f of franchises) m.set(f.value, f.name);
-    return m;
-  }, [franchises]);
-
-  const getFranchiseName = (voucher: Voucher) => {
-    if (voucher.franchiseName) return voucher.franchiseName;
-    return (
-      franchiseLabelById.get(String(voucher.franchiseId)) || `#${voucher.franchiseId}`
-    );
-  };
-
+  const [pageSize, setPageSize] = useState(10);
+  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [totalItems, setTotalItems] = useState(0);
+  const [page, setPage] = useState(1);
+  const [ selectedVoucherCode, setSelectedVoucherCode] = useState<string | null>(null);
+  const [formMode, setFormMode] = useState<"create" | "edit" | "view">("create");
+  const [selectedVoucher, setSelectedVoucher] = useState<Voucher | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<any>({});
   const fetchFranchises = async () => {
     try {
-      setIsFranchisesLoading(true);
-      const data = await franchiseService.getAllSelect();
-      setFranchises(Array.isArray(data) ? data : []);
+      setLoading(true);
+      const res = await getAllFranchises();
+      setFranchises(res || []);
     } catch {
-      toastError("Không thể tải danh sách chi nhánh");
+      toast.error("Lỗi load chi nhánh");
     } finally {
-      setIsFranchisesLoading(false);
+      setLoading(false);
     }
   };
 
-  const fetchVoucherList = async () => {
+  useEffect(() => {
+    void fetchFranchises();
+  }, []);
+
+  const fetchVoucherList = useCallback(async (
+    pageNum = 1,
+    type: "full" | "table" = "full",
+    size = pageSize,
+  ) => {
     try {
-      setIsLoading(true);
-      setError(null);
-
-      const franchiseId = effectiveFranchiseId || undefined;
-
-      
-      const activeList = await searchVouchers({
-        franchiseId,
-        isDeleted: false,
-        pageNum: 1,
-        pageSize: 1000,
-        keyword: "",
-      } as any);
-      const normalizedActive =
-        franchiseId && Array.isArray(activeList) && activeList.length === 0
-          ? await searchVouchers({
-              isDeleted: false,
-              pageNum: 1,
-              pageSize: 1000,
-              keyword: "",
-            } as any)
-          : activeList;
-      let deletedList: Voucher[] = [];
-      try {
-        deletedList = await searchVouchers({
-          franchiseId,
-          isDeleted: true,
-          pageNum: 1,
-          pageSize: 1000,
-          keyword: "",
-        } as any);
-      } catch {
-        deletedList = [];
+      if (type === "full") setLoading(true);
+      if (type === "table") setIsTableLoading(true);
+      const res = await searchVoucer({
+        searchCondition: {
+          value: "",
+          franchise_id: posFranchise?.id || selectedFranchiseId,
+          code: appliedFilters.code || "",
+          end_date: appliedFilters.end_date || "",
+          start_date: appliedFilters.start_date || "",
+          type: appliedFilters.type || "",
+          is_active: appliedFilters.is_active !== undefined ? appliedFilters.is_active : "",
+          is_deleted: appliedFilters.is_deleted !== undefined ? appliedFilters.is_deleted : false,
+          product_franchise_id: appliedFilters.product_franchise_id || "",
+        },
+        pageInfo: {
+          pageNum: pageNum,
+          pageSize: size,
+        }
+      });
+      if(res.success){
+        setVouchers(res.data);
+        setTotalItems(res.pageInfo.totalItems);
+        setPage(res.pageInfo.pageNum);
+        setPageSize(res.pageInfo.pageSize);
       }
-
-      const merged = [...(normalizedActive ?? []), ...(deletedList ?? [])];
-      const map = new Map<string, Voucher>();
-      for (const v of merged) map.set(String(v.id), v);
-      setVouchers(Array.from(map.values()));
     } catch (e) {
       const msg =
         typeof (e as any)?.message === "string"
@@ -185,62 +126,115 @@ const VoucherApiPage = () => {
       setError(msg);
       toastError(msg);
     } finally {
-      setIsLoading(false);
+     if (type === "full") {
+        setLoading(false);
+      }
+      if (type === "table") {
+        setIsTableLoading(false);
+      }
+    }
+  }, [pageSize, posFranchise?.id, selectedFranchiseId , appliedFilters]);
+
+  useEffect(() => {
+    void fetchVoucherList(1, "full");
+  }, [posFranchise?.id, selectedFranchiseId]);
+  
+
+  const searchVouchers = async (term?: string, filter?: any) => {
+    setIsTableLoading(true);
+    try {
+      const newFilters = {
+      code: term || selectedVoucherCode || "",
+      end_date: filter?.endDate !== undefined ? filter.endDate : toDate || "",
+      start_date: filter?.startDate !== undefined ? filter.startDate : fromDate || "",
+      type: filter?.type || "",
+      is_active: filter?.is_active === "true" ? true : filter?.is_active === "false" ? false : "",
+      is_deleted: filter?.is_deleted === "true" ? true : filter?.is_deleted === "false" ? false : "",
+      product_franchise_id: filter?.product_franchise_id || "",
+    };
+
+      setAppliedFilters(newFilters);
+      const franchiseId = posFranchise?.id || selectedFranchiseId;
+      const response = await searchVoucer({
+        searchCondition: {
+          value: "",
+          code: term || selectedVoucherCode || "",
+          franchise_id: franchiseId,
+          end_date: filter?.endDate !== undefined ? filter.endDate : toDate || "",
+          start_date: filter?.startDate !== undefined ? filter.startDate : fromDate || "",
+          type: filter?.type || "",
+          is_active: filter?.is_active === "true" ? true : filter?.is_active === "false" ? false : "",
+          is_deleted: filter?.is_deleted === "true" ? true : filter?.is_deleted === "false" ? false : "",
+          product_franchise_id: filter?.product_franchise_id || "",
+        },
+        pageInfo: {
+          pageNum: 1,
+          pageSize: pageSize,
+        }
+      });
+
+      if(response.success){
+        setVouchers(response.data);
+        setTotalItems(response.pageInfo.totalItems);
+        setPage(1);
+      }
+    }catch(error){
+      console.log("error fetch voucer: ", error);
+    }finally{
+      setIsTableLoading(false)
     }
   };
 
-  useEffect(() => {
-    void fetchFranchises();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
-  useEffect(() => {
-    void fetchVoucherList();
-  }, [effectiveFranchiseId, isAdminMode]);
+  const fetchVoucherOptionsByValue = async ({ pageNum, pageSize, searchKey }: any) => {
+    try {
+      const franchiseId = posFranchise?.id || selectedFranchiseId;
+      const res = await searchVoucer({
+        searchCondition: {
+          value:  "",
+          code: searchKey || "", 
+          franchise_id: franchiseId,
+          end_date: "",
+          start_date: "",
+          type: "",
+          is_active: "",
+          is_deleted: false,
+          product_franchise_id: "",
+        },
+        pageInfo: {
+          pageNum,
+          pageSize,
+        },
+      });
 
-  useEffect(() => {
-    if (!isAdminMode && effectiveFranchiseId != null) {
-      setCreateForm((p) => ({ ...p, franchiseId: String(effectiveFranchiseId) }));
+      if (res.success) {
+        return {
+          data: res.data.map((v: Voucher) => ({
+            label: `${v.code}`,
+            value: v.code,
+          })),
+          pageInfo: res.pageInfo,
+        };
+      }
+      return {
+        data: [],
+        pageInfo: { pageNum: 1, pageSize: 10, totalItems: 0, totalPages: 0 },
+      };
+    } catch (error) {
+      console.log("Lỗi fetch voucher options: ", error);
+      return {
+        data: [],
+        pageInfo: { pageNum: 1, pageSize: 10, totalItems: 0, totalPages: 0 },
+      };
     }
-  }, [isAdminMode, effectiveFranchiseId]);
+  };
 
-  const tableData: VoucherRow[] = useMemo(
-    () =>
-      vouchers.map((v) => ({
-        ...v,
-        is_deleted: v.isDeleted,
-        franchiseDisplay:
-          v.franchiseName ||
-          franchiseLabelById.get(String(v.franchiseId)) ||
-          `#${v.franchiseId}`,
-      })),
-    [vouchers, franchiseLabelById],
-  );
 
-  const filteredTableData = useMemo(() => {
-    if (!fromDate && !toDate) return tableData;
-    return tableData.filter((row) => {
-      const d = new Date(row.startTime);
-      if (Number.isNaN(d.getTime())) return false;
-      if (fromDate) {
-        const f = new Date(`${fromDate}T00:00:00`);
-        if (d < f) return false;
-      }
-      if (toDate) {
-        const t = new Date(`${toDate}T23:59:59.999`);
-        if (d > t) return false;
-      }
-      return true;
-    });
-  }, [tableData, fromDate, toDate]);
-
-  const columns: Column<VoucherRow>[] = useMemo(
-    () => [
+  const columns: Column<Voucher>[] = [
       {
         header: "Mã voucher",
         accessor: "code",
         className: "min-w-[140px]",
-        sortable: true,
       },
       {
         header: "Tên",
@@ -250,19 +244,11 @@ const VoucherApiPage = () => {
       },
       {
         header: "Chi nhánh",
-        accessor: "franchiseDisplay",
+        accessor: "franchise_id",
         className: "min-w-[200px]",
-        sortable: true,
-      },
-      {
-        header: "Loại",
-        accessor: "type",
-        sortable: true,
-        render: (it) => (
-          <span
-            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${voucherTypeColor[it.type]}`}
-          >
-            {voucherTypeLabel[it.type]}
+        render: () =>  (
+          <span>
+            {posFranchise?.name}
           </span>
         ),
       },
@@ -280,78 +266,69 @@ const VoucherApiPage = () => {
       },
       {
         header: "Đã dùng / Tổng",
-        accessor: "quotaUsed",
+        accessor: "quota_used",
         sortable: true,
-        render: (it) => `${it.quotaUsed} / ${it.quotaTotal}`,
+        render: (it) => `${it.quota_used} / ${it.quota_total}`,
       },
       {
         header: "Từ ngày",
-        accessor: "startTime",
+        accessor: "start_date",
         sortable: true,
-        render: (it) => formatDate(it.startTime),
+        render: (it) => formatDate(it.start_date),
       },
       {
         header: "Đến ngày",
-        accessor: "endTime",
+        accessor: "end_date",
         sortable: true,
-        render: (it) => formatDate(it.endTime),
+        render: (it) => formatDate(it.end_date),
       },
-    ],
-    [],
-  );
+    ];
 
-  const handleOpenCreate = () => {
-    setCreateForm({
-      franchiseId: effectiveFranchiseId ? String(effectiveFranchiseId) : "",
-      code: "",
-      name: "",
-      description: "",
-      type: "FIXED",
-      value: 0,
-      productFranchiseId: "",
-      quotaTotal: 0,
-      startTime: "",
-      endTime: "",
-      isActive: true,
-    });
-    setIsCreateOpen(true);
-  };
+  
 
-  const handleCreateSubmit = async () => {
-    if (!createForm.franchiseId) {
+  const handleVoucherFormSubmit = async (data: {
+    franchise_id: string;
+    name: string;
+    type: string;
+    value: number;
+    product_franchise_id?: string;
+    quota_total: number;
+    start_date: string;
+    end_date: string;
+    
+  }) => {
+    const targetFranchiseId =
+      posFranchise?.id || selectedFranchiseId || effectiveFranchiseId;
+
+    if (!targetFranchiseId) {
       toastError("Vui lòng chọn chi nhánh");
-      return;
-    }
-    if (!createForm.code.trim() || !createForm.name.trim()) {
-      toastError("Vui lòng nhập `Mã` và `Tên voucher`");
-      return;
-    }
-    if (!createForm.startTime || !createForm.endTime) {
-      toastError("Vui lòng chọn thời gian bắt đầu và kết thúc");
       return;
     }
 
     try {
-      setIsCreateLoading(true);
-      await createVoucher({
-        code: createForm.code.trim(),
-        franchiseId: createForm.franchiseId,
-        productFranchiseId:
-          createForm.productFranchiseId.trim() === ""
-            ? null
-            : createForm.productFranchiseId.trim(),
-        name: createForm.name.trim(),
-        description: createForm.description.trim(),
-        type: createForm.type,
-        value: Number(createForm.value),
-        quotaTotal: Number(createForm.quotaTotal),
-        startTime: createForm.startTime,
-        endTime: createForm.endTime,
-        isActive: Boolean(createForm.isActive),
-      });
-      toastSuccess("Tạo voucher thành công");
-      setIsCreateOpen(false);
-      await fetchVoucherList();
+      setIsFormLoading(true);
+      const payload = {
+        franchise_id: targetFranchiseId,
+        name: data.name,
+        type: data.type,
+        value: data.value,
+        product_franchise_id: data.product_franchise_id,
+        quota_total: data.quota_total,
+        start_date: data.start_date,
+        end_date: data.end_date,
+      };
+      if (formMode === "edit" && selectedVoucher) {
+        // Giả sử hàm của bạn nhận ID voucher và payload
+        await updateVoucher(selectedVoucher.id || "", payload); 
+        toastSuccess("Cập nhật voucher thành công");
+      } else {
+        await createVoucher(payload);
+        toastSuccess("Tạo voucher thành công");
+      }
+      setIsModalOpen(false);
+      setSelectedVoucher(null);
+      setIsTableLoading(true);
+      await fetchVoucherList(page, "table");
     } catch (e) {
       const msg =
         typeof (e as any)?.message === "string"
@@ -359,24 +336,12 @@ const VoucherApiPage = () => {
           : "Tạo voucher thất bại";
       toastError(msg);
     } finally {
-      setIsCreateLoading(false);
+      setIsFormLoading(false);
+      setIsTableLoading(false);
     }
   };
 
-  const handleView = async (item: VoucherRow) => {
-    setDetailOpen(true);
-    setDetailLoading(true);
-    try {
-      const full = await getVoucher(String(item.id));
-      setDetail(full);
-    } catch {
-      setDetail(item);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  const openConfirm = (type: "delete" | "restore", item: VoucherRow) => {
+  const openConfirm = (type: "delete" | "restore", item: Voucher) => {
     setConfirmType(type);
     setConfirmItem(item);
     setConfirmOpen(true);
@@ -386,6 +351,7 @@ const VoucherApiPage = () => {
     if (!confirmItem) return;
     try {
       setConfirmLoading(true);
+      console.log(confirmItem);
       const id = String(confirmItem.id);
       if (confirmType === "delete") {
         await deleteVoucher(id);
@@ -396,7 +362,7 @@ const VoucherApiPage = () => {
       }
       setConfirmOpen(false);
       setConfirmItem(null);
-      await fetchVoucherList();
+      await fetchVoucherList(page, "table");
     } catch (e) {
       const msg =
         typeof (e as any)?.message === "string"
@@ -408,11 +374,12 @@ const VoucherApiPage = () => {
     }
   };
 
-  const handleChangeStatus = async (item: VoucherRow, newStatus: boolean) => {
+  const handleChangeStatus = async (item: Voucher, newStatus: boolean) => {
+    
     try {
       await changeVoucherStatus(String(item.id), newStatus);
       toastSuccess("Cập nhật trạng thái thành công");
-      await fetchVoucherList();
+      await fetchVoucherList(page, "table");
     } catch (e) {
       const msg =
         typeof (e as any)?.message === "string"
@@ -422,13 +389,7 @@ const VoucherApiPage = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-6 transition-all animate-fade-in">
-        <ClientLoading />
-      </div>
-    );
-  }
+  
 
   if (error) {
     return (
@@ -447,22 +408,61 @@ const VoucherApiPage = () => {
     );
   }
 
+  const handleOpenForm = (mode: "create" | "edit" | "view", data?: Voucher) => {
+    setFormMode(mode);
+    setSelectedVoucher(data || null);
+    setIsModalOpen(true);
+  };
+
+  if(isAdmin && !posFranchise){
+     return (
+      <FranchiseSelector
+        data={franchises}
+        loading={loading}
+        onSelect={(id) => {
+          const f = franchises.find((x) => x.value === id);
+          setPosFranchise({ id, name: f?.name });
+        }}
+      />
+    );
+  }
+
+  if (loading) {
+    return <ClientLoading />;
+  }
+
   return (
     <>  
-      <CRUDPageTemplate<VoucherRow>
+   
+        <CRUDPageTemplate<Voucher>
         title="Danh sách voucher"
-        data={filteredTableData}
+        data={vouchers}
         columns={columns}
+        isTableLoading={isTableLoading}
         pageSize={5}
-        onAdd={handleOpenCreate}
-        onView={handleView}
+        totalItems={totalItems}
+        currentPage={page}
+        onSearch={searchVouchers}
+        onRefresh={fetchVoucherList}
+        onAdd={() => handleOpenForm("create")}
+        onView={(item) => handleOpenForm("view", item)}
         onDelete={(item) => openConfirm("delete", item)}
+        onEdit={(item) => handleOpenForm("edit", item)}
         onRestore={(item) => openConfirm("restore", item)}
-        statusField="isActive"
-        onStatusChange={handleChangeStatus}
-        searchKeys={["code", "name", "franchiseDisplay", "type"]}
-        searchRight={
-          <div className="flex flex-wrap items-center gap-2">
+        statusField="is_active"
+        onStatusChange={handleChangeStatus}  
+        // searchKeys={["code", "type", "is_active", "is_deleted"]}
+        searchContent={
+          <div className="flex items-center gap-2">
+            <CustomSelect
+              fetchOnSearchOnly={true}
+              placeholder="Nhập mã voucher"
+              value={selectedVoucherCode || ""}
+              fetchOptions={fetchVoucherOptionsByValue}
+              onChange={(value) => {
+                setSelectedVoucherCode(value);
+              }}
+            />
             <input
               type="date"
               value={fromDate}
@@ -477,16 +477,6 @@ const VoucherApiPage = () => {
               className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               aria-label="Lọc đến ngày"
             />
-            <button
-              type="button"
-              onClick={() => {
-                setFromDate("");
-                setToDate("");
-              }}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              Xóa ngày
-            </button>
           </div>
         }
         filters={[
@@ -499,305 +489,17 @@ const VoucherApiPage = () => {
             ],
           },
           {
-            key: "isActive",
+            key: "is_active",
             label: "Trạng thái",
             options: [
-              { value: "true", label: "Đang dùng" },
-              { value: "false", label: "Tắt" },
+              { label: "Đang hoạt động", value: "true" },
+              { label: "Ngừng hoạt động", value: "false" },
             ],
           },
         ]}
       />
 
-      <CRUDModalTemplate
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onSave={handleCreateSubmit}
-        title="Voucher"
-        mode="create"
-        isLoading={isCreateLoading}
-        maxWidth="max-w-2xl"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Chi nhánh
-            </label>
-            <select
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:bg-gray-50"
-              value={createForm.franchiseId}
-              onChange={(e) =>
-                setCreateForm((p) => ({ ...p, franchiseId: e.target.value }))
-              }
-              disabled={!isAdminMode || isFranchisesLoading}
-            >
-              <option value="" disabled>
-                {isFranchisesLoading ? "Đang tải chi nhánh..." : "Chọn chi nhánh"}
-              </option>
-              {franchises.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.name} ({f.code})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Mã voucher
-            </label>
-            <input
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              value={createForm.code}
-              onChange={(e) =>
-                setCreateForm((p) => ({ ...p, code: e.target.value }))
-              }
-              placeholder="VD: GIAM10-Q1"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tên voucher
-            </label>
-            <input
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              value={createForm.name}
-              onChange={(e) =>
-                setCreateForm((p) => ({ ...p, name: e.target.value }))
-              }
-              placeholder="VD: Voucher khuyến mãi tháng 4"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Mô tả
-            </label>
-            <input
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              value={createForm.description}
-              onChange={(e) =>
-                setCreateForm((p) => ({ ...p, description: e.target.value }))
-              }
-              placeholder="Tuỳ chọn"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Loại
-            </label>
-            <select
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              value={createForm.type}
-              onChange={(e) =>
-                setCreateForm((p) => ({
-                  ...p,
-                  type: e.target.value as VoucherType,
-                }))
-              }
-            >
-              <option value="FIXED">FIXED</option>
-              <option value="PERCENT">PERCENT</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Giá trị
-            </label>
-            <input
-              type="number"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              value={createForm.value}
-              onChange={(e) =>
-                setCreateForm((p) => ({
-                  ...p,
-                  value: Number(e.target.value),
-                }))
-              }
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Product franchise id
-            </label>
-            <input
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              value={createForm.productFranchiseId}
-              onChange={(e) =>
-                setCreateForm((p) => ({
-                  ...p,
-                  productFranchiseId: e.target.value,
-                }))
-              }
-              placeholder="Để trống = toàn chi nhánh"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Quota tổng
-            </label>
-            <input
-              type="number"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              value={createForm.quotaTotal}
-              onChange={(e) =>
-                setCreateForm((p) => ({
-                  ...p,
-                  quotaTotal: Number(e.target.value),
-                }))
-              }
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Start date
-            </label>
-            <input
-              type="datetime-local"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              value={createForm.startTime}
-              onChange={(e) =>
-                setCreateForm((p) => ({
-                  ...p,
-                  startTime: e.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              End date
-            </label>
-            <input
-              type="datetime-local"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              value={createForm.endTime}
-              onChange={(e) =>
-                setCreateForm((p) => ({
-                  ...p,
-                  endTime: e.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <div className="md:col-span-2 flex items-center gap-3 pt-1">
-            <input
-              type="checkbox"
-              checked={createForm.isActive}
-              onChange={(e) =>
-                setCreateForm((p) => ({
-                  ...p,
-                  isActive: e.target.checked,
-                }))
-              }
-              id="voucher-is-active"
-            />
-            <label
-              htmlFor="voucher-is-active"
-              className="text-sm font-medium text-gray-700 select-none cursor-pointer"
-            >
-              Kích hoạt
-            </label>
-          </div>
-        </div>
-      </CRUDModalTemplate>
-
-      <CRUDModalTemplate
-        isOpen={detailOpen}
-        onClose={() => {
-          setDetailOpen(false);
-          setDetail(null);
-        }}
-        title="Voucher"
-        mode="view"
-        isLoading={detailLoading}
-        maxWidth="max-w-lg"
-      >
-        {detailLoading ? (
-          <div className="text-sm text-gray-600">Đang tải...</div>
-        ) : detail ? (
-          <div className="space-y-3 text-sm text-gray-700">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-500">Mã:</span>
-              <span className="font-semibold text-gray-900">{detail.code}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-500">Tên:</span>
-              <span className="font-semibold text-gray-900">{detail.name}</span>
-            </div>
-            {detail.description ? (
-              <div>
-                <div className="font-medium text-gray-500 mb-1">Mô tả</div>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">
-                  {detail.description}
-                </div>
-              </div>
-            ) : null}
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-500">Chi nhánh:</span>
-              <span className="font-semibold text-gray-900">
-                {getFranchiseName(detail)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-500">Product:</span>
-              <span className="font-semibold text-gray-900">
-                {detail.productFranchiseId
-                  ? String(detail.productFranchiseId)
-                  : "Toàn cửa hàng"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-500">Loại:</span>
-              <span className="font-semibold text-gray-900">
-                {detail.type === "PERCENT" ? "Giảm %" : "Giảm tiền"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-500">Giá trị:</span>
-              <span className="font-semibold text-gray-900">
-                {detail.type === "PERCENT"
-                  ? `${detail.value}%`
-                  : `${Number(detail.value).toLocaleString("vi-VN")}₫`}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-500">Quota:</span>
-              <span className="font-semibold text-gray-900">
-                {detail.quotaUsed} / {detail.quotaTotal}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-500">Từ ngày:</span>
-              <span className="font-semibold text-gray-900">
-                {formatDate(detail.startTime)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-500">Đến ngày:</span>
-              <span className="font-semibold text-gray-900">
-                {formatDate(detail.endTime)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-500">Trạng thái:</span>
-              <span className="font-semibold text-gray-900">
-                {detail.isDeleted ? "Đã xóa" : detail.isActive ? "Đang dùng" : "Tắt"}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="text-sm text-gray-500">Không có dữ liệu</div>
-        )}
-      </CRUDModalTemplate>
+      
 
       <ActionConfirmModal
         isOpen={confirmOpen}
@@ -816,6 +518,16 @@ const VoucherApiPage = () => {
               : `Bạn đang khôi phục voucher "${confirmItem.code}".`
             : undefined
         }
+      />
+      <VoucherForm
+        key={`${formMode}-${selectedVoucher?._id || "new"}-${isModalOpen ? "open" : "closed"}`}
+        isOpen={isModalOpen}
+        franchise={posFranchise || selectedFranchiseId || undefined}
+        mode={formMode}
+        initialData={selectedVoucher}
+        isLoading={isFormLoading}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleVoucherFormSubmit}
       />
     </>
   );

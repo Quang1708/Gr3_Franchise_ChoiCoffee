@@ -1,0 +1,21 @@
+export type Voucher = {
+  _id: string;
+  id?: string;
+  code: string;
+  franchise_id: string;
+  product_franchise_id: string | null;
+  name: string;
+  description: string;
+  type: string; 
+  value: number;
+  quota_total: number;
+  quota_used: number;
+  start_date: string; 
+  end_date: string;   
+  created_by: string;
+  is_active: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+  __v: number;
+};

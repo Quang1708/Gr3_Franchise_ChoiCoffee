@@ -15,7 +15,6 @@ import { toast } from "react-toastify";
 const CartPage = () => {
     const [carts, setCarts] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [customers, setCustomers] = useState<Customer[]>([]);
     const [customerSelected, setCustomerSelected] = useState<Customer | null>(
         null,
     );
@@ -25,7 +24,6 @@ const CartPage = () => {
     );
     const [selectedCart, setSelectedCart] = useState<Cart | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const fetchCustomers = async ({ pageNum, pageSize, searchKey }: any) => {
         try {
@@ -37,11 +35,11 @@ const CartPage = () => {
                 },
                 pageInfo: {
                     pageNum,
-                    pageSize, // lấy nhiều hơn để dễ test
+                    pageSize, 
                 },
             });
 
-            if (res.success) {
+            if (res.success) {  
                 setCustomerCache((prev) => {
                     const newItems = res.data.filter(
                         (newItem: Customer) =>
@@ -51,8 +49,8 @@ const CartPage = () => {
                 });
 
                 return {
-                    data: res.data.map((c: Customer) => ({ label: c.name, value: c.id })),
-                    pageInfo: res.pageInfo, // Trả về pageNum, pageSize, totalPages... cho component
+                    data: res.data.map((c: Customer) => ({ label: `${c.name} (${c.phone})`, value: c.id })),
+                    pageInfo: res.pageInfo, 
                 };
             }
             return {
@@ -155,7 +153,6 @@ const CartPage = () => {
 
     const hanldeSubmit = async (data: any) => {
         if (formMode === "create") {
-            setIsSubmitting(true);
             try {
                 const response = await createCart(data);
                 if (response) {
@@ -165,8 +162,6 @@ const CartPage = () => {
             } catch (error) {
                 console.error("Lỗi khi tạo giỏ hàng:", error);
                 toast.error("Lỗi khi tạo giỏ hàng");
-            } finally {
-                setIsSubmitting(false);
             }
         }
     };
@@ -186,13 +181,10 @@ const CartPage = () => {
                 onView={(item) => handleOpenForm("view", item)}
                 searchContent={
                     <CustomSelect
+                        fetchOnSearchOnly={true} 
                         fetchOptions={fetchCustomers as any}
                         value={customerSelected?.id || ""}
-                        options={customers.map((customer) => ({
-                            label: customer.name,
-                            value: customer.id,
-                        }))}
-                        placeholder="Chọn khách hàng"
+                        placeholder="Nhập tên / SĐT khách hàng để tìm kiếm..." 
                         onChange={(id) => {
                             const selectedCustomer = customerCache.find((c) => c.id === id);
                             setCustomerSelected(selectedCustomer || null);

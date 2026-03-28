@@ -154,7 +154,6 @@ const CartAdminPage = () => {
   };
 
   const total = cart.reduce((sum, i) => sum + i.total_price, 0);
-  console.log(posFranchise);
 
   // ================= EDIT =================
   const handleEditItem = (item: any) => {

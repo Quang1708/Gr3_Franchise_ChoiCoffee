@@ -74,7 +74,7 @@ const CartPage = () => {
             return;
         }
         setLoading(true);
-        const status = filters?.status;
+        const status = filters?.status ;
         try {
             const res = await getCustomerCart(customerSelected?.id, status);
             if (res) {
@@ -171,6 +171,7 @@ const CartPage = () => {
             <CRUDPageTemplate
                 title="Quản lý giỏ hàng"
                 columns={columns}
+                canEdit={(item) => item.status === "ACTIVE"}
                 data={carts}
                 isTableLoading={loading}
                 pageSize={10}

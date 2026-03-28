@@ -14,6 +14,7 @@ import { Loader2 } from "lucide-react";
 export type VoucherFormProps = {
   isOpen: boolean;
   franchise?: { id: string; name: string } | null;
+  franchiseId?: string;
   mode: "create" | "edit" | "view";
   initialData?:  Voucher | null;
   isLoading?: boolean;
@@ -63,6 +64,7 @@ const VoucherForm = ({
   isLoading = false,
   onClose,
   onSubmit,
+  franchiseId,
 }: VoucherFormProps) => {
   
   const {
@@ -91,7 +93,7 @@ const VoucherForm = ({
   const handleSave = handleSubmit((data) => {
     onSubmit({
       ...data,
-      franchise_id: data.franchise_id || franchise?.id || "",
+      franchise_id: data.franchise_id || franchise?.id || franchiseId || "",
     });
   });
 
@@ -100,7 +102,7 @@ const VoucherForm = ({
     const fetchProductFranchise = async () => {
       try{
         setLoading(true);
-        const response = await getProductFranchiseByFranchiseId(voucherData?.franchise_id || franchise?.id || "");
+        const response = await getProductFranchiseByFranchiseId(voucherData?.franchise_id || franchise?.id || franchiseId || "");
         if(response.success) {
           setProductFranchises(response.data);
         }

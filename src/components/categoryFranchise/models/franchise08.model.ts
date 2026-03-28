@@ -1,5 +1,5 @@
 export type Franchise = {
-    id: string | number;
+    id: string ;
     value: string;
     code: string;
     name: string;

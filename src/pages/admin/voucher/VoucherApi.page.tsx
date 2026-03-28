@@ -523,6 +523,7 @@ const VoucherApiPage = () => {
         key={`${formMode}-${selectedVoucher?._id || "new"}-${isModalOpen ? "open" : "closed"}`}
         isOpen={isModalOpen}
         franchise={posFranchise || selectedFranchiseId || undefined}
+        franchiseId={selectedFranchiseId || ""}
         mode={formMode}
         initialData={selectedVoucher}
         isLoading={isFormLoading}

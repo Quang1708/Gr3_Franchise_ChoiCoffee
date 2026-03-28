@@ -1,11 +1,9 @@
-import type { StaffUserRequest } from "../models/staff.model";
 import { axiosAdminClient } from "@/api/axios.config";
 
-export const getStaffByFranchiseId = async (data: StaffUserRequest) => {
+export const getStaffByFranchiseId = async (id: string) => {
     try{
-        const response = await axiosAdminClient.post(
-            `/api/user-franchise-roles/search`,
-            data
+        const response = await axiosAdminClient.get(
+            `/api/user-franchise-roles/franchise/${id}`,
         )
         if(response.data) {
             return response.data ;

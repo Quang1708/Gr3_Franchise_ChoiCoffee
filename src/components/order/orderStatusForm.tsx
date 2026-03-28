@@ -8,16 +8,18 @@ import {
   PackageCheck,
   Truck,
   CheckSquare,
-  Ban
+  Ban,
+  Bike,
+  Mail
 } from "lucide-react";
 import type { Order } from "@/pages/admin/order/models/searchOrderResponse.model";
 import { completeStatus, pickupStatus, prepareStatus, readyPickupStatus } from "./services/changeStatsus.service";
 import { getDeliveryByOrderId } from "./services/delivery.service";
-import { useAdminContextStore } from "@/stores";
-import type { StaffUser } from "./models/staff.model";
+import type { Staff} from "./models/staff.model";
 import { getStaffByFranchiseId } from "./services/getStaff.service";
 
 export type OrderStatusFormProps = {
+  franchiseId: string;
   isOpen: boolean;
   onClose: () => void;
   order: Order | null;
@@ -84,11 +86,11 @@ const STATUS_OPTIONS = [
 
 const PROGRESS_STEPS = STATUS_OPTIONS.filter(s => s.value !== "CANCELED");
 
-const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormProps) => {
+const OrderStatusForm = ({ isOpen, onClose, order, onSuccess, franchiseId }: OrderStatusFormProps) => {
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
-  const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
-  const [staffs, setStaffs] = useState<StaffUser[]>([]);
+  // const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
+  const [staffs, setStaffs] = useState<Staff[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
 
   useEffect(() => {
@@ -96,34 +98,22 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
       setSelectedStatus(order.status);
     }
   }, [order, isOpen]);
-
+  console.log(franchiseId);
   useEffect(() => {
     if (isOpen && franchiseId) {
       const fetchStaffInfo = async () => {
-        const staffRoleId = "69a1aa8be6a85d288f9b4a28";
         try {
-          const res = await getStaffByFranchiseId({
-            searchCondition: {
-              user_id: "",
-              franchise_id: franchiseId,
-              role_id: staffRoleId,
-              is_deleted: false,
-            },
-            pageInfo: {
-              pageNum: 1,
-              pageSize: 50,
-            },
-          });
-
+          const res = await getStaffByFranchiseId(franchiseId);
           setStaffs(res.data || []);
         } catch (error) {
           console.error("Lỗi khi lấy staff:", error);
         }
       };
-
       fetchStaffInfo();
     }
   }, [isOpen, franchiseId]);
+
+  console.log("staffs", staffs);
 
   // Kiểm tra xem status có được phép chọn không
   const isStatusSelectable = (statusValue: string, currentStatus: string) => {
@@ -205,6 +195,11 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
     }
   };
 
+  const getStaffAvt = (id?: string) => {
+    const staff = staffs.find(s => s.value === id);
+    return staff?.image || "";
+  }
+
   const currentIndex = PROGRESS_STEPS.findIndex(s => s.value === selectedStatus);
   const isCanceled = selectedStatus === "CANCELED";
   const maxIndex = PROGRESS_STEPS.length - 1;
@@ -262,11 +257,12 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
               >
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-500
-                    ${isPast
-                      ? "bg-primary border-primary text-white"
-                      : isActive
-                        ? "bg-white border-primary text-primary shadow-sm"
-                        : "bg-white border-gray-200 text-gray-300"
+                    ${
+                      isPast
+                        ? "bg-primary border-primary text-white"
+                        : isActive
+                          ? "bg-white border-primary text-primary shadow-sm"
+                          : "bg-white border-gray-200 text-gray-300"
                     }
                   `}
                 >
@@ -291,7 +287,7 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
           })}
         </div>
 
-        {selectedStatus === "READY_FOR_PICKUP" && (
+        {selectedStatus === "READY_FOR_PICKUP" && !order?.staff_id && (
           <div className="mt-4">
             <p className="text-sm font-bold text-gray-700 mb-2">
               Chọn nhân viên giao hàng:
@@ -305,11 +301,43 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
             >
               <option value="">-- Chọn nhân viên --</option>
               {staffs.map((s) => (
-                <option key={s.user_id} value={s.user_id}>
-                  {s.user_name} ({s.user_email})
+                <option key={s.value} value={s.value}>
+                  {s.name} ({s.email})
                 </option>
               ))}
             </select>
+          </div>
+        )}
+
+        {(order?.staff_id ) && (
+          <div className="mt-6 rounded-xl border border-orange-100 bg-orange-50/50 p-4">
+            <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-orange-800">
+              <Bike className="h-4 w-4" />
+              Nhân viên giao hàng
+            </p>
+            <div className="flex items-center gap-3">
+              {(getStaffAvt(order?.staff_id)) ? (
+                <img
+                  src={getStaffAvt(order?.staff_id)}
+                  alt={order.staff_name.charAt(0).toUpperCase()}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-200 text-orange-700 font-bold"
+                />
+              ): (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-200 text-orange-700 font-bold">
+                  {order.staff_name.charAt(0).toUpperCase()}
+                </div>
+              )}
+                
+              <div className="flex flex-col">
+                <p className="text-base font-bold text-gray-800">
+                  {order.staff_name}
+                </p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-sm text-gray-600">
+                  <Mail className="h-3.5 w-3.5" />
+                  {order.staff_email}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -322,7 +350,10 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
             {STATUS_OPTIONS.map((status) => {
               const isSelected = selectedStatus === status.value;
               const isCurrentStatus = order?.status === status.value;
-              const isDisabled = !isStatusSelectable(status.value, order?.status || "");
+              const isDisabled = !isStatusSelectable(
+                status.value,
+                order?.status || "",
+              );
 
               return (
                 <div
@@ -330,9 +361,10 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess }: OrderStatusFormP
                   className={`
                     relative flex flex-col items-center justify-center gap-2 p-4 border rounded-xl transition-all duration-200
                     ${isDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-                    ${isSelected
-                      ? `ring-2 border-transparent shadow-sm ${status.colorClass}`
-                      : `border-gray-200 bg-white ${status.hoverClass} text-gray-500`
+                    ${
+                      isSelected
+                        ? `ring-2 border-transparent shadow-sm ${status.colorClass}`
+                        : `border-gray-200 bg-white ${status.hoverClass} text-gray-500`
                     }
                   `}
                   onClick={() => {

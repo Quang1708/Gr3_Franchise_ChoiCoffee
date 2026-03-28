@@ -200,6 +200,8 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess, franchiseId }: Ord
     return staff?.image || "";
   }
 
+  console.log(order);
+
   const currentIndex = PROGRESS_STEPS.findIndex(s => s.value === selectedStatus);
   const isCanceled = selectedStatus === "CANCELED";
   const maxIndex = PROGRESS_STEPS.length - 1;

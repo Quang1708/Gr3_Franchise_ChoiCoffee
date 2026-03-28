@@ -38,7 +38,7 @@ const OrderPage = () => {
   // State cho search customer
   const [customerSearchKey, setCustomerSearchKey] = useState("");
   // State cho filter hiện tại
-  const [currentFilterStatus, setCurrentFilterStatus] = useState<string>("CONFIRMED");
+  const [currentFilterStatus, setCurrentFilterStatus] = useState<string>();
 
   // Key để force remount CRUDPageTemplate (cập nhật filter UI)
   const [filterKey, setFilterKey] = useState(0);
@@ -153,7 +153,6 @@ const OrderPage = () => {
       loadInitialCustomers();
     }
   }, [customerSearchKey]);
-
   // Hàm fetch order theo franchise
   const fetchOrdersByFranchise = useCallback(
     async (status?: string, page: number = 1, size: number = pageSize) => {
@@ -163,8 +162,8 @@ const OrderPage = () => {
       setLoading(true);
       try {
         // Nếu status là "" (tất cả), truyền undefined để API lấy tất cả
-        const apiStatus = status === "" ? undefined : status;
-        const res = await searchOrderByFranchiseId(targetFranchiseId, apiStatus);
+        
+        const res = await searchOrderByFranchiseId(targetFranchiseId , status);
         if (res) {
           const allData: OrderByFranchise[] = Array.isArray(res) ? res : res?.data || [];
           const sortedData = sortOrdersByDate(allData);
@@ -183,7 +182,7 @@ const OrderPage = () => {
         isRefreshing.current = false;
       }
     },
-    [isAdmin, selectedFranchise, franchise_id, pageSize]
+    [selectedFranchise, franchise_id, pageSize, !isAdmin, isAdmin, currentFilterStatus]
   );
 
   // Hàm fetch order theo khách hàng
@@ -250,7 +249,7 @@ const OrderPage = () => {
   useEffect(() => {
     if (selectedFranchise && !customerSelected && !isFetching.current) {
       isFetching.current = true;
-      fetchOrdersByFranchise("CONFIRMED", 1, pageSize);
+      fetchOrdersByFranchise("", 1, pageSize);
     }
   }, [selectedFranchise]);
 

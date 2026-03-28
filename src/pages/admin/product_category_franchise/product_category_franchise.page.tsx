@@ -7,6 +7,7 @@ import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmMod
 import ClientLoading from "@/components/Client/Client.Loading";
 import { Modal } from "@/components/UI/Modal";
 import { useAuthStore } from "@/stores/auth.store";
+import { useAdminContextStore } from "@/stores/adminContext.store";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 
 import type { ProductCategoryFranchise } from "@/models/product_category_franchise.model";
@@ -70,15 +71,65 @@ type ApiErrorLike = {
   }>;
 };
 
+const normalizeScope = (scope: unknown) => String(scope ?? "").toUpperCase();
+
+const getRoleCode = (roleItem: Record<string, unknown>) =>
+  String(roleItem.role ?? roleItem.role_code ?? "").toUpperCase();
+
+const getRoleFranchiseId = (roleItem: Record<string, unknown>) => {
+  const franchiseId = roleItem.franchise_id ?? roleItem.franchiseId;
+  return franchiseId == null ? "" : String(franchiseId);
+};
+
+const getRoleFranchiseName = (roleItem: Record<string, unknown>) => {
+  const franchiseName = roleItem.franchise_name ?? roleItem.franchiseName;
+  if (franchiseName == null) return "";
+  return String(franchiseName).trim();
+};
+
 const ProductCategoryFranchisePage = () => {
   const { user } = useAuthStore();
+  const selectedFranchiseId = useAdminContextStore(
+    (state) => state.selectedFranchiseId,
+  );
+
   const roleCodes = (user?.roles ?? [])
-    .map((roleItem) => String(roleItem.role ?? "").toUpperCase())
+    .map((roleItem) => getRoleCode(roleItem as Record<string, unknown>))
     .filter(Boolean);
   const canManageProductCategoryFranchise =
     roleCodes.includes("ADMIN") || roleCodes.includes("MANAGER");
   const canReadProductCategoryFranchise =
     canManageProductCategoryFranchise || roleCodes.includes("STAFF");
+
+  const isGlobalAdmin = (user?.roles ?? []).some((roleItem) => {
+    const normalizedRole = getRoleCode(roleItem as Record<string, unknown>);
+    const normalizedScope = normalizeScope(
+      (roleItem as Record<string, unknown>).scope,
+    );
+    return normalizedRole === "ADMIN" && normalizedScope === "GLOBAL";
+  });
+
+  const contextFranchiseId =
+    selectedFranchiseId && selectedFranchiseId !== "ALL"
+      ? String(selectedFranchiseId)
+      : "";
+
+  const roleScopedFranchiseId =
+    (user?.roles ?? []).find((roleItem) => {
+      const roleRecord = roleItem as Record<string, unknown>;
+      return (
+        normalizeScope(roleRecord.scope) === "FRANCHISE" &&
+        Boolean(getRoleFranchiseId(roleRecord))
+      );
+    }) ?? null;
+
+  const managedFranchiseId =
+    contextFranchiseId ||
+    (!isGlobalAdmin
+      ? getRoleFranchiseId(
+          (roleScopedFranchiseId ?? {}) as Record<string, unknown>,
+        )
+      : "");
 
   const [rows, setRows] = useState<ProductCategoryFranchiseRow[]>([]);
   const [filterOptionRows, setFilterOptionRows] = useState<
@@ -127,16 +178,20 @@ const ProductCategoryFranchisePage = () => {
   const {
     register,
     getValues,
+    watch,
     setValue,
     formState: { errors },
   } = useForm<SearchFormValues>({
     defaultValues: {
-      franchise_id: "",
+      franchise_id: managedFranchiseId,
       category_id: "",
     },
   });
 
   const loadingRequestCountRef = useRef(0);
+
+  const selectedSearchFranchiseId = watch("franchise_id");
+  const selectedSearchCategoryId = watch("category_id");
 
   const beginFullScreenLoading = () => {
     loadingRequestCountRef.current += 1;
@@ -159,6 +214,13 @@ const ProductCategoryFranchisePage = () => {
     ...item,
     franchiseName: (item.franchiseName ??
       item.franchise_name ??
+      (user?.roles ?? [])
+        .map((roleItem) => roleItem as Record<string, unknown>)
+        .find(
+          (roleItem) =>
+            getRoleFranchiseId(roleItem) ===
+            String(item.franchise_id ?? item.franchiseId ?? ""),
+        )?.franchise_name ??
       item.franchise_id ??
       "N/A") as string,
     categoryName: (item.categoryName ??
@@ -223,19 +285,34 @@ const ProductCategoryFranchisePage = () => {
         endFullScreenLoading();
       }
     },
-    [],
+    [user?.roles],
   );
 
   useEffect(() => {
-    fetchData(DEFAULT_SEARCH_PAYLOAD, "full");
-  }, [fetchData]);
+    fetchData(
+      {
+        searchCondition: {
+          ...DEFAULT_SEARCH_PAYLOAD.searchCondition,
+          franchise_id: managedFranchiseId,
+        },
+        pageInfo: {
+          ...DEFAULT_SEARCH_PAYLOAD.pageInfo,
+        },
+      },
+      "full",
+    );
+  }, [fetchData, managedFranchiseId]);
+
+  useEffect(() => {
+    setValue("franchise_id", managedFranchiseId);
+  }, [managedFranchiseId, setValue]);
 
   const loadFilterOptions = useCallback(async () => {
     beginFullScreenLoading();
     try {
       const response = await searchProductCategoryFranchisesService({
         searchCondition: {
-          franchise_id: "",
+          franchise_id: managedFranchiseId,
           category_id: "",
           product_id: "",
           is_active: "",
@@ -265,7 +342,7 @@ const ProductCategoryFranchisePage = () => {
     } finally {
       endFullScreenLoading();
     }
-  }, []);
+  }, [managedFranchiseId]);
 
   useEffect(() => {
     loadFilterOptions();
@@ -276,7 +353,7 @@ const ProductCategoryFranchisePage = () => {
     try {
       const response = await searchProductCategoryFranchisesService({
         searchCondition: {
-          franchise_id: "",
+          franchise_id: managedFranchiseId,
           category_id: "",
           product_id: "",
           is_active: "",
@@ -315,7 +392,7 @@ const ProductCategoryFranchisePage = () => {
     } finally {
       endFullScreenLoading();
     }
-  }, []);
+  }, [managedFranchiseId]);
 
   useEffect(() => {
     loadExistingMappings();
@@ -329,7 +406,9 @@ const ProductCategoryFranchisePage = () => {
 
     const nextPayload: ProductCategoryFranchiseSearchInput = {
       searchCondition: {
-        franchise_id: getValues("franchise_id") || "",
+        franchise_id: isGlobalAdmin
+          ? getValues("franchise_id") || ""
+          : managedFranchiseId,
         category_id: getValues("category_id") || "",
         product_id: normalizedProductId,
         is_active:
@@ -355,12 +434,13 @@ const ProductCategoryFranchisePage = () => {
   };
 
   const handleRefresh = () => {
-    setValue("franchise_id", "");
+    setValue("franchise_id", managedFranchiseId);
     setValue("category_id", "");
 
     const resetPayload: ProductCategoryFranchiseSearchInput = {
       searchCondition: {
         ...DEFAULT_SEARCH_PAYLOAD.searchCondition,
+        franchise_id: managedFranchiseId,
       },
       pageInfo: {
         pageNum: 1,
@@ -866,18 +946,33 @@ const ProductCategoryFranchisePage = () => {
         isTableLoading={isTableLoading}
         searchContent={
           <div className="flex gap-3 w-full">
-            <FormSelect
-              label=""
-              options={franchiseOptions}
-              register={register("franchise_id")}
-              error={errors.franchise_id as FieldError}
-              placeholder="Chọn chi nhánh"
-            />
+            {isGlobalAdmin ? (
+              <FormSelect
+                label=""
+                options={franchiseOptions}
+                register={register("franchise_id")}
+                value={String(selectedSearchFranchiseId || "")}
+                error={errors.franchise_id as FieldError}
+                placeholder="Chọn chi nhánh"
+              />
+            ) : (
+              <div className="w-full sm:min-w-50 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                Chi nhánh:{" "}
+                <span className="font-semibold">
+                  {getRoleFranchiseName(
+                    (roleScopedFranchiseId ?? {}) as Record<string, unknown>,
+                  ) ||
+                    managedFranchiseId ||
+                    "---"}
+                </span>
+              </div>
+            )}
 
             <FormSelect
               label=""
               options={categoryOptions}
               register={register("category_id")}
+              value={String(selectedSearchCategoryId || "")}
               error={errors.category_id as FieldError}
               placeholder="Chọn danh mục"
             />

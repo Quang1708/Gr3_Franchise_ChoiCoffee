@@ -34,6 +34,7 @@ export interface FilterConfig<T> {
   key: keyof T;
   label: string;
   options: FilterOption[];
+  defaultValue?: string;
 }
 
 export interface CRUDPageTemplateProps<T> {
@@ -158,6 +159,8 @@ export function CRUDPageTemplate<
     filters.forEach((f) => {
       if (f.key === "is_deleted") {
         initial[f.key] = "false";
+      } else if (f.defaultValue) {
+      initial[f.key] = f.defaultValue;
       } else {
         initial[f.key] = "";
       }
@@ -441,7 +444,7 @@ export function CRUDPageTemplate<
           <button
             type="submit"
             className="flex-1 sm:flex-none px-4 py-2 text-sm rounded-lg bg-primary text-white 
-              transition-all duration-200 active:scale-95 hover:brightness-110"
+              transition-all duration-200 active:scale-95 hover:brightness-110 cursor-pointer"
           >
             Tìm kiếm
           </button>
@@ -451,7 +454,7 @@ export function CRUDPageTemplate<
             type="button"
             onClick={handleRefresh}
             className="px-3 py-2 text-sm rounded-lg bg-gray-200 text-gray-600 
-              transition-all duration-200 active:scale-95 hover:bg-gray-300"
+              transition-all duration-200 active:scale-95 hover:bg-gray-300 cursor-pointer" 
           >
             <RotateCw className="w-4 h-4" />
           </button>

@@ -53,9 +53,9 @@ const FranchiseSelector = ({ data, onSelect, loading, onRefresh }: Props) => {
                     {/* SEARCH */}
                     <button
                         type="submit"
-                        className="px-4 py-2 text-[12px] bg-primary text-white rounded-lg hover:brightness-110 transition"
+                        className="px-4 py-2 text-[12px] bg-primary text-white rounded-lg hover:brightness-110 transition cursor-pointer"
                     >
-                        Tìm
+                        Tìm kiếm
                     </button>
 
                     {/* REFRESH */}
@@ -63,7 +63,7 @@ const FranchiseSelector = ({ data, onSelect, loading, onRefresh }: Props) => {
                         title="Làm mới"
                         type="button"
                         onClick={handleRefresh}
-                        className="p-2 border border-gray-200 rounded-lg hover:bg-gray-100 transition"
+                        className="p-2 border border-gray-200 rounded-lg hover:bg-gray-100 transition cursor-pointer"
                     >
                         <RotateCw className="w-4 h-4 text-gray-500" />
                     </button>

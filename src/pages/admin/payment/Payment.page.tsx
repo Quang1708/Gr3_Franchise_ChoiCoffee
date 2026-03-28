@@ -163,10 +163,33 @@ const PaymentPage = () => {
         );
       } catch (orderErr) {
         const fallbackError = orderErr as Error;
-        console.warn("Lỗi order API, fallback sang payment API:", fallbackError.message);
-        const paymentData = await getPayments();
-        setPayments(applyFranchiseScope(paymentData));
-        return;
+        console.warn("Lỗi order API, thử fallback qua payments API:", fallbackError.message);
+        try {
+          const paymentData = await getPayments();
+          setPayments(applyFranchiseScope(paymentData));
+          return;
+        } catch (fallbackGetPaymentsErr) {
+          console.warn("getPayments() cũng lỗi, thử theo customer:", fallbackGetPaymentsErr);
+          // Nếu getPayments không có, thử lấy qua customer list
+          try {
+            const customerRes = await searchCustomersUsecase({
+              searchCondition: { keyword: "", is_active: "", is_deleted: false },
+              pageInfo: { pageNum: 1, pageSize: 200 },
+            });
+            const customerList = customerRes.success ? customerRes.data || [] : [];
+            const customerPayments = await Promise.all(
+              customerList.map((c) => getPaymentsByCustomerId(c.id).catch(() => [])),
+            );
+            const merged = customerPayments.flat();
+            setPayments(applyFranchiseScope(merged));
+            if (merged.length > 0) return;
+          } catch (ex) {
+            console.warn("Lỗi load payments theo customer:", ex);
+          }
+          setError("Không thể tải dữ liệu thanh toán (order/paysrvice không tồn tại)");
+          setPayments([]);
+          return;
+        }
       }
 
       const extractOrders = (data: unknown): Array<{ _id?: string; id?: string }> => {
@@ -182,9 +205,30 @@ const PaymentPage = () => {
 
       const orders = extractOrders(ordersRaw);
       if (orders.length === 0) {
-        const fallbackPayments = await getPayments();
-        setPayments(applyFranchiseScope(fallbackPayments));
-        return;
+        // Nếu không có order (hoặc endpoint order không phù hợp), thử dùng payment API trực tiếp
+        try {
+          const paymentData = await getPayments();
+          setPayments(applyFranchiseScope(paymentData));
+          return;
+        } catch {
+          // Tiếp tục fallback customer list
+          try {
+            const customerRes = await searchCustomersUsecase({
+              searchCondition: { keyword: "", is_active: "", is_deleted: false },
+              pageInfo: { pageNum: 1, pageSize: 200 },
+            });
+            const customerList = customerRes.success ? customerRes.data || [] : [];
+            const customerPayments = await Promise.all(
+              customerList.map((c) => getPaymentsByCustomerId(c.id).catch(() => [])),
+            );
+            const merged = customerPayments.flat();
+            setPayments(applyFranchiseScope(merged));
+            return;
+          } catch {
+            setPayments([]);
+            return;
+          }
+        }
       }
 
       const paymentPromises = orders.map((order) => {
@@ -221,14 +265,65 @@ const PaymentPage = () => {
 
   const searchWithParams = async (type: SearchType, kwRaw: string) => {
     const kw = kwRaw.trim();
-    if (!kw) {
-      toastError("Vui lòng nhập từ khóa tìm kiếm");
+    const hasCustomerSelected = Boolean(selectedCustomerForSearch?.id);
+
+    if (!kw && !hasCustomerSelected && !["customerId", "orderId", "code", "id"].includes(type)) {
+      toastError("Vui lòng nhập từ khóa tìm kiếm hoặc chọn khách hàng");
       return;
     }
+
     try {
       setIsSearching(true);
       setError(null);
+
+      const filterByType = (
+        paymentsList: PaymentListItem[],
+      ): PaymentListItem[] => {
+        if (type === "id") {
+          if (!kw) return paymentsList;
+          return paymentsList.filter((p) => String(p.id) === kw);
+        }
+        if (type === "code") {
+          if (!kw) return paymentsList;
+          return paymentsList.filter((p) =>
+            String(p.paymentCode ?? "").toLowerCase().includes(kw.toLowerCase()),
+          );
+        }
+        if (type === "orderId") {
+          if (!kw) return paymentsList;
+          return paymentsList.filter((p) => String(p.orderId) === kw);
+        }
+        if (type === "customerId" || type === "customer_dropdown") {
+          if (hasCustomerSelected && !kw) return paymentsList;
+          if (!kw) return paymentsList;
+          return paymentsList.filter((p) => String(p.customerId ?? "") === kw);
+        }
+        return paymentsList;
+      };
+
+      let list: PaymentListItem[] = [];
+
+      if (hasCustomerSelected) {
+        const targetCustomerId = selectedCustomerForSearch!.id;
+        const customerPayments = await getPaymentsByCustomerId(targetCustomerId).catch(
+          () => [],
+        );
+
+        list = filterByType(customerPayments);
+
+        if (list.length > 0 || (!kw && ["id", "code", "orderId"].includes(type))) {
+          const scoped = applyFranchiseScope(list);
+          setPayments(scoped);
+          return;
+        }
+      }
+
       const selectedSearch = async (): Promise<PaymentListItem[]> => {
+        if ((type === "customerId" || type === "orderId" || type === "code" || type === "id") && !kw) {
+          // Không nhập gì cho orderId/code/id/customerId thì load tất cả payments
+          await loadAllPayments();
+          return [];
+        }
         if (type === "id") {
           const item = await getPaymentById(kw);
           return item && String(item.id) !== "0" ? [item] : [];
@@ -241,7 +336,7 @@ const PaymentPage = () => {
         return getPaymentsByCustomerId(kw);
       };
 
-      let list = await selectedSearch();
+      list = await selectedSearch();
 
       if (list.length === 0) {
         const [byId, byCode, byOrder, byCustomer] = await Promise.allSettled([
@@ -286,7 +381,13 @@ const PaymentPage = () => {
     }
   };
 
-  const handleSearch = () => void searchWithParams(searchType, searchKeyword);
+  const handleSearch = () => {
+    if (["customerId", "orderId", "code", "id"].includes(searchType) && !searchKeyword.trim()) {
+      void loadAllPayments();
+      return;
+    }
+    void searchWithParams(searchType, searchKeyword);
+  };
 
   const prepared = useMemo<PaymentRow[]>(() => {
     return payments.map((p) => ({
@@ -496,7 +597,7 @@ const PaymentPage = () => {
               onKeyDown={(e) => {
                 if (e.key === "Enter") void handleSearch();
               }}
-              placeholder="Nhập ID / code..."
+              placeholder={searchType === "customerId" ? "Nhập Customer ID hoặc để trống để tải tất cả" : "Nhập ID / code..."}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
             />
           )}
@@ -504,10 +605,10 @@ const PaymentPage = () => {
         <button
           type="button"
           onClick={() => void handleSearch()}
-          disabled={isSearching || searchType === "customer_dropdown"}
+          disabled={isSearching || searchType === "customer_dropdown" || (!searchKeyword.trim() && !["customerId", "orderId", "code", "id"].includes(searchType))}  
           className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
         >
-          {isSearching ? "Đang tìm..." : "Tìm kiếm"}
+          {isSearching ? "Đang tìm..." : (!searchKeyword.trim() && ["customerId", "orderId", "code", "id"].includes(searchType) ? "Tải tất cả thanh toán" : "Tìm kiếm")}
         </button>
       </div>
 

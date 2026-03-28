@@ -74,7 +74,7 @@ const InventoryPage = () => {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-
+  const initializedRef = useRef(false);
   const hasSelection = selectedIds.length > 0;
   const user = useAuthStore((s) => s.user);
   const canUpdate = can(user, PERM.INVENTORY_UPDATE, selectedFranchiseId);
@@ -85,25 +85,20 @@ const InventoryPage = () => {
     },
   });
 
-  const handleSearch = async (term: string) => {
+  const handleSearch = (term: string) => {
     if (searchTimeout.current) {
       clearTimeout(searchTimeout.current);
     }
 
-    searchTimeout.current = setTimeout(async () => {
+    searchTimeout.current = setTimeout(() => {
       setApiLoading(true);
 
       setKeyword(term);
-
-      if (!term.trim()) {
-        await fetchAll();
-      } else {
-        await searchInventory(term);
-      }
-
       setPage(1);
 
-      setApiLoading(false);
+      setTimeout(() => {
+        setApiLoading(false);
+      }, 200); // giả loading
     }, 400);
   };
 
@@ -118,20 +113,31 @@ const InventoryPage = () => {
     return () => clearTimeout(timer);
   }, [excelErrors]);
 
-  const franchiseOptions = useMemo(() => {
+  const [allFranchises, setAllFranchises] = useState<
+    { value: string; label: string }[]
+  >([]);
+
+  useEffect(() => {
+    if (!items.length || initializedRef.current) return;
+
     const map = new Map<string, string>();
 
-    items?.forEach((i: any) => {
+    items.forEach((i: any) => {
       if (i.franchise_id && i.franchise_name) {
         map.set(i.franchise_id, i.franchise_name);
       }
     });
 
-    return Array.from(map.entries()).map(([value, label]) => ({
-      value,
-      label,
-    }));
+    setAllFranchises(
+      Array.from(map.entries()).map(([value, label]) => ({
+        value,
+        label,
+      })),
+    );
+
+    initializedRef.current = true; // ✅ lock lại
   }, [items]);
+
   /* ===============================
      LOAD DATA
   =============================== */
@@ -151,37 +157,45 @@ const InventoryPage = () => {
   =============================== */
 
   const rows: InventoryRow[] = useMemo(() => {
-    const vm =
-      items?.map((i: any) => {
-        const quantity = i.quantity ?? 0;
-        const alert = i.alert_threshold ?? 0;
+    let filtered =
+      items?.map((i: any) => ({
+        id: i.id,
+        product_franchise_id: i.product_franchise_id,
+        productName: i.product_name,
+        franchiseName: i.franchise_name,
+        franchiseId: i.franchise_id,
+        quantity: i.quantity ?? 0,
+        alertThreshold: i.alert_threshold ?? 0,
+        lowStock: (i.quantity ?? 0) <= (i.alert_threshold ?? 0),
+        isDeleted: i.is_deleted,
+      })) ?? [];
 
-        return {
-          id: i.id,
-          product_franchise_id: i.product_franchise_id,
-          productName: i.product_name,
-          franchiseName: i.franchise_name,
-          franchiseId: i.franchise_id,
-          quantity,
-          alertThreshold: alert,
-          lowStock: quantity <= alert,
-          isDeleted: i.is_deleted,
-        };
-      }) ?? [];
-
-    let filtered = vm;
+    if (keyword) {
+      filtered = filtered.filter((x) =>
+        x.productName.toLowerCase().includes(keyword.toLowerCase()),
+      );
+    }
 
     if (lowOnly) {
       filtered = filtered.filter((x) => x.lowStock);
     }
 
-    if (franchiseFilter !== "ALL") {
-      filtered = filtered.filter((x) => x.franchiseId === franchiseFilter);
-    }
+    return filtered;
+  }, [items, keyword, lowOnly]);
 
-    return filtered.sort((a, b) => a.productName.localeCompare(b.productName));
-  }, [items, lowOnly, franchiseFilter]);
+  const handleFilterFranchise = async (value: string) => {
+    setApiLoading(true);
 
+    setFranchiseFilter(value);
+    setPage(1);
+
+    await searchInventory({
+      keyword,
+      franchiseId: value,
+    });
+
+    setApiLoading(false);
+  };
   useEffect(() => {
     setTableRows(rows);
 
@@ -535,28 +549,25 @@ const InventoryPage = () => {
             {/* FILTER FRANCHISE */}
             <select
               value={franchiseFilter}
-              onChange={(e) => {
-                setFranchiseFilter(e.target.value);
-                setPage(1);
-              }}
-              className="px-3 py-2 border rounded-lg text-sm bg-white"
+              onChange={(e) => handleFilterFranchise(e.target.value)}
+              className="px-3 py-2 border rounded-lg text-sm bg-white cursor-pointer"
             >
               <option value="ALL">Tất cả chi nhánh</option>
-              {franchiseOptions.map((f) => (
+
+              {allFranchises.map((f) => (
                 <option key={f.value} value={f.value}>
                   {f.label}
                 </option>
               ))}
             </select>
-
             {/* LOW STOCK FILTER */}
             <button
               onClick={() => setLowOnly((v) => !v)}
               className={`px-3 py-2 border rounded-lg text-sm
       ${
         lowOnly
-          ? "bg-red-50 border-red-300 text-red-600"
-          : "bg-white border-gray-200"
+          ? "bg-red-50 border-red-300 text-red-600 cursor-pointer"
+          : "bg-white border-gray-200 cursor-pointer"
       }`}
             >
               {lowOnly ? "Đang lọc sắp hết" : "Lọc sắp hết"}

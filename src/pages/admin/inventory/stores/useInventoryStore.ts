@@ -13,7 +13,10 @@ type InventoryState = {
   logsLoading: boolean;
 
   fetchAll: () => Promise<void>;
-  searchInventory: (keyword?: string) => Promise<void>;
+  searchInventory: (params?: {
+  keyword?: string;
+  franchiseId?: string;
+}) => Promise<void>;
   create: (data: any) => Promise<void>;
   delete: (id: string) => Promise<void>;
   restore: (id: string) => Promise<void>;
@@ -59,23 +62,29 @@ export const useInventoryStore = create<InventoryState>((set) => ({
       set({ items: [], loading: false });
     }
   },
-searchInventory: async (keyword = "") => {
+searchInventory: async (params = {}) => {
+  const {  franchiseId = "" } = params;
+
   try {
     set({ loading: true });
 
     const selectedFranchiseId =
       useAdminContextStore.getState().selectedFranchiseId;
 
-    const franchiseId =
-      selectedFranchiseId && selectedFranchiseId !== "ALL"
+    const finalFranchiseId =
+      franchiseId && franchiseId !== "ALL"
+        ? franchiseId
+        : selectedFranchiseId && selectedFranchiseId !== "ALL"
         ? String(selectedFranchiseId)
         : null;
 
     const res = await inventoryService.search({
       searchCondition: {
         is_deleted: false,
-        ...(keyword ? { keyword } : {}),
-        ...(franchiseId ? { franchise_id: franchiseId } : {}),
+
+        ...(finalFranchiseId
+          ? { franchise_id: finalFranchiseId }
+          : {}),
       },
       pageInfo: {
         pageNum: 1,
@@ -92,7 +101,6 @@ searchInventory: async (keyword = "") => {
     set({ loading: false });
   }
 },
-  
   /**
    * CREATE
    * nếu tồn tại → restore

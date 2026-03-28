@@ -279,7 +279,10 @@ export const CreateInventoryModal: React.FC<Props> = ({
           </div>
 
           <div className="flex justify-end gap-3">
-            <button type="button" onClick={onClose}>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 border rounded-lg cursor-pointer"
+            >
               Hủy
             </button>
             <button
@@ -413,7 +416,10 @@ export const AdjustInventoryModal = ({
         </div>
 
         <div className="flex justify-end gap-3">
-          <button type="button" onClick={onClose}>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border rounded-lg cursor-pointer"
+          >
             Hủy
           </button>
 
@@ -425,7 +431,7 @@ export const AdjustInventoryModal = ({
     ${
       isSubmitting || (!alertChanged && !quantityChanged)
         ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-        : "bg-green-600 text-white hover:bg-green-700 active:scale-95 shadow-sm hover:shadow-md"
+        : "bg-green-600 text-white hover:bg-green-700 active:scale-95 shadow-sm hover:shadow-md cursor-pointer"
     }
   `}
           >
@@ -472,7 +478,10 @@ export const DeleteInventoryModal: React.FC<DeleteInventoryModalProps> = ({
         </div>
 
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 border rounded-lg">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border rounded-lg cursor-pointer"
+          >
             Hủy
           </button>
 
@@ -481,7 +490,7 @@ export const DeleteInventoryModal: React.FC<DeleteInventoryModalProps> = ({
               onConfirm();
               onClose();
             }}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg"
+            className="px-4 py-2 bg-red-600 text-white rounded-lg cursor-pointer"
           >
             Xóa
           </button>

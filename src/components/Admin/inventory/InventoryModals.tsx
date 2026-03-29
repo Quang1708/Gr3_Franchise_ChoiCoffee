@@ -520,7 +520,7 @@ export const InventoryLogModal: React.FC<InventoryLogModalProps> = ({
   }, [inventoryId, fetchLogs]);
   if (logsLoading) return <ClientLoading />;
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Inventory Logs" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title="Inventory Logs">
       <div className="max-h-[500px] overflow-auto">
         {logsLoading ? (
           <div className="text-center py-10 text-gray-500">

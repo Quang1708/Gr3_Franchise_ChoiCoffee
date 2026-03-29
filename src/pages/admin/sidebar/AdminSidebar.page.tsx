@@ -14,6 +14,7 @@ import {
   Gift,
   User,
   BadgePercent,
+  Truck,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -86,6 +87,7 @@ const menuSections: MenuSection[] = [
     title: "Operations",
     items: [
       { icon: <ShoppingCart size={18} />, label: "Orders", path: "order" },
+      { icon: <Truck size={18} />, label: "Delivery", path: "delivery" },
       { icon: <Users size={18} />, label: "Customers", path: "customer" },
       { icon: <Boxes size={18} />, label: "Inventory", path: "inventory" },
       { icon: <ShoppingCart size={18} />, label: "Pos", path: "pos" },

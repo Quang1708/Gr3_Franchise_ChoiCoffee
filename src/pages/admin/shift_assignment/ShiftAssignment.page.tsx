@@ -86,9 +86,7 @@ const ShiftAssignmentPage = () => {
       Array.from(
         new Set(
           (user?.roles ?? [])
-            .map((role) =>
-              String(role.franchise_id ?? role.franchiseId ?? "").trim(),
-            )
+            .map((role) => String(role.franchise_id ?? "").trim())
             .filter(Boolean),
         ),
       ),

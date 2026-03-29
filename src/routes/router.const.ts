@@ -37,6 +37,7 @@ const ROUTER_URL = {
     ADMIN_SHIFT_ASSIGNMENT: `/admin/shift-assignment`,
     ADMIN_LOYALTY: `/admin/loyalty`,
     ADMIN_ORDER: `/admin/order`,
+    ADMIN_DELIVERY: `/admin/delivery`,
     ADMIN_PAYMENT: `/admin/payment`,
     ADMIN_VOUCHER: `/admin/voucher`,
     ADMIN_PRODUCT: `/admin/product`,

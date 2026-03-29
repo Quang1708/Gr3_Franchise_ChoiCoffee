@@ -53,11 +53,6 @@ const ClientHeader = () => {
       path: ROUTER_URL.MENU,
     },
     {
-      id: "member",
-      label: "Hội viên",
-      path: ROUTER_URL.MEMBER,
-    },
-    {
       id: "franchise",
       label: "Nhượng quyền",
       path: ROUTER_URL.FRANCHISE,
@@ -78,13 +73,10 @@ const ClientHeader = () => {
         setFranchises(response);
         console.log("franchise", response);
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error) {
       setIsLoading(false);
-      toast.error(
-        "Không thể tải danh sách chi nhánh. Vui lòng thử lại!",
-        error,
-      );
+      console.error("Fetch franchise failed:", error);
+      toast.error("Không thể tải danh sách chi nhánh. Vui lòng thử lại!");
     } finally {
       setIsLoading(false);
     }
@@ -98,12 +90,14 @@ const ClientHeader = () => {
     const savedFranchise = localStorage.getItem("selectedFranchise");
     if (!savedFranchise && franchises.length > 0) {
       const firstFranchiseId = franchises[0].id;
-      setSelectedFranchise(firstFranchiseId);
-      window.dispatchEvent(
-        new CustomEvent("franchiseChanged", {
-          detail: { franchiseId: firstFranchiseId },
-        }),
-      );
+      if (firstFranchiseId) {
+        setSelectedFranchise(firstFranchiseId);
+        window.dispatchEvent(
+          new CustomEvent("franchiseChanged", {
+            detail: { franchiseId: firstFranchiseId },
+          }),
+        );
+      }
     }
   }, [franchises]);
 
@@ -137,6 +131,13 @@ const ClientHeader = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isFranchiseDropdownOpen, isProfileOpen, isMobileMenuOpen]);
+
+  useEffect(() => {
+    document.body.style.overflow = isMobileMenuOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileMenuOpen]);
 
   const handleFranchiseSelect = (franchiseId: string) => {
     setIsLoading(true);
@@ -223,12 +224,12 @@ const ClientHeader = () => {
     <>
       {isLoading && <ClientLoading />}
       <header className="sticky top-0 w-full z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10">
-        <div className="max-w mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
+        <div className="w-full mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
           <a className="flex items-center gap-2 sm:gap-3" href="#">
             <div className="size-8 sm:size-10 rounded-full flex items-center justify-center text-background-dark">
               <img
                 className=" rounded-full"
-                src="src/assets/Logo/Logo.png"
+                src="https://res.cloudinary.com/du261e4fa/image/upload/v1774666883/customers/Logo_ugca79.png"
                 alt="Logo"
               />
             </div>
@@ -248,7 +249,7 @@ const ClientHeader = () => {
             ))}
           </nav>
 
-          <div className="flex gap-1 sm:gap-2 border-l border-charcoal/10 dark:border-white/10 pl-2 sm:pl-6 items-center">
+          <div className="flex gap-1 sm:gap-2 border-l border-charcoal/10 dark:border-white/10 pl-2 sm:pl-4 items-center">
             <div className="hidden lg:flex items-center gap-2 border-gray-200 dark:border-gray-700">
               <span className="material-symbols-outlined text-primary text-xl">
                 location_on
@@ -294,16 +295,16 @@ const ClientHeader = () => {
               <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
             </button>
             {!isLoggedIn ? (
-              <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2">
                 <button
                   onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN)}
-                  className="px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                  className="cursor-pointer px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors"
                 >
                   Đăng nhập
                 </button>
                 <button
                   onClick={() => navigate(ROUTER_URL.CLIENT_ROUTER.REGISTER)}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"
+                  className="cursor-pointer px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors"
                 >
                   Đăng ký
                 </button>
@@ -389,7 +390,7 @@ const ClientHeader = () => {
 
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden text-slate-900 dark:text-white p-1"
+              className="md:hidden text-slate-900 dark:text-white p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-white/10"
             >
               <span className="material-symbols-outlined text-2xl sm:text-3xl">
                 {isMobileMenuOpen ? "close" : "menu"}
@@ -402,7 +403,7 @@ const ClientHeader = () => {
         {isMobileMenuOpen && (
           <div
             ref={mobileMenuRef}
-            className="md:hidden absolute top-16 sm:top-20 left-0 right-0 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-white/10 shadow-lg animate-in slide-in-from-top-2"
+            className="md:hidden absolute top-16 sm:top-20 left-0 right-0 max-h-[calc(100vh-4rem)] overflow-y-auto bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-white/10 shadow-lg animate-in slide-in-from-top-2"
           >
             <nav className="flex flex-col py-2">
               {MenuItem.map((item) => (
@@ -419,6 +420,52 @@ const ClientHeader = () => {
                 </a>
               ))}
 
+              {!isLoggedIn && (
+                <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-2 ">
+                  <button
+                    onClick={() => {
+                      navigate(ROUTER_URL.CLIENT_ROUTER.LOGIN);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="px-3 py-2 text-sm font-semibold text-primary border border-primary/30 rounded-lg cursor-pointer"
+                  >
+                    Đăng nhập
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate(ROUTER_URL.CLIENT_ROUTER.REGISTER);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="px-3 py-2 text-sm font-semibold text-white bg-primary rounded-lg cursor-pointer"
+                  >
+                    Đăng ký
+                  </button>
+                </div>
+              )}
+
+              {isLoggedIn && (
+                <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 space-y-1">
+                  <button
+                    onClick={() => {
+                      navigate(ROUTER_URL.CLIENT_ROUTER.PROFILE);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-md"
+                  >
+                    Hồ sơ cá nhân
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate(ROUTER_URL.CLIENT_ROUTER.CLIENT_ORDER);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-md"
+                  >
+                    Đơn hàng
+                  </button>
+                </div>
+              )}
+
               <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="material-symbols-outlined text-primary text-lg">
@@ -429,48 +476,26 @@ const ClientHeader = () => {
                   </span>
                 </div>
                 <div className="relative" ref={franchiseDropdownRef}>
-                  <a
-                    onClick={() => {
-                      navigate("/client/loyalty");
-                      setIsProfileOpen(false);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#F27125] cursor-pointer"
+                  <button
+                    title="franchise"
+                    onClick={() =>
+                      setIsFranchiseDropdownOpen(!isFranchiseDropdownOpen)
+                    }
+                    className="w-full hover:bg-amber-50 dark:hover:bg-amber-900/20 text-sm font-semibold bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg py-2 px-3 text-primary dark:text-primary hover:border-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer flex justify-between items-center"
                   >
-                    <UserRound size={16} /> Tích điểm
-                  </a>
-
-                  <a
-                    onClick={() => {
-                      navigate("/client/order?tab=completed");
-                      setIsProfileOpen(false);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-[#F27125] cursor-pointer"
-                  >
-                    <UserRound size={16} /> Lịch sử đơn hàng
-                  </a>
-
-                  <div className="border-t border-gray-100 mt-1 pt-1">
-                    <button
-                      title="franchise"
-                      onClick={() =>
-                        setIsFranchiseDropdownOpen(!isFranchiseDropdownOpen)
-                      }
-                      className="w-full hover:bg-amber-50 dark:hover:bg-amber-900/20 text-sm font-semibold bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg py-2 px-3 text-primary dark:text-primary hover:border-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer flex justify-between items-center"
-                    >
-                      <FranchiseSelect
-                        isOpen={isFranchiseDropdownOpen}
-                        franchises={franchises}
-                        selectedFranchise={selectedFranchise}
-                        onSelectFranchise={handleFranchiseSelect}
-                      />
-                      <ChevronDown
-                        size={16}
-                        className={`text-primary transition-transform duration-200 ${
-                          isFranchiseDropdownOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
-                  </div>
+                    <FranchiseSelect
+                      isOpen={isFranchiseDropdownOpen}
+                      franchises={franchises}
+                      selectedFranchise={selectedFranchise}
+                      onSelectFranchise={handleFranchiseSelect}
+                    />
+                    <ChevronDown
+                      size={16}
+                      className={`text-primary transition-transform duration-200 ${
+                        isFranchiseDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
             </nav>

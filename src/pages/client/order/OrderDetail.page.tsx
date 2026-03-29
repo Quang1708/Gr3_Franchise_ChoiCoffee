@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import {
+  getPaymentByOrderId,
+  refundPayment,
+} from "@/pages/client/checkout/usecases/checkout.usecase";
 import ClientLoading from "@/components/Client/Client.Loading";
 import ROUTER_URL from "@/routes/router.const";
 import { useCustomerAuthStore } from "@/stores/customerAuth.store";
@@ -8,7 +12,6 @@ import {
   BadgeCheck,
   CalendarClock,
   CircleDollarSign,
-  Headphones,
   MapPin,
   Package,
   Receipt,
@@ -33,6 +36,37 @@ const OrderDetailPage = () => {
 
   const [orderDetail, setOrderDetail] = useState<OrderDetailView | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showRefundPopup, setShowRefundPopup] = useState(false);
+  const [refundReason, setRefundReason] = useState("");
+  const [isRefunding, setIsRefunding] = useState(false);
+  // Handler for refund button
+  const handleShowRefundPopup = () => setShowRefundPopup(true);
+  const handleCloseRefundPopup = () => {
+    setShowRefundPopup(false);
+    setRefundReason("");
+  };
+  const handleRefundReasonChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => setRefundReason(e.target.value);
+
+  const handleRefundSubmit = async () => {
+    if (!orderDetail?.id || !refundReason.trim()) return;
+    setIsRefunding(true);
+    try {
+      // Get paymentId from orderId
+      const paymentRes = await getPaymentByOrderId(orderDetail.id);
+      if (!paymentRes.paymentId) throw new Error("Không tìm thấy paymentId");
+      await refundPayment(paymentRes.paymentId, refundReason.trim());
+      // Optionally reload order detail or show success
+      handleCloseRefundPopup();
+      // You may want to reload order detail here
+      window.location.reload();
+    } catch (err) {
+      alert("Hoàn tiền thất bại: " + (err instanceof Error ? err.message : ""));
+    } finally {
+      setIsRefunding(false);
+    }
+  };
 
   useEffect(() => {
     const loadDetail = async () => {
@@ -305,7 +339,7 @@ const OrderDetailPage = () => {
                 </p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[680px] text-sm">
+                  <table className="w-full min-w-170 text-sm">
                     <thead>
                       <tr className="border-b border-gray-100 text-gray-500">
                         <th className="text-left px-4 md:px-5 py-3">
@@ -378,8 +412,10 @@ const OrderDetailPage = () => {
                   <span>{formatCurrency(orderDetail.subtotal)}</span>
                 </div>
                 <div className="flex items-center justify-between text-gray-600">
-                  <span>Phí vận chuyển</span>
-                  <span>0đ</span>
+                  <span>Số tiền đã giảm</span>
+                  <span>
+                    {formatCurrency(orderDetail.total - orderDetail.subtotal)}
+                  </span>
                 </div>
                 <div className="border-t border-dashed border-gray-200 pt-3 mt-2 flex items-center justify-between">
                   <span className="font-semibold text-charcoal">
@@ -389,30 +425,6 @@ const OrderDetailPage = () => {
                     {formatCurrency(orderDetail.total)}
                   </span>
                 </div>
-              </div>
-            </article>
-
-            <article className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
-                <Headphones size={16} className="text-primary" />
-                <h2 className="font-semibold text-charcoal">Hỗ trợ đơn hàng</h2>
-              </div>
-
-              <div className="p-4 space-y-2">
-                <button
-                  type="button"
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-medium text-charcoal hover:bg-gray-50 transition-colors"
-                >
-                  <Headphones size={15} />
-                  Liên hệ tổng đài hỗ trợ
-                </button>
-                <button
-                  type="button"
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-medium text-charcoal hover:bg-gray-50 transition-colors"
-                >
-                  <Receipt size={15} />
-                  Xem chính sách đổi trả
-                </button>
               </div>
             </article>
 
@@ -441,6 +453,55 @@ const OrderDetailPage = () => {
                   Đi đến trang thanh toán
                 </button>
               ) : null}
+              {/* Show Cancel & Refund button if status is confirmed */}
+              {!isDraft && orderDetail.status === "confirmed" && (
+                <button
+                  type="button"
+                  className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+                  onClick={handleShowRefundPopup}
+                  disabled={isRefunding}
+                >
+                  Hủy đơn và hoàn tiền
+                </button>
+              )}
+              {/* Refund popup */}
+              {showRefundPopup && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-opacity-10">
+                  <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+                    <h2 className="text-lg font-bold mb-2 text-charcoal">
+                      Hủy đơn và hoàn tiền
+                    </h2>
+                    <p className="mb-2 text-sm text-gray-600">
+                      Vui lòng nhập lý do hoàn tiền:
+                    </p>
+                    <textarea
+                      className="w-full border border-gray-300 rounded-lg p-2 mb-4 min-h-20"
+                      value={refundReason}
+                      onChange={handleRefundReasonChange}
+                      placeholder="Nhập lý do..."
+                      disabled={isRefunding}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        onClick={handleCloseRefundPopup}
+                        disabled={isRefunding}
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        type="button"
+                        className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-60"
+                        onClick={handleRefundSubmit}
+                        disabled={isRefunding || !refundReason.trim()}
+                      >
+                        {isRefunding ? "Đang xử lý..." : "Xác nhận hoàn tiền"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </article>
           </div>
         </section>

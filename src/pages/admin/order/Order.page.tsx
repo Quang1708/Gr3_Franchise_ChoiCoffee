@@ -1,11 +1,20 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback, useEffect, useState, useRef } from "react";
-import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
+import {
+  CRUDPageTemplate,
+  type Column,
+} from "@/components/Admin/template/CRUDPage.template";
 import { searchCustomersUsecase } from "../customer/usecases/searchCustomers.usecase";
 
 import type { Customer } from "@/models/customer.model";
-import type { OrderByFranchise, Order } from "./models/searchOrderResponse.model";
-import { searchOrderByFranchiseId, searchOrdersByCustomer } from "./services/searchOrder.service";
+import type {
+  OrderByFranchise,
+  Order,
+} from "./models/searchOrderResponse.model";
+import {
+  searchOrderByFranchiseId,
+  searchOrdersByCustomer,
+} from "./services/searchOrder.service";
 import FormSelect from "@/components/Admin/form/FormSelect";
 import ClientLoading from "@/components/Client/Client.Loading";
 import OrderForm from "@/components/order/orderForm";
@@ -22,11 +31,15 @@ const OrderPage = () => {
   const [customerCache, setCustomerCache] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<OrderByFranchise[]>([]);
-  const [customerSelected, setCustomerSelected] = useState<Customer | null>(null);
+  const [customerSelected, setCustomerSelected] = useState<Customer | null>(
+    null,
+  );
   const [formMode, setFormMode] = useState<"create" | "edit" | "view">("view");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [franchises, setFranchises] = useState<Franchise[]>([]);
-  const [selectedFranchise, setSelectedFranchise] = useState<Franchise | null>(null);
+  const [selectedFranchise, setSelectedFranchise] = useState<Franchise | null>(
+    null,
+  );
   const [loadingFranchises, setLoadingFranchises] = useState(false);
   const franchise_id = useAdminContextStore((s) => s.selectedFranchiseId);
   const isAdmin = !franchise_id;
@@ -38,7 +51,8 @@ const OrderPage = () => {
   // State cho search customer
   const [customerSearchKey, setCustomerSearchKey] = useState("");
   // State cho filter hiện tại
-  const [currentFilterStatus, setCurrentFilterStatus] = useState<string>("CONFIRMED");
+  const [currentFilterStatus, setCurrentFilterStatus] =
+    useState<string>("CONFIRMED");
 
   // Key để force remount CRUDPageTemplate (cập nhật filter UI)
   const [filterKey, setFilterKey] = useState(0);
@@ -56,8 +70,13 @@ const OrderPage = () => {
   };
 
   // Sắp xếp order theo ngày tạo
-  const sortOrdersByDate = (ordersList: OrderByFranchise[]): OrderByFranchise[] => {
-    return [...ordersList].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const sortOrdersByDate = (
+    ordersList: OrderByFranchise[],
+  ): OrderByFranchise[] => {
+    return [...ordersList].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
   };
 
   // Load danh sách chi nhánh
@@ -156,16 +175,20 @@ const OrderPage = () => {
   // Hàm fetch order theo franchise
   const fetchOrdersByFranchise = useCallback(
     async (status?: string, page: number = 1, size: number = pageSize) => {
-      const targetFranchiseId = isAdmin ? getFranchiseKey(selectedFranchise) : franchise_id;
+      const targetFranchiseId = isAdmin
+        ? getFranchiseKey(selectedFranchise)
+        : franchise_id;
       if (!targetFranchiseId) return;
 
       setLoading(true);
       try {
         // Nếu status là "" (tất cả), truyền undefined để API lấy tất cả
-        
-        const res = await searchOrderByFranchiseId(targetFranchiseId , status);
+
+        const res = await searchOrderByFranchiseId(targetFranchiseId, status);
         if (res) {
-          const allData: OrderByFranchise[] = Array.isArray(res) ? res : res?.data || [];
+          const allData: OrderByFranchise[] = Array.isArray(res)
+            ? res
+            : res?.data || [];
           const sortedData = sortOrdersByDate(allData);
           setTotalItems(sortedData.length);
           const startIndex = (page - 1) * size;
@@ -182,12 +205,24 @@ const OrderPage = () => {
         isRefreshing.current = false;
       }
     },
-    [selectedFranchise, franchise_id, pageSize, !isAdmin, isAdmin, currentFilterStatus]
+    [
+      selectedFranchise,
+      franchise_id,
+      pageSize,
+      !isAdmin,
+      isAdmin,
+      currentFilterStatus,
+    ],
   );
 
   // Hàm fetch order theo khách hàng
   const fetchOrdersByCustomer = useCallback(
-    async (customerId: string, status?: string, page: number = 1, size: number = pageSize) => {
+    async (
+      customerId: string,
+      status?: string,
+      page: number = 1,
+      size: number = pageSize,
+    ) => {
       setLoading(true);
       try {
         const res = await searchOrdersByCustomer(customerId, status);
@@ -222,12 +257,13 @@ const OrderPage = () => {
         isFetching.current = false;
       }
     },
-    [pageSize]
+    [pageSize],
   );
 
   // Hàm xử lý tìm kiếm - khi bấm nút Tìm kiếm
   const handleSearch = useCallback(
     async (term: string, filters?: any) => {
+      term = term.trim();
       if (isFetching.current) return;
       isFetching.current = true;
 
@@ -235,7 +271,7 @@ const OrderPage = () => {
       const status = filters?.status;
       setCurrentFilterStatus(status !== undefined ? status : "CONFIRMED");
       setCurrentPage(1);
-      setFilterKey(prev => prev + 1);
+      setFilterKey((prev) => prev + 1);
 
       if (customerSelected?.id) {
         await fetchOrdersByCustomer(customerSelected.id, status, 1, pageSize);
@@ -243,7 +279,7 @@ const OrderPage = () => {
         await fetchOrdersByFranchise(status, 1, pageSize);
       }
     },
-    [customerSelected, fetchOrdersByCustomer, fetchOrdersByFranchise, pageSize]
+    [customerSelected, fetchOrdersByCustomer, fetchOrdersByFranchise, pageSize],
   );
   // Load lần đầu khi có chi nhánh
   useEffect(() => {
@@ -283,9 +319,11 @@ const OrderPage = () => {
     setCustomerSearchKey("");
     setCurrentFilterStatus("CONFIRMED");
 
-    setFilterKey(prev => prev + 1);
+    setFilterKey((prev) => prev + 1);
 
-    const targetFranchiseId = isAdmin ? getFranchiseKey(selectedFranchise) : franchise_id;
+    const targetFranchiseId = isAdmin
+      ? getFranchiseKey(selectedFranchise)
+      : franchise_id;
 
     if (targetFranchiseId) {
       await fetchOrdersByFranchise("CONFIRMED", 1, pageSize);
@@ -293,15 +331,18 @@ const OrderPage = () => {
   };
 
   // Lấy chi tiết order
-  const getOrderDetailForModal = useCallback(async (orderId: string): Promise<Order | null> => {
-    try {
-      const response = await getOrderDetail(orderId);
-      return response?.success && response?.data ? response.data : null;
-    } catch (error) {
-      console.error("Lỗi:", error);
-      return null;
-    }
-  }, []);
+  const getOrderDetailForModal = useCallback(
+    async (orderId: string): Promise<Order | null> => {
+      try {
+        const response = await getOrderDetail(orderId);
+        return response?.success && response?.data ? response.data : null;
+      } catch (error) {
+        console.error("Lỗi:", error);
+        return null;
+      }
+    },
+    [],
+  );
 
   const statusLabels = (status: string) => {
     const map: Record<string, string> = {
@@ -334,7 +375,11 @@ const OrderPage = () => {
       header: "Mã đơn",
       accessor: "code",
       className: "min-w-[150px]",
-      render: (item) => <span className="font-mono text-[14px] font-medium text-gray-700">{item.code}</span>,
+      render: (item) => (
+        <span className="font-mono text-[14px] font-medium text-gray-700">
+          {item.code}
+        </span>
+      ),
     },
     {
       header: "Khách hàng",
@@ -343,7 +388,9 @@ const OrderPage = () => {
       render: (item) => (
         <div>
           <div className="font-medium text-gray-800">{item.customer_name}</div>
-          {item.phone && <div className="text-xs text-gray-400 mt-0.5">{item.phone}</div>}
+          {item.phone && (
+            <div className="text-xs text-gray-400 mt-0.5">{item.phone}</div>
+          )}
         </div>
       ),
     },
@@ -352,7 +399,11 @@ const OrderPage = () => {
       accessor: "final_amount",
       sortable: true,
       className: "min-w-[130px]",
-      render: (item) => <div className="font-semibold text-primary">{item.final_amount?.toLocaleString("vi-VN")}đ</div>,
+      render: (item) => (
+        <div className="font-semibold text-primary">
+          {item.final_amount?.toLocaleString("vi-VN")}đ
+        </div>
+      ),
     },
     {
       header: "Ngày tạo",
@@ -362,7 +413,9 @@ const OrderPage = () => {
       render: (item) => (
         <div className="text-sm text-gray-500">
           {new Date(item.created_at).toLocaleDateString("vi-VN")}
-          <div className="text-xs text-gray-400">{new Date(item.created_at).toLocaleTimeString("vi-VN")}</div>
+          <div className="text-xs text-gray-400">
+            {new Date(item.created_at).toLocaleTimeString("vi-VN")}
+          </div>
         </div>
       ),
     },
@@ -371,14 +424,19 @@ const OrderPage = () => {
       accessor: "status",
       className: "min-w-[120px]",
       render: (item) => (
-        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors(item.status)}`}>
+        <span
+          className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors(item.status)}`}
+        >
           {statusLabels(item.status)}
         </span>
       ),
     },
   ];
 
-  const handleOpenForm = async (mode: "create" | "edit" | "view", data?: OrderByFranchise) => {
+  const handleOpenForm = async (
+    mode: "create" | "edit" | "view",
+    data?: OrderByFranchise,
+  ) => {
     if ((mode === "view" || mode === "edit") && data) {
       const orderDetail = await getOrderDetailForModal(data._id);
       if (orderDetail) {
@@ -414,7 +472,8 @@ const OrderPage = () => {
         fetchOrdersByFranchise(newStatus, 1, pageSize);
       }
     } else {
-      const status = currentFilterStatus === "" ? undefined : currentFilterStatus;
+      const status =
+        currentFilterStatus === "" ? undefined : currentFilterStatus;
       if (customerSelected?.id) {
         fetchOrdersByCustomer(customerSelected.id, status, 1, pageSize);
       } else {
@@ -439,16 +498,20 @@ const OrderPage = () => {
 
   if (loading) return <ClientLoading />;
 
-  const selectOptions = customerCache.map(c => ({
+  const selectOptions = customerCache.map((c) => ({
     label: `${c.name}${c.phone ? ` (${c.phone})` : ""}`,
-    value: c.id
+    value: c.id,
   }));
 
   return (
     <>
       <CRUDPageTemplate
         key={filterKey}
-        title={selectedFranchise ? `Danh sách đơn hàng - ${selectedFranchise.name}` : "Danh sách đơn hàng"}
+        title={
+          selectedFranchise
+            ? `Danh sách đơn hàng - ${selectedFranchise.name}`
+            : "Danh sách đơn hàng"
+        }
         data={orders}
         columns={columns}
         pageSize={pageSize}
@@ -463,7 +526,13 @@ const OrderPage = () => {
         canEdit={(item) => item.status === "DRAFT"}
         onChangeOrderStatus={handleChangeOrderStatus}
         canChangeOrderStatus={(item) =>
-          ["CONFIRMED", "PREPARING", "READY_FOR_PICKUP", "OUT_FOR_DELIVERY", "COMPLETED"].includes(item.status)
+          [
+            "CONFIRMED",
+            "PREPARING",
+            "READY_FOR_PICKUP",
+            "OUT_FOR_DELIVERY",
+            "COMPLETED",
+          ].includes(item.status)
         }
         onRefresh={handleRefresh}
         searchContent={
@@ -505,7 +574,7 @@ const OrderPage = () => {
         mode={formMode}
         isOpen={isModalOpen}
         initialData={selectedOrder || undefined}
-        onSubmit={() => { }}
+        onSubmit={() => {}}
         onClose={() => setIsModalOpen(false)}
       />
 

@@ -89,7 +89,7 @@ const OrderPage = () => {
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Main Content */}
-          <main className="flex-1 p-6 bg-background-light">
+          <main className="flex-1 p-4 sm:p-6 bg-background-light">
             <div className="max-w-6xl mx-auto">
               {/* Page Title */}
               <div className="mb-6">
@@ -105,25 +105,27 @@ const OrderPage = () => {
               <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6 border border-gray-200">
                 {/* Status Tabs */}
                 <div className="p-4 border-b border-gray-200">
-                  <div className="flex gap-5">
-                    {ORDER_TABS.map((tab) => (
-                      <button
-                        key={tab.key}
-                        onClick={() => {
-                          void handleTabChange(tab.key);
-                        }}
-                        className={`pb-3 px-2 text-sm font-medium transition-colors relative ${
-                          activeTab === tab.key
-                            ? "text-primary"
-                            : "text-gray-600 hover:text-charcoal"
-                        }`}
-                      >
-                        {tab.label}
-                        {activeTab === tab.key && (
-                          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></span>
-                        )}
-                      </button>
-                    ))}
+                  <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto hide-scrollbar">
+                    <div className="flex w-max min-w-full gap-4 sm:gap-5">
+                      {ORDER_TABS.map((tab) => (
+                        <button
+                          key={tab.key}
+                          onClick={() => {
+                            void handleTabChange(tab.key);
+                          }}
+                          className={`shrink-0 whitespace-nowrap pb-3 px-2 text-sm font-medium transition-colors relative ${
+                            activeTab === tab.key
+                              ? "text-primary"
+                              : "text-gray-600 hover:text-charcoal"
+                          }`}
+                        >
+                          {tab.label}
+                          {activeTab === tab.key && (
+                            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Date Filters */}

@@ -1,4 +1,5 @@
 import type {
+  CheckoutPaymentMethod,
   SubmitCheckoutPayload,
   SubmitCheckoutResult,
 } from "../models/checkout.model";
@@ -87,7 +88,7 @@ export const getPaymentByOrderId = async (orderId: string) => {
 
 export const confirmPaymentByPaymentId = async (
   paymentId: string,
-  method: "CARD" | "CASH" | "MOMO" | "VNPAY",
+  method: CheckoutPaymentMethod,
   providerTxnId = "",
 ) => {
   return confirmPaymentApi(paymentId, {

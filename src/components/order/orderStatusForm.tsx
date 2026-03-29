@@ -10,12 +10,17 @@ import {
   CheckSquare,
   Ban,
   Mail,
-  UserCheck2
+  UserCheck2,
 } from "lucide-react";
 import type { Order } from "@/pages/admin/order/models/searchOrderResponse.model";
-import { completeStatus, pickupStatus, prepareStatus, readyPickupStatus } from "./services/changeStatsus.service";
+import {
+  completeStatus,
+  pickupStatus,
+  prepareStatus,
+  readyPickupStatus,
+} from "./services/changeStatsus.service";
 import { getDeliveryByOrderId } from "./services/delivery.service";
-import type { Staff} from "./models/staff.model";
+import type { Staff } from "./models/staff.model";
 import { getStaffByFranchiseId } from "./services/getStaff.service";
 
 export type OrderStatusFormProps = {
@@ -33,7 +38,7 @@ const STATUS_ORDER = [
   "PREPARING",
   "READY_FOR_PICKUP",
   "OUT_FOR_DELIVERY",
-  "COMPLETED"
+  "COMPLETED",
 ];
 
 // Các trạng thái cho phép hủy đơn (chỉ hủy được ở DRAFT và CONFIRMED)
@@ -45,48 +50,56 @@ const STATUS_OPTIONS = [
     label: "Đã xác nhận",
     icon: <ClipboardCheck className="w-5 h-5" />,
     colorClass: "text-blue-600 bg-blue-50 border-blue-200 ring-blue-500",
-    hoverClass: "hover:bg-blue-50 hover:border-blue-300"
+    hoverClass: "hover:bg-blue-50 hover:border-blue-300",
   },
   {
     value: "PREPARING",
     label: "Đang chuẩn bị",
     icon: <ChefHat className="w-5 h-5" />,
-    colorClass: "text-orange-600 bg-orange-50 border-orange-200 ring-orange-500",
-    hoverClass: "hover:bg-orange-50 hover:border-orange-300"
+    colorClass:
+      "text-orange-600 bg-orange-50 border-orange-200 ring-orange-500",
+    hoverClass: "hover:bg-orange-50 hover:border-orange-300",
   },
   {
     value: "READY_FOR_PICKUP",
     label: "Sẵn sàng giao",
     icon: <PackageCheck className="w-5 h-5" />,
     colorClass: "text-teal-600 bg-teal-50 border-teal-200 ring-teal-500",
-    hoverClass: "hover:bg-teal-50 hover:border-teal-300"
+    hoverClass: "hover:bg-teal-50 hover:border-teal-300",
   },
   {
     value: "OUT_FOR_DELIVERY",
     label: "Đang giao",
     icon: <Truck className="w-5 h-5" />,
-    colorClass: "text-purple-600 bg-purple-50 border-purple-200 ring-purple-500",
-    hoverClass: "hover:bg-purple-50 hover:border-purple-300"
+    colorClass:
+      "text-purple-600 bg-purple-50 border-purple-200 ring-purple-500",
+    hoverClass: "hover:bg-purple-50 hover:border-purple-300",
   },
   {
     value: "COMPLETED",
     label: "Hoàn tất",
     icon: <CheckSquare className="w-5 h-5" />,
     colorClass: "text-green-600 bg-green-50 border-green-200 ring-green-500",
-    hoverClass: "hover:bg-green-50 hover:border-green-300"
+    hoverClass: "hover:bg-green-50 hover:border-green-300",
   },
   {
     value: "CANCELED",
     label: "Hủy đơn",
     icon: <Ban className="w-5 h-5" />,
     colorClass: "text-red-600 bg-red-50 border-red-200 ring-red-500",
-    hoverClass: "hover:bg-red-50 hover:border-red-300"
+    hoverClass: "hover:bg-red-50 hover:border-red-300",
   },
 ];
 
-const PROGRESS_STEPS = STATUS_OPTIONS.filter(s => s.value !== "CANCELED");
+const PROGRESS_STEPS = STATUS_OPTIONS.filter((s) => s.value !== "CANCELED");
 
-const OrderStatusForm = ({ isOpen, onClose, order, onSuccess, franchiseId }: OrderStatusFormProps) => {
+const OrderStatusForm = ({
+  isOpen,
+  onClose,
+  order,
+  onSuccess,
+  franchiseId,
+}: OrderStatusFormProps) => {
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   // const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
@@ -121,11 +134,11 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess, franchiseId }: Ord
     if (statusValue === "CANCELED") {
       return CANCELABLE_STATUSES.includes(currentStatus);
     }
-    
+
     // Nếu là các trạng thái bình thường: chỉ cho phép chọn các trạng thái LỚN HƠN trạng thái hiện tại
     const currentIndex = STATUS_ORDER.indexOf(currentStatus);
     const targetIndex = STATUS_ORDER.indexOf(statusValue);
-    
+
     // Không cho phép chọn trạng thái nhỏ hơn hoặc bằng trạng thái hiện tại
     return targetIndex > currentIndex;
   };
@@ -158,14 +171,17 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess, franchiseId }: Ord
         case "OUT_FOR_DELIVERY": {
           const deliveryInfo = await getDeliveryByOrderId(order._id);
           const deliveryId = deliveryInfo?.data?._id;
-          if (!deliveryId) throw new Error("Không tìm thấy mã giao hàng (deliveryId)!");
+          if (!deliveryId)
+            throw new Error("Không tìm thấy mã giao hàng (deliveryId)!");
           await pickupStatus(deliveryId);
           break;
         }
         case "COMPLETED": {
           const deliveryInfo = await getDeliveryByOrderId(order._id);
-          const deliveryId = deliveryInfo?.data?._id || deliveryInfo?._id || deliveryInfo?.id;
-          if (!deliveryId) throw new Error("Không tìm thấy mã giao hàng (deliveryId)!");
+          const deliveryId =
+            deliveryInfo?.data?._id || deliveryInfo?._id || deliveryInfo?.id;
+          if (!deliveryId)
+            throw new Error("Không tìm thấy mã giao hàng (deliveryId)!");
           await completeStatus(deliveryId);
           break;
         }
@@ -196,16 +212,20 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess, franchiseId }: Ord
   };
 
   const getStaffAvt = (id?: string) => {
-    const staff = staffs.find(s => s.value === id);
+    const staff = staffs.find((s) => s.value === id);
     return staff?.image || "";
-  }
+  };
 
   console.log(order);
 
-  const currentIndex = PROGRESS_STEPS.findIndex(s => s.value === selectedStatus);
+  const currentIndex = PROGRESS_STEPS.findIndex(
+    (s) => s.value === selectedStatus,
+  );
   const isCanceled = selectedStatus === "CANCELED";
   const maxIndex = PROGRESS_STEPS.length - 1;
-  const progressPercentage = isCanceled ? 100 : (Math.max(currentIndex, 0) / maxIndex) * 100;
+  const progressPercentage = isCanceled
+    ? 100
+    : (Math.max(currentIndex, 0) / maxIndex) * 100;
 
   return (
     <CRUDModalTemplate
@@ -271,9 +291,7 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess, franchiseId }: Ord
                   {isPast ? (
                     <CheckCircle2 className="w-5 h-5 animate-in zoom-in" />
                   ) : (
-                    React.cloneElement(step.icon as React.ReactElement, {
-                      className: "w-4 h-4",
-                    })
+                    React.cloneElement(step.icon as React.ReactElement, {})
                   )}
                 </div>
 
@@ -289,47 +307,48 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess, franchiseId }: Ord
           })}
         </div>
 
-        {(selectedStatus === "READY_FOR_PICKUP" && order?.status !== "READY_FOR_PICKUP") && (
-          <div className="mt-4">
-            <p className="text-sm font-bold text-gray-700 mb-2">
-              Chọn nhân viên giao hàng:
-            </p>
+        {selectedStatus === "READY_FOR_PICKUP" &&
+          order?.status !== "READY_FOR_PICKUP" && (
+            <div className="mt-4">
+              <p className="text-sm font-bold text-gray-700 mb-2">
+                Chọn nhân viên giao hàng:
+              </p>
 
-            <select
-              title="Chọn nhân viên giao hàng"
-              value={selectedStaffId}
-              onChange={(e) => setSelectedStaffId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">-- Chọn nhân viên --</option>
-              {staffs.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.name} ({s.email})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+              <select
+                title="Chọn nhân viên giao hàng"
+                value={selectedStaffId}
+                onChange={(e) => setSelectedStaffId(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">-- Chọn nhân viên --</option>
+                {staffs.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.name} ({s.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-        {(order?.staff_id ) && (
+        {order?.staff_id && (
           <div className="mt-6 rounded-xl border border-orange-100 bg-orange-50/50 p-4">
             <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-orange-800">
               <UserCheck2 className="h-4 w-4" />
               Người đặt
             </p>
             <div className="flex items-center gap-3">
-              {(getStaffAvt(order?.staff_id)) ? (
+              {getStaffAvt(order?.staff_id) ? (
                 <img
                   src={getStaffAvt(order?.staff_id)}
                   alt={order.staff_name.charAt(0).toUpperCase()}
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-200 text-orange-700 font-bold"
                 />
-              ): (
+              ) : (
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-200 text-orange-700 font-bold">
                   {order.staff_name.charAt(0).toUpperCase()}
                 </div>
               )}
-                
+
               <div className="flex flex-col">
                 <p className="text-base font-bold text-gray-800">
                   {order.staff_name}

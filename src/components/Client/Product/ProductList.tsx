@@ -61,11 +61,8 @@ const ProductList = ({
     fetchProducts();
   }, [franchiseId, category]);
 
-  const availableProducts = products.filter((product) =>
-    product.sizes?.some((size) => size.is_available),
-  );
-
-  const totalPages = Math.ceil(availableProducts.length / ITEMS_PER_PAGE);
+  // Hiển thị tất cả sản phẩm, không filter theo còn hàng
+  const totalPages = Math.ceil(products.length / ITEMS_PER_PAGE);
 
   useEffect(() => {
     if (currentPage > 1 && totalPages > 0 && currentPage > totalPages) {
@@ -75,7 +72,7 @@ const ProductList = ({
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentProducts = availableProducts.slice(startIndex, endIndex);
+  const currentProducts = products.slice(startIndex, endIndex);
   const handlePrevPage = () => {
     if (currentPage > 1) {
       onPageChange(currentPage - 1);

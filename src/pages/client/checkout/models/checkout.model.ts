@@ -1,4 +1,4 @@
-export type CheckoutPaymentMethod = "CARD" | "CASH" | "MOMO" | "VNPAY";
+export type CheckoutPaymentMethod = "CARD" | "COD" | "MOMO" | "VNPAY";
 
 export interface CartCheckoutPayload {
   address: string;

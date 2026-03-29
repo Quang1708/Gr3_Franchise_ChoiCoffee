@@ -121,14 +121,14 @@ const VoucherForm = ({
     if (mode === "create") {
       reset({
         ...EMPTY_FORM,
-        franchise_id: franchise?.id || "",
+        franchise_id: franchise?.id || franchiseId || "",
       });
       return;
     }
 
-    if (initialData ) {
+    if (initialData) {
       reset({
-        franchise_id: initialData.franchise_id || franchise?.id || "",
+        franchise_id: initialData.franchise_id || franchise?.id || franchiseId || "",
         name: initialData.name || "",
         type: initialData.type || "FIXED",
         value: Number(initialData.value || 0),
@@ -138,7 +138,7 @@ const VoucherForm = ({
         end_date: toDateTimeLocal(initialData.end_date),
       });
     }
-  }, [franchise?.id, initialData, isOpen, mode, reset]);
+  }, [franchise?.id, franchiseId, initialData, isOpen, mode, reset]);
 
   console.log(productFranchises);  
 

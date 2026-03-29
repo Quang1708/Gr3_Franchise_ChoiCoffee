@@ -9,8 +9,8 @@ import {
   Truck,
   CheckSquare,
   Ban,
-  Bike,
-  Mail
+  Mail,
+  UserCheck2
 } from "lucide-react";
 import type { Order } from "@/pages/admin/order/models/searchOrderResponse.model";
 import { completeStatus, pickupStatus, prepareStatus, readyPickupStatus } from "./services/changeStatsus.service";
@@ -200,6 +200,8 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess, franchiseId }: Ord
     return staff?.image || "";
   }
 
+  console.log(order);
+
   const currentIndex = PROGRESS_STEPS.findIndex(s => s.value === selectedStatus);
   const isCanceled = selectedStatus === "CANCELED";
   const maxIndex = PROGRESS_STEPS.length - 1;
@@ -287,7 +289,7 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess, franchiseId }: Ord
           })}
         </div>
 
-        {selectedStatus === "READY_FOR_PICKUP" && !order?.staff_id && (
+        {(selectedStatus === "READY_FOR_PICKUP" && order?.status !== "READY_FOR_PICKUP") && (
           <div className="mt-4">
             <p className="text-sm font-bold text-gray-700 mb-2">
               Chọn nhân viên giao hàng:
@@ -312,8 +314,8 @@ const OrderStatusForm = ({ isOpen, onClose, order, onSuccess, franchiseId }: Ord
         {(order?.staff_id ) && (
           <div className="mt-6 rounded-xl border border-orange-100 bg-orange-50/50 p-4">
             <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-orange-800">
-              <Bike className="h-4 w-4" />
-              Nhân viên giao hàng
+              <UserCheck2 className="h-4 w-4" />
+              Người đặt
             </p>
             <div className="flex items-center gap-3">
               {(getStaffAvt(order?.staff_id)) ? (

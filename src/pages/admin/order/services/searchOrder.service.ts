@@ -12,12 +12,20 @@ export const searchOrdersByCustomer = async (customerId: string, status?: string
     }
 };
 
-export const searchOrderByFranchiseId= async (franchise_id: string, status?: string) => {
+export const searchOrderByFranchiseId= async (franchise_id: string, status?: string | null ) => {
     try{
-        const response = await axiosAdminClient.get(
+        if(status === null){
+            const response = await axiosAdminClient.get(
+            `/api/orders/franchise/${franchise_id}?status=`
+                
+        )
+        return response.data;
+        }else{
+            const response = await axiosAdminClient.get(
             `/api/orders/franchise/${franchise_id}?status=${status}`
         )
         return response.data;
+        }  
     } catch (error) {
         console.error("Lỗi khi tải đơn hàng:", error);
         throw error;

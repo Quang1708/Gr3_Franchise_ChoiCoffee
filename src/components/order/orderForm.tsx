@@ -19,6 +19,7 @@ import {
 import { getPayment } from "./services/confirmPayment.service";
 import { toast } from "react-toastify";
 import { ActionConfirmModal } from "../Admin/template/ActionConfirmModal";
+import PaymentQRForm from "../payment/PaymentQR";
 
 export type OrderFormProps = {
   mode: "create" | "edit" | "view" | "checkout";
@@ -78,8 +79,11 @@ const getStatusBadge = (status: string) => {
 const OrderForm = (props: OrderFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<Order | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<string>("CASH");
+  const [paymentMethod, setPaymentMethod] = useState<string>("COD");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState<{ _id: string, code: string, amount: number } | null>(null);
+  const [isFetchingPayment, setIsFetchingPayment] = useState(false);
+  const [providerTxnId, setProviderTxnId] = useState("");
 
   // BIẾN KIỂM TRA MODE VIEW
   const isViewMode = props.mode === "view";
@@ -107,13 +111,43 @@ const OrderForm = (props: OrderFormProps) => {
     }
   }, [props.isOpen, props.initialData]);
 
+  const fetchPaymentInfo = async () => {
+    if (!formData?._id) return;
+
+    try {
+      setIsFetchingPayment(true);
+      const response = await getPayment(formData._id);
+      if (response.success) {
+        setPaymentInfo({
+          _id: response.data._id,
+          code: response.data.code,
+          amount: response.data.amount,
+        });
+      }
+    } catch (error) {
+      console.error("Lỗi lấy thông tin thanh toán:", error);
+      toast.error("Không thể khởi tạo mã thanh toán QR");
+    } finally {
+      setIsFetchingPayment(false);
+    }
+  };
+
+// Gọi API khi người dùng chuyển sang VNPAY
+useEffect(() => {
+  if (paymentMethod === "BANK_TRANSFER" && !paymentInfo) {
+    fetchPaymentInfo();
+  }
+}, [paymentMethod, isFetchingPayment]);
+
   const handlePayment = async () => {
+    
     const toastId = toast.loading("Đang xác nhận thanh toán...");
     if (!formData?._id) return;
+    const paymentId = paymentInfo?._id;
     try {
-      const payment = await getPayment(formData._id);
-      if (payment) {
-        const response = await confirmPayment(payment.data._id, paymentMethod);
+      
+      if (paymentId) {
+        const response = await confirmPayment(paymentId, paymentMethod, providerTxnId);
         if (response) {
           toast.update(toastId, {
             render: "Xác nhận thanh toán thành công",
@@ -121,7 +155,8 @@ const OrderForm = (props: OrderFormProps) => {
             isLoading: false,
             autoClose: 3000,
           });
-          fetchOrderDetail();
+          setProviderTxnId("");
+          props.onClose();
           setIsModalOpen(false)
         }
       }
@@ -139,7 +174,10 @@ const OrderForm = (props: OrderFormProps) => {
   const handelConfirm = () => {
     // Chặn click nếu đang ở mode view (đề phòng an toàn)
     if (isViewMode) return; 
-
+    if (paymentMethod === "BANK_TRANSFER" && !providerTxnId) {
+      toast.error("Vui lòng nhập mã giao dịch để tiếp tục");
+    return;
+  }
     if (formData && formData.status === "DRAFT") {
       setIsModalOpen(true);
     }
@@ -308,9 +346,11 @@ const OrderForm = (props: OrderFormProps) => {
               </div>
             </div>
 
-            {formData.status !== "CHECKED_OUT" &&
+            {(formData.status !== "CHECKED_OUT" && !isViewMode) &&
               formData.status !== "CANCELED" && (
-                <div className={`bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm shrink-0 ${isViewMode ? "opacity-80" : ""}`}>
+                <div
+                  className={`bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm shrink-0 ${isViewMode ? "opacity-80" : ""}`}
+                >
                   <div
                     className={`${labelClass} flex items-center gap-2 uppercase tracking-wider text-[11px]`}
                   >
@@ -324,21 +364,29 @@ const OrderForm = (props: OrderFormProps) => {
 
                   <div className="flex flex-row gap-3 overflow-x-auto py-1 custom-scroll pb-2">
                     {[
-                      { id: "CASH", label: "Tiền mặt", icon: "payments", color: "text-amber-500" },
-                      { id: "CARD", label: "Thẻ ATM", icon: "credit_card", color: "text-blue-500" },
-                      { id: "MOMO", label: "Ví Momo", icon: "account_balance_wallet", color: "text-[#A50064]" },
-                      { id: "VNPAY", label: "VNPAY", icon: "qr_code_scanner", color: "text-[#005BAA]" },
+                      {
+                        id: "COD",
+                        label: "Tiền mặt",
+                        icon: "payments",
+                        color: "text-amber-500",
+                      },
+                      {
+                        id: "BANK_TRANSFER",
+                        label: "Chuyển khoản",
+                        icon: "qr_code_scanner",
+                        color: "text-[#005BAA]",
+                      },
                     ].map((pm) => (
                       <label
                         key={pm.id}
                         // CẬP NHẬT: Thay đổi giao diện con trỏ khi ở mode view
                         className={`flex items-center gap-2 p-2 px-3 border transition-all rounded-lg shrink-0
-                        ${isViewMode ? "cursor-default grayscale-[50%]" : "cursor-pointer"}
+                        ${isViewMode ? "cursor-default grayscale-50" : "cursor-pointer"}
                         ${
                           paymentMethod === pm.id
                             ? "border-primary bg-primary/5 ring-1 ring-primary"
                             : isViewMode
-                              ? "border-slate-100" 
+                              ? "border-slate-100"
                               : "border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                         }`}
                       >
@@ -347,7 +395,9 @@ const OrderForm = (props: OrderFormProps) => {
                             type="radio"
                             name="payment"
                             checked={paymentMethod === pm.id}
-                            onChange={() => !isViewMode && setPaymentMethod(pm.id)}
+                            onChange={() =>
+                              !isViewMode && setPaymentMethod(pm.id)
+                            }
                             disabled={isViewMode} // KHÓA CLICK CHUỘT
                             className={`appearance-none size-4 rounded-full border-2 border-slate-300 checked:border-primary ${isViewMode ? "cursor-default" : "cursor-pointer"}`}
                           />
@@ -367,6 +417,31 @@ const OrderForm = (props: OrderFormProps) => {
                         </span>
                       </label>
                     ))}
+                  </div>
+                </div>
+              )}
+
+            {(formData.status !== "CHECKED_OUT" && !isViewMode) &&
+              formData.status !== "CANCELED" &&
+              paymentMethod === "BANK_TRANSFER" && (
+                <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <PaymentQRForm
+                    code={paymentInfo?.code || "Đang khởi tạo mã..."}
+                    method={paymentMethod}
+                    amount={paymentInfo?.amount || formData.final_amount || 0}
+                  />
+
+                  <div className="flex flex-col gap-2 pt-4">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      Nhập mã giao dịch (từ Bill ngân hàng)
+                    </label>
+                    <input
+                      type="text"
+                      value={providerTxnId}
+                      onChange={(e) => setProviderTxnId(e.target.value)}
+                      placeholder="Ví dụ: VNP123456..."
+                      className="w-full p-2.5 border border-blue-100 rounded-lg bg-blue-50/30 focus:bg-white focus:ring-2 focus:ring-primary outline-none text-sm font-mono transition-all"
+                    />
                   </div>
                 </div>
               )}
@@ -431,15 +506,14 @@ const OrderForm = (props: OrderFormProps) => {
                 </div>
               </div>
             </div>
-             <ActionConfirmModal 
-            isOpen={isModalOpen} 
-            onClose={() => setIsModalOpen(false)} 
-            type="confirm"
-            message="Bạn có muốn xác nhận thanh toán, hãy kiểm tra lại các thông tin "
-            onConfirm={handlePayment}
-          />
+            <ActionConfirmModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              type="confirm"
+              message="Bạn có muốn xác nhận thanh toán, hãy kiểm tra lại các thông tin "
+              onConfirm={handlePayment}
+            />
           </div>
-         
         </div>
       )}
     </CRUDModalTemplate>

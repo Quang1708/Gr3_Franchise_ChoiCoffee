@@ -3,8 +3,8 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
-import { FormInput } from "@/components/Admin/form/FormInput";
-import FormSelect from "@/components/Admin/form/FormSelect";
+import { FormInput } from "@/components/Admin/Form/FormInput";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 import { getUserFranchiseRoleFormSchema } from "../schema/userFranchiseRole.schema";
 
 export type UserFranchiseRoleFormValues = {

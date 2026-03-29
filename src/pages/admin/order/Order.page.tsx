@@ -15,7 +15,7 @@ import {
   searchOrderByFranchiseId,
   searchOrdersByCustomer,
 } from "./services/searchOrder.service";
-import FormSelect from "@/components/Admin/form/FormSelect";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 import ClientLoading from "@/components/Client/Client.Loading";
 import OrderForm from "@/components/order/orderForm";
 import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";

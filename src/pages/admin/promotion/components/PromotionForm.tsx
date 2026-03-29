@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
-import { FormInput } from "@/components/Admin/form/FormInput";
+import { FormInput } from "@/components/Admin/Form/FormInput";
 import type { ProductFranchise } from "@/models/product_franchise.model";
 
 export type PromotionFormValues = {

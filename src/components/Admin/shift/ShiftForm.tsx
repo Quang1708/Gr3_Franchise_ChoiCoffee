@@ -1,4 +1,4 @@
-import { FormInput } from "@/components/Admin/form/FormInput";
+import { FormInput } from "@/components/Admin/Form/FormInput";
 import { useForm } from "react-hook-form";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";

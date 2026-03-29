@@ -392,23 +392,33 @@ const AdminToppingModal = ({ isOpen, onClose, product, onConfirm, initialData, f
 
                 {/* FOOTER */}
                 <div className="p-5 border-t border-gray-100 bg-white">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <div className="text-xs text-gray-500">Tổng tiền</div>
-                            <div className="text-lg font-semibold text-primary">
-                                {totalPrice.toLocaleString()}đ
-                            </div>
-                        </div>
-                        <ButtonSubmit
-                            label={isSubmitting ? "Đang thêm..." : (initialData ? "Cập nhật" : "Thêm vào giỏ")}
-                            onClick={handleConfirm}
-                            disabled={!sizeSelected || isSubmitting}
-                            className="px-5 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                        >
-                            {!isSubmitting && <ShoppingBag className="w-3.5 h-3.5" />}
-                        </ButtonSubmit>
-                    </div>
-                </div>
+  <div className="max-w-7xl mx-auto flex items-end justify-between">
+    {/* Nhóm thông tin giá: Đưa về sát lề trái, căn lề dưới (items-end) với nút bấm */}
+    <div className="space-y-0.5">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+        Thành tiền
+      </p>
+      <div className="flex items-baseline gap-1">
+        <span className="text-2xl font-black text-primary">
+          {totalPrice.toLocaleString()}đ
+        </span>
+        
+      </div>
+    </div>
+
+    {/* Nóm nút bấm: Tăng kích thước chiều cao để dễ bấm hơn */}
+    <div className="flex items-center">
+      <ButtonSubmit
+        label={isSubmitting ? "Đang xử lý..." : (initialData ? "Cập nhật" : "Thêm vào giỏ")}
+        onClick={handleConfirm}
+        disabled={!sizeSelected || isSubmitting}
+        className="h-12 px-8 rounded-xl bg-primary text-white text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-30"
+      >
+        {!isSubmitting && <ShoppingBag className="w-4 h-4 " />}
+      </ButtonSubmit>
+    </div>
+  </div>
+</div>
             </div>
         </div>
     );

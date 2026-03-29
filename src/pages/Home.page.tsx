@@ -6,7 +6,7 @@ import ButtonSubmit from "@/components/Client/Button/ButtonSubmit";
 import { getPublicProducts } from "./client/product/services/product.service";
 import type { Product } from "./client/product/models/product.models";
 import MenuBanner from "@/components/Client/Product/Client.MenuBanner";
-import { ArrowRight } from "lucide-react"; // Import thêm icon để trang trí
+import { ArrowRight } from "lucide-react"; 
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -45,6 +45,15 @@ const HomePage = () => {
     fetchPublicProducts();
   }, [franchiseid]);
 
+  const [heroImage, setHeroImage] = useState("https://lh3.googleusercontent.com/aida-public/AB6AXuAE8WdMD_VrZYkaM5OEwGj5_-xVelCJRi7-gY7SkyXIpHx8vVZMEtes3tmpf3BJeASbl1-pToNc-Si2Po39lQWtVkDdTiS4WLQG-rTnedsLId2RjfVxv6NHp2SxjRwWy0rLuUPhLw3ZPc0heUDpLuF2HHgmCeg-QxUwX8mQjKrhOymUIhTm6Sd0g-wW0xIjPmuGzfNa_bEiE6V55djYHP1T0qN0nX0CbFieOqgdcnR9CHhfpd4N1JNE00xJQWfjfFdqZeqri31TLgE1");
+
+useEffect(() => {
+  if (products.length > 0) {
+    const idx = Math.floor(Math.random() * products.length);
+    setHeroImage(products[idx].image_url);
+  }
+}, [products]);
+
   return (
     <div className="bg-white dark:bg-background-dark min-h-screen">
       {/* --- HERO SECTION --- */}
@@ -52,11 +61,11 @@ const HomePage = () => {
         <div className="absolute inset-0 z-0">
           <img
             alt="Freshly brewed coffee"
-            className="w-full h-full object-cover scale-105 animate-slow-zoom" // Thêm animation zoom nhẹ nếu có trong tailwind.config
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAE8WdMD_VrZYkaM5OEwGj5_-xVelCJRi7-gY7SkyXIpHx8vVZMEtes3tmpf3BJeASbl1-pToNc-Si2Po39lQWtVkDdTiS4WLQG-rTnedsLId2RjfVxv6NHp2SxjRwWy0rLuUPhLw3ZPc0heUDpLuF2HHgmCeg-QxUwX8mQjKrhOymUIhTm6Sd0g-wW0xIjPmuGzfNa_bEiE6V55djYHP1T0qN0nX0CbFieOqgdcnR9CHhfpd4N1JNE00xJQWfjfFdqZeqri31TLgE1"
+            className="w-full h-full object-cover scale-105 animate-none" // Thêm animation zoom nhẹ nếu có trong tailwind.config
+            src={heroImage}
           />
           {/* Tối ưu lại Gradient overlay để text dễ đọc hơn */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent dark:from-charcoal/95 dark:via-charcoal/80"></div>
+          <div className="absolute inset-0 bg-linear-to-r from-white/90 via-white/75 to-transparent dark:from-charcoal/95 dark:via-charcoal/80"></div>
         </div>
 
         <div className="container mx-auto px-6 lg:px-20 relative z-10 pt-20">
@@ -71,7 +80,7 @@ const HomePage = () => {
             
             <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white leading-[1.1] mb-6 tracking-tight">
               Cà phê mới cho ngày{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-500 italic pr-2">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-primary to-orange-500 italic pr-2">
                 hứng khởi
               </span>
             </h1>
@@ -100,78 +109,6 @@ const HomePage = () => {
       </section>
 
       {/* --- CATEGORY SECTION --- */}
-      <section className="py-24 bg-gray-50 dark:bg-background-dark/50">
-        {/* <div className="container mx-auto px-6 lg:px-20">
-          <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-12 gap-4">
-            <div>
-              <h2 className="text-3xl lg:text-4xl font-black text-slate-900 dark:text-white">
-                Danh mục nổi bật
-              </h2>
-              <p className="text-slate-500 dark:text-slate-400 mt-2">Hành trình đánh thức vị giác của bạn</p>
-            </div>
-            <a
-              className="group text-primary font-semibold flex items-center gap-1 hover:text-orange-600 transition-colors cursor-pointer"
-              onClick={() => navigate(ROUTER_URL.MENU)}
-            >
-              Tất cả danh mục
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-            </a>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-            
-            <div className="group relative h-[360px] overflow-hidden rounded-2xl cursor-pointer shadow-sm hover:shadow-xl transition-shadow">
-              <img
-                alt="Coffee Beans"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuChxFm_SC8ZQ6lfMrYigGCqTRfkoZtJrRc_VZFl9jhFJm5ZkYDomcp-VypFZ-lLg1g_QQT-qN9qptgtC0fjmZlBHgfnE97VI4zpWzegGplBQmptaTErp636WX767bePcgYIHo9PImsVEAl2-47q0z2_JoxKj2TMlDwvmPKK_3RNNEYQ0NyPB22Hvog5ZONn4VhcoCKoekufGL4bzSoxxMCK_cx4q_dSvkBNLV5pg3M2lSDxUIGbaT6BPxeWEn8TOqCieCcO2q5ZZzAf"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-8">
-                <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                  <h3 className="text-white text-2xl font-bold mb-2">Cà phê hạt</h3>
-                  <p className="text-slate-200 text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75">
-                    Rang xay thủ công, đậm đà nguyên bản
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            
-            <div className="group relative h-[360px] overflow-hidden rounded-2xl cursor-pointer shadow-sm hover:shadow-xl transition-shadow">
-              <img
-                alt="Brewing Tools"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1jOQQTDH3x2Tv35Z3FSN8w3pY4OI7Of4C72C4zm0YWiuP13c7J9A9Q4C0Nz46Bc5qgWPxOsEhNGWVCjxTU3CI_xyuTiOTjAZoBdWktSr8UC0AgYsjQxB89VoKtGmZswX-UoYNvDN7ZMXKA6F5dCIFMk9VGT65gBvd12ucdB4uAsp5WYu5A4MQS13_GhtYg4Zf4Mth1gWYyBEbK9BHOTvs1NAL3RzXOr3R3mqjgF607JNOv3gSDYGH1gWXbU_aiNYbUvaQVR2sYZzL"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-8">
-                <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                  <h3 className="text-white text-2xl font-bold mb-2">Dụng cụ pha chế</h3>
-                  <p className="text-slate-200 text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75">
-                    Chuyên nghiệp hóa không gian cà phê của bạn
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            
-            <div className="group relative h-[360px] overflow-hidden rounded-2xl cursor-pointer shadow-sm hover:shadow-xl transition-shadow">
-              <img
-                alt="Gift Combos"
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCaOxmTxTxF3gPSNTedMEawCBKT0gtxy1T129Iv1X4CqwYj_-Lt3Pu98rPXIiFx-qy1kpXs2_QB4vUGkzn4xL-6m70IA6nS0wC0wDKM8qPpB9vpKErnPpJLnoIJ0aLGSY-R4etay-oSG9GbwDznNd3WXejuUfEVoCWx9a9RB8cugQgomGqj1Satt9wgzwOKlpxPfKtyMwNmN_IK-8DmnCi4KtrU48jSFVVomcqHXBit6_RsE2wsiwr3tTCo3erM8gMC9T4HOAAa5oh"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-8">
-                <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                  <h3 className="text-white text-2xl font-bold mb-2">Combo quà tặng</h3>
-                  <p className="text-slate-200 text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75">
-                    Gửi trao tâm tình qua từng tách cà phê
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div> */}
-      </section>
 
       {/* --- FEATURED PRODUCTS SECTION --- */}
       <section className="py-24 bg-white dark:bg-background-dark">
@@ -196,7 +133,7 @@ const HomePage = () => {
             {/* Sử dụng snap-x để scroll ngang mượt hơn, ẩn scrollbar */}
             <div className="flex gap-6 overflow-x-auto pb-8 pt-4 snap-x snap-mandatory hide-scrollbar">
               {products.map((item) => (
-                <div key={item.product_id} className="w-[280px] sm:w-[320px] shrink-0 snap-start">
+                <div key={item.product_id} className="w-70 sm:w-[320px] shrink-0 snap-start">
                   <ProductCard item={item} />
                 </div>
               ))}
@@ -230,7 +167,7 @@ const HomePage = () => {
               </p>
             </div>
 
-            <div className="relative z-10 w-full lg:w-auto min-w-[320px] lg:min-w-[480px]">
+            <div className="relative z-10 w-full lg:w-auto min-w-[320px] lg:min-w-120">
               {/* UI Input Dạng Pill Mới */}
               <div className="relative flex flex-col sm:flex-row p-1.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 focus-within:border-primary/50 transition-colors">
                 <input

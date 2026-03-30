@@ -63,9 +63,11 @@ const ClientProductPage = () => {
                 onPageChange={setCurrentPage}
               />
             </main>
+            
           </div>
         </div>
       </div>
+
     </div>
   );
 };

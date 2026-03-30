@@ -16,9 +16,6 @@ export default function SecuritySettings({
             <h3 className="text-sm font-medium text-gray-900 dark:text-white">
               Mật khẩu
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Thay đổi lần cuối 30 ngày trước
-            </p>
           </div>
           <button
             onClick={onChangePassword}

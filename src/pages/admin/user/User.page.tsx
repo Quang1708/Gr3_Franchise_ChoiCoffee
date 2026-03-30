@@ -500,73 +500,75 @@ const UserPage = () => {
               </div>
             )}
 
-          <CRUDPageTemplate<User>
-            title="Danh sách người dùng"
-            data={users}
-            columns={columns}
-            tableMaxHeightClass="flex-1 overflow-auto"
-            pageSize={pageSize}
-            totalItems={totalItems}
-            currentPage={page}
-            onPageChange={(page) => fetchUsers(page)}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              fetchUsers(1, size);
-            }}
-            statusField="is_active"
-            onStatusChange={isAdmin ? handleStatusChange : undefined}
-            filters={[
-              {
-                key: "is_active",
-                label: "trạng thái",
-                options: [
-                  { value: "true", label: "Hoạt động" },
-                  { value: "false", label: "Ngưng hoạt động" },
-                ],
-              },
-              {
-                key: "is_deleted",
-                label: "trạng thái xóa",
-                options: [
-                  { value: "false", label: "Còn tồn tại" },
-                  { value: "true", label: "Đã xóa" },
-                ],
-              },
-            ]}
-            onAdd={canManageUser ? () => handleOpenForm("create") : undefined}
-            onView={(item) => handleOpenForm("view", item)}
-            onEdit={
-              canManageUser ? (item) => handleOpenForm("edit", item) : undefined
-            }
-            onDelete={isAdmin ? handleDeleteClick : undefined}
-            onRestore={isAdmin ? handleRestoreClick : undefined}
-            onRefresh={() => fetchUsers(1)}
-            onSearch={handleSearchUsers}
-            isTableLoading={isTableLoading}
-          />
+            <CRUDPageTemplate<User>
+              title="Danh sách người dùng"
+              data={users}
+              columns={columns}
+              tableMaxHeightClass="flex-1 overflow-auto"
+              pageSize={pageSize}
+              totalItems={totalItems}
+              currentPage={page}
+              onPageChange={(page) => fetchUsers(page)}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                fetchUsers(1, size);
+              }}
+              statusField="is_active"
+              onStatusChange={isAdmin ? handleStatusChange : undefined}
+              filters={[
+                {
+                  key: "is_active",
+                  label: "trạng thái",
+                  options: [
+                    { value: "true", label: "Hoạt động" },
+                    { value: "false", label: "Ngưng hoạt động" },
+                  ],
+                },
+                {
+                  key: "is_deleted",
+                  label: "trạng thái xóa",
+                  options: [
+                    { value: "false", label: "Còn tồn tại" },
+                    { value: "true", label: "Đã xóa" },
+                  ],
+                },
+              ]}
+              onAdd={isAdmin ? () => handleOpenForm("create") : undefined}
+              onView={(item) => handleOpenForm("view", item)}
+              onEdit={
+                canManageUser
+                  ? (item) => handleOpenForm("edit", item)
+                  : undefined
+              }
+              onDelete={isAdmin ? handleDeleteClick : undefined}
+              onRestore={isAdmin ? handleRestoreClick : undefined}
+              onRefresh={() => fetchUsers(1)}
+              onSearch={handleSearchUsers}
+              isTableLoading={isTableLoading}
+            />
 
-          <UserForm
-            isOpen={isFormOpen}
-            mode={formMode}
-            initialData={selectedUser ?? undefined}
-            isLoading={isProcessing}
-            onClose={() => setIsFormOpen(false)}
-            onSubmit={handleSubmitUser}
-            setIsLoadingGlobal={setIsProcessing}
-          />
+            <UserForm
+              isOpen={isFormOpen}
+              mode={formMode}
+              initialData={selectedUser ?? undefined}
+              isLoading={isProcessing}
+              onClose={() => setIsFormOpen(false)}
+              onSubmit={handleSubmitUser}
+              setIsLoadingGlobal={setIsProcessing}
+            />
 
-          <ActionConfirmModal
-            isOpen={modalConfig.isOpen}
-            type={modalConfig.type}
-            isLoading={isProcessing}
-            onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
-            onConfirm={handleConfirmAction}
-            message={
-              modalConfig.type === "delete"
-                ? `Bạn có chắc muốn xóa "${modalConfig.user?.name}"?`
-                : `Khôi phục tài khoản cho "${modalConfig.user?.name}"?`
-            }
-          />
+            <ActionConfirmModal
+              isOpen={modalConfig.isOpen}
+              type={modalConfig.type}
+              isLoading={isProcessing}
+              onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+              onConfirm={handleConfirmAction}
+              message={
+                modalConfig.type === "delete"
+                  ? `Bạn có chắc muốn xóa "${modalConfig.user?.name}"?`
+                  : `Khôi phục tài khoản cho "${modalConfig.user?.name}"?`
+              }
+            />
           </div>
         )}
 

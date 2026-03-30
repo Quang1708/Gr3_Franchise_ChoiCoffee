@@ -510,9 +510,22 @@ const OrderPage = () => {
       <CRUDPageTemplate
         key={filterKey}
         title={
-          selectedFranchise
-            ? `Danh sách đơn hàng - ${selectedFranchise.name}`
-            : "Danh sách đơn hàng"
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setSelectedFranchise(null);
+              }}
+              className="flex items-center gap-1 px-3 hover:bg-gray-100"
+            >
+              ←
+            </button>
+
+            <span>
+              {selectedFranchise
+                ? `Danh sách đơn hàng - ${selectedFranchise.name}`
+                : "Danh sách đơn hàng"}
+            </span>
+          </div>
         }
         data={orders}
         columns={columns}

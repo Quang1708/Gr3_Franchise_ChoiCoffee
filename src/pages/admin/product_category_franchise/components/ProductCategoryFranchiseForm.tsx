@@ -60,6 +60,7 @@ export const ProductCategoryFranchiseForm = ({
   isOpen,
   isLoading,
   onClose,
+  selectedFranchiseId = "",
 }: {
   mode: "view" | "create" | "edit";
   initialData?: ProductCategoryFranchiseInitialData;
@@ -68,6 +69,7 @@ export const ProductCategoryFranchiseForm = ({
   isOpen: boolean;
   isLoading?: boolean;
   onClose: () => void;
+  selectedFranchiseId?: string;
 }) => {
   const {
     register,
@@ -95,6 +97,9 @@ export const ProductCategoryFranchiseForm = ({
     () => new Set(),
   );
   const [resolvedFranchiseName, setResolvedFranchiseName] = useState("");
+  const [franchiseOptions, setFranchiseOptions] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -150,10 +155,12 @@ export const ProductCategoryFranchiseForm = ({
   }, [user]);
 
   const managedFranchiseId =
-    contextFranchiseId || (!isGlobalAdmin ? roleManagedFranchiseId : "");
+    contextFranchiseId ||
+    (!isGlobalAdmin ? roleManagedFranchiseId : "") ||
+    selectedFranchiseId;
   const requiresFranchiseSelection = !String(managedFranchiseId).trim();
 
-  const activeFranchiseId = managedFranchiseId;
+  const activeFranchiseId = watch("franchise_id") || managedFranchiseId;
 
   const createDefaultFranchiseId = managedFranchiseId;
 
@@ -297,18 +304,49 @@ export const ProductCategoryFranchiseForm = ({
   };
 
   useEffect(() => {
+    if (!isOpen) return;
+    if (!isGlobalAdmin) return;
+    if (mode !== "create") return;
+
+    // For GLOBAL ADMIN in create mode, load franchise options from category franchises
+    const loadFranchiseOptions = async () => {
+      try {
+        const res = await searchCategoryFranchisesService("");
+        if (res.success && Array.isArray(res.data)) {
+          const uniqueFranchises = Array.from(
+            new Map(
+              res.data.map((item) => [
+                String(item.franchise_id),
+                { id: String(item.franchise_id), name: item.franchise_name },
+              ]),
+            ).values(),
+          );
+          setFranchiseOptions(uniqueFranchises);
+        }
+      } catch (error) {
+        console.error("Không thể tải danh sách chi nhánh:", error);
+        setFranchiseOptions([]);
+      }
+    };
+
+    loadFranchiseOptions();
+  }, [isOpen, isGlobalAdmin, mode]);
+
+  useEffect(() => {
     if (mode === "view") return;
     if (!isOpen) return;
 
-    if (!managedFranchiseId) {
+    const franchiseToLoad = watch("franchise_id") || managedFranchiseId;
+
+    if (!franchiseToLoad) {
       setCategoryOptions([]);
       setProductOptions([]);
       return;
     }
 
-    loadOptionsForFranchise(managedFranchiseId);
+    loadOptionsForFranchise(franchiseToLoad);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, managedFranchiseId]);
+  }, [isOpen, managedFranchiseId, selectedFranchiseId, watch("franchise_id")]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -538,11 +576,35 @@ export const ProductCategoryFranchiseForm = ({
             </>
           ) : (
             <>
-              {currentFranchiseName && (
-                <p className="text-xs text-blue-600 mb-2">
-                  Chi nhánh:{" "}
-                  <span className="font-semibold">{currentFranchiseName}</span>
-                </p>
+              {requiresFranchiseSelection ? (
+                <FormSelect
+                  label="Chi nhánh"
+                  options={[
+                    {
+                      value: "",
+                      label: loadingOptions
+                        ? "Đang tải..."
+                        : "-- Chọn chi nhánh --",
+                    },
+                    ...franchiseOptions.map((f) => ({
+                      value: f.id,
+                      label: f.name,
+                    })),
+                  ]}
+                  register={register("franchise_id", {
+                    required: "Không được để trống",
+                  })}
+                  value={String(watch("franchise_id") || "")}
+                  error={errors.franchise_id}
+                  placeholder="Chọn chi nhánh"
+                />
+              ) : (
+                <FormInput
+                  label="Chi nhánh"
+                  register={register("franchise_id")}
+                  isView
+                  defaultValue={currentFranchiseName ?? "---"}
+                />
               )}
               <FormSelect
                 label="Danh mục chi nhánh"

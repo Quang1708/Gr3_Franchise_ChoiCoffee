@@ -12,6 +12,7 @@ import {
   CircleUserRound,
   Ticket,
   Tag,
+  NotepadTextIcon,
 } from "lucide-react";
 import {
   confirmPayment,
@@ -209,16 +210,35 @@ useEffect(() => {
           <div className="flex-[1.5] flex flex-col min-h-0">
             {/* KHU VỰC HEADER TĨNH (Không cuộn) */}
             <div className="shrink-0 flex flex-col gap-5 mb-3 pr-2">
-              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800 shadow-sm flex justify-between items-center">
-                <div>
-                  <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-1">
-                    Mã đơn hàng
-                  </p>
-                  <h2 className="text-xl font-black text-gray-800 dark:text-zinc-100">
-                    {formData.code}
-                  </h2>
+              <div className="flex flex-col gap-3">
+                {/* Header chính */}
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-100 dark:border-zinc-800 shadow-sm flex justify-between items-center">
+                  <div>
+                    <p className="text-[11px] text-gray-500 uppercase font-bold tracking-wider mb-1">
+                      Mã đơn hàng
+                    </p>
+                    <h2 className="text-xl font-black text-gray-800 dark:text-zinc-100">
+                      {formData.code}
+                    </h2>
+                  </div>
+                  {getStatusBadge(formData.status)}
                 </div>
-                {getStatusBadge(formData.status)}
+
+                {formData.failed_reason && (
+                  <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="mt-0.5 bg-red-100 dark:bg-red-900/40 p-1.5 rounded-lg text-red-600">
+                      <NotepadTextIcon size={14} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-red-400 uppercase font-bold tracking-tight">
+                        Lý do:
+                      </p>
+                      <p className="text-sm font-semibold text-red-700 dark:text-red-400 leading-tight">
+                        {formData.failed_reason}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className={`${labelClass} flex items-center gap-2`}>
@@ -336,17 +356,15 @@ useEffect(() => {
                   </div>
                   <div>
                     <span className="font-medium block">
-                      {formData.staff_name}
-                    </span>
-                    <span className="text-xs italic text-gray-400">
-                      {formData.staff_email}
+                      {formData.address} - {formData.phone}
                     </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {(formData.status !== "CHECKED_OUT" && !isViewMode) &&
+            {formData.status !== "CHECKED_OUT" &&
+              !isViewMode &&
               formData.status !== "CANCELED" && (
                 <div
                   className={`bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm shrink-0 ${isViewMode ? "opacity-80" : ""}`}
@@ -421,7 +439,8 @@ useEffect(() => {
                 </div>
               )}
 
-            {(formData.status !== "CHECKED_OUT" && !isViewMode) &&
+            {formData.status !== "CHECKED_OUT" &&
+              !isViewMode &&
               formData.status !== "CANCELED" &&
               paymentMethod === "BANK_TRANSFER" && (
                 <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">

@@ -19,6 +19,8 @@ export type Order = {
   staff_id: string;
   code: string;
   status: string;
+  address?: string;
+  phone?: string;
   promotion_discount: number;
   voucher_discount: number;
   loyalty_discount: number;
@@ -33,6 +35,7 @@ export type Order = {
   customer_name: string;
   staff_name: string;
   staff_email: string;
+  failed_reason?: string;
   order_items: OrderItem[];
 };
 

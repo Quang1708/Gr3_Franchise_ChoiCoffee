@@ -11,6 +11,9 @@ import {
   Ban,
   Mail,
   UserCheck2,
+  BikeIcon,
+  Phone,
+  LocateIcon,
 } from "lucide-react";
 import type { Order } from "@/pages/admin/order/models/searchOrderResponse.model";
 import {
@@ -22,6 +25,8 @@ import {
 import { getDeliveryByOrderId } from "./services/delivery.service";
 import type { Staff } from "./models/staff.model";
 import { getStaffByFranchiseId } from "./services/getStaff.service";
+import type { DeliveryOrderItem } from "@/pages/admin/delivery/services/searchDelivery.service";
+
 
 export type OrderStatusFormProps = {
   franchiseId: string;
@@ -105,6 +110,7 @@ const OrderStatusForm = ({
   // const franchiseId = useAdminContextStore((s) => s.selectedFranchiseId);
   const [staffs, setStaffs] = useState<Staff[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+  const [delivery, setDelivery] = useState<DeliveryOrderItem | null>(null);
 
   useEffect(() => {
     if (order && isOpen) {
@@ -127,6 +133,28 @@ const OrderStatusForm = ({
   }, [isOpen, franchiseId]);
 
   console.log("staffs", staffs);
+
+  useEffect(() => {
+    const fetchDeliveryInfo = async () => {
+      if(order){
+        setIsLoading(true);
+        try{
+          const res = await getDeliveryByOrderId(order._id);
+          if(res.success){
+            setDelivery(res.data);
+          }else{
+            setDelivery(null)
+          }
+        }catch(error){
+          console.error("Lỗi khi lấy thông tin giao hàng:", error);
+          setDelivery(null);
+        }finally{
+          setIsLoading(false);
+        }
+      }
+    };
+    fetchDeliveryInfo();
+  }, [order, isOpen]);
 
   // Kiểm tra xem status có được phép chọn không
   const isStatusSelectable = (statusValue: string, currentStatus: string) => {
@@ -235,7 +263,7 @@ const OrderStatusForm = ({
       title={`trạng thái đơn ${order?.code || ""}`}
       mode="edit"
       isLoading={isLoading}
-      maxWidth="max-w-2xl"
+      maxWidth="max-w-2xl "
     >
       <div className="flex flex-col gap-4">
         {/* Box thông tin */}
@@ -356,6 +384,72 @@ const OrderStatusForm = ({
                 <p className="mt-0.5 flex items-center gap-1.5 text-sm text-gray-600">
                   <Mail className="h-3.5 w-3.5" />
                   {order.staff_email}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) }
+
+        <div className="mt-6 rounded-xl border border-orange-100 bg-orange-50/50 p-4">
+            <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-orange-800">
+              <UserCheck2 className="h-4 w-4" />
+              Khách hàng
+            </p>
+            <div className="flex items-center gap-3">
+              {getStaffAvt(order?.customer_name) ? (
+                <img
+                  src={getStaffAvt(order?.customer_name)}
+                  alt={order?.customer_name.charAt(0).toUpperCase()}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-200 text-orange-700 font-bold"
+                />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-200 text-orange-700 font-bold">
+                  {order?.customer_name.charAt(0).toUpperCase()}
+                </div>
+              )}
+
+              <div className="flex flex-col">
+                <p className="text-base font-bold text-gray-800">
+                  {order?.customer_name}
+                </p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-sm text-gray-600">
+                  <LocateIcon className="h-3.5 w-3.5" />
+                  {order?.address}
+                </p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-sm text-gray-600">
+                  <Phone className="h-3.5 w-3.5" />
+                  {order?.phone}
+                </p>
+              </div>
+            </div>
+          </div>
+
+        {delivery?.assigned_to && (
+          <div className="mt-6 rounded-xl border border-orange-100 bg-orange-50/50 p-4">
+            <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-orange-800">
+              <BikeIcon className="h-4 w-4" />
+              Người giao
+            </p>
+            <div className="flex items-center gap-3">
+              {getStaffAvt(order?.staff_id) ? (
+                <img
+                  src={getStaffAvt(order?.staff_id)}
+                  alt={delivery.assigned_to_name.charAt(0).toUpperCase()}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-200 text-orange-700 font-bold"
+                />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-200 text-orange-700 font-bold">
+                  {delivery.assigned_to_name.charAt(0).toUpperCase()}
+                </div>
+              )}
+
+              <div className="flex flex-col">
+                <p className="text-base font-bold text-gray-800">
+                  {delivery.assigned_to_name}
+                </p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-sm text-gray-600">
+                  <Mail className="h-3.5 w-3.5" />
+                  {delivery.assigned_to_email}
                 </p>
               </div>
             </div>

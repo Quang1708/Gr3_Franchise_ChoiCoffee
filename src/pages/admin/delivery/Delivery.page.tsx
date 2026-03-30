@@ -405,7 +405,24 @@ const DeliveryPage = () => {
     <>
       {isAdminRole ? (
         <CRUDPageTemplate
-          title="Delivery Orders"
+          title={
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setSelectedFranchise(null);
+                }}
+                className="flex items-center gap-1 px-3 hover:bg-gray-100"
+              >
+                ←
+              </button>
+
+              <span>
+                {selectedFranchise
+                  ? `Danh sách vận chuyển - ${selectedFranchise.name}`
+                  : "Danh sách vận chuyển"}
+              </span>
+            </div>
+          }
           data={orders}
           columns={columns}
           pageSize={pageSize}

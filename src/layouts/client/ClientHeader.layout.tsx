@@ -25,10 +25,7 @@ const ClientHeader = () => {
   const isLoggedIn = !!customer;
 
   const navigate = useNavigate();
-  const [selectedFranchise, setSelectedFranchise] = useState<string>(() => {
-    const saved = localStorage.getItem("selectedFranchise");
-    return saved ? saved : franchises[0]?.id || "";
-  });
+  const [selectedFranchise, setSelectedFranchise] = useState<string>("");
   const [isFranchiseDropdownOpen, setIsFranchiseDropdownOpen] = useState(false);
   const franchiseDropdownRef = useRef<HTMLDivElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
@@ -87,17 +84,25 @@ const ClientHeader = () => {
   }, []);
 
   useEffect(() => {
+    if (franchises.length === 0) return;
+
     const savedFranchise = localStorage.getItem("selectedFranchise");
-    if (!savedFranchise && franchises.length > 0) {
-      const firstFranchiseId = franchises[0].id;
+
+    if (savedFranchise) {
+      setSelectedFranchise(savedFranchise);
+    } else {
+      const firstFranchiseId = franchises[0]?.id;
+
       if (firstFranchiseId) {
         setSelectedFranchise(firstFranchiseId);
-        window.dispatchEvent(
-          new CustomEvent("franchiseChanged", {
-            detail: { franchiseId: firstFranchiseId },
-          }),
-        );
+        localStorage.setItem("selectedFranchise", firstFranchiseId);
       }
+
+      window.dispatchEvent(
+        new CustomEvent("franchiseChanged", {
+          detail: { franchiseId: firstFranchiseId },
+        }),
+      );
     }
   }, [franchises]);
 
@@ -453,6 +458,15 @@ const ClientHeader = () => {
                     className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-md"
                   >
                     Hồ sơ cá nhân
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate(ROUTER_URL.CLIENT_ROUTER.CART);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-md"
+                  >
+                    Giỏ hàng
                   </button>
                   <button
                     onClick={() => {

@@ -6,7 +6,7 @@ import { Modal } from "../../UI/Modal";
 import type { RequestProduct } from "../../../pages/admin/product/models";
 import type { Product } from "@/models/product.model";
 import { Trash2 } from "lucide-react";
-import { FormInput } from "@/components/Admin/form/FormInput";
+import { FormInput } from "@/components/Admin/Form/FormInput";
 import { TextEditor } from "@/components/UI/TextEditor";
 
 // --- Schema ---
@@ -352,7 +352,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Chỉnh sửa sản phẩm"
-      maxWidth="max-w-xl"
+      maxWidth="max-w-5xl"
     >
       <ProductForm
         defaultValues={defaultValues}

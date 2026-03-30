@@ -1,5 +1,5 @@
-import { FormInput } from "@/components/Admin/form/FormInput";
-import FormSelect from "@/components/Admin/form/FormSelect";
+import { FormInput } from "@/components/Admin/Form/FormInput";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 import { TextEditor } from "@/components/UI/TextEditor";
 import ClientLoading from "@/components/Client/Client.Loading";
 import { Controller, useForm, useWatch } from "react-hook-form";

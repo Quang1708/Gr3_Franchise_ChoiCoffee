@@ -17,6 +17,7 @@ export type DeliveryOrderItem = {
   created_at: string;
   assigned_to: string;
   assigned_to_name: string;
+  assigned_to_email?: string;
 };
 
 const toText = (value: unknown): string => {

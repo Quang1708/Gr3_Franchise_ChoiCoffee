@@ -10,7 +10,7 @@ import {
 } from "@/components/Admin/template/CRUDPage.template";
 import ClientLoading from "@/components/Client/Client.Loading";
 import { ActionConfirmModal } from "@/components/Admin/template/ActionConfirmModal";
-import FormSelect from "@/components/Admin/form/FormSelect";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 
 import { searchProductFranchiseUsecase } from "@/pages/admin/product/usecases/productFranchise/searchProductFranchise02.usecase";
 import { changeStatusProductFranchiseUsecase } from "@/pages/admin/product/usecases/productFranchise/changeStatusProductFranchise07.usecase";
@@ -20,7 +20,7 @@ import { createProductFranchiseUsecase } from "@/pages/admin/product/usecases/pr
 import { updateProductFranchiseUsecase } from "@/pages/admin/product/usecases/productFranchise/updateProductFranchise04.usecase";
 
 import type { ProductFranchise } from "@/components/cart/models/productResponse.model";
-import { FormInput } from "@/components/Admin/form/FormInput";
+import { FormInput } from "@/components/Admin/Form/FormInput";
 import { ProductFranchiseForm } from "@/pages/admin/product/components/ProductFranchiseForm";
 
 import { can } from "@/auth/rbac";

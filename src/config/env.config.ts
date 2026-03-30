@@ -3,6 +3,5 @@ export const ENV = {
 
   // Cloudinary configuration
   CLOUDINARY_CLOUD_NAME: import.meta.env.VITE_CLOUDINARY_CLOUD_NAME,
-  CLOUDINARY_API_KEY: import.meta.env.VITE_CLOUDINARY_API_KEY,
   CLOUDINARY_UPLOAD_PRESET: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
 };

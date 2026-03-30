@@ -24,6 +24,7 @@ const productSchema = z
     description: z.string().optional(),
     content: z.string().optional(),
     isActive: z.boolean().default(true),
+    is_have_topping: z.boolean().default(false),
   })
   .refine((v) => v.maxPrice >= v.minPrice, {
     path: ["maxPrice"],
@@ -41,6 +42,7 @@ const toProductPartial = (data: ProductFormData): RequestProduct => ({
   description: data.description,
   content: data.content,
   isActive: data.isActive ?? true,
+  is_have_topping: data.is_have_topping ?? false,
 });
 
 const submitProductForm = async (
@@ -90,6 +92,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
       minPrice: 0,
       maxPrice: 0,
       isActive: true,
+      is_have_topping: false,
       ...defaultValues,
     },
   });
@@ -100,6 +103,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
         minPrice: 0,
         maxPrice: 0,
         isActive: true,
+        is_have_topping: false,
         ...defaultValues,
       });
     }
@@ -217,6 +221,17 @@ const ProductForm: React.FC<ProductFormProps> = ({
             </p>
           )}
         </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            {...register("is_have_topping")}
+            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+          />
+          <span className="text-sm text-gray-800">Sản phẩm có topping</span>
+        </label>
       </div>
 
       {/* Description */}
@@ -345,6 +360,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
     description: product.description || "",
     content: product.content || "",
     isActive: Boolean(product.is_active),
+    is_have_topping: Boolean(product.is_have_topping),
   };
 
   return (
@@ -352,7 +368,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Chỉnh sửa sản phẩm"
-      maxWidth="max-w-xl"
+      maxWidth="max-w-5xl"
     >
       <ProductForm
         defaultValues={defaultValues}
@@ -435,8 +451,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onClose,
 }) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Chi tiết sản phẩm">
-      <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+    <Modal isOpen={isOpen} onClose={onClose} title="Chi tiết sản phẩm" maxWidth="max-w-5xl">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto ">
         {product && (
           <>
             {/* Image */}
@@ -490,6 +506,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   }).format(product.min_price || 0)}
                 </div>
               </div>
+
+              
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -551,7 +569,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Xóa mềm
+                  Tình trạng
                 </label>
                 <div className="text-sm">
                   <span

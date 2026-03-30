@@ -8,7 +8,16 @@ import {
   type SyntheticEvent,
 } from "react";
 import { toast } from "react-toastify";
-import { Building2, Shield, Loader, Lock, Edit3, Camera, X, User } from "lucide-react";
+import {
+  Building2,
+  Shield,
+  Loader,
+  Lock,
+  Edit3,
+  Camera,
+  X,
+  User,
+} from "lucide-react";
 import { getAdminProfile } from "../auth/login/services/auth03.service";
 import {
   updateAdminProfile,
@@ -27,9 +36,11 @@ const ProfilePage = () => {
   const [profile, setProfile] = useState<AdminProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] =
+    useState(false);
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
-  const [isUpdateProfileModalOpen, setIsUpdateProfileModalOpen] = useState(false);
+  const [isUpdateProfileModalOpen, setIsUpdateProfileModalOpen] =
+    useState(false);
   const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
   const [updateProfileFormData, setUpdateProfileFormData] = useState<{
     name: string;
@@ -47,8 +58,11 @@ const ProfilePage = () => {
   });
 
   // ============ Admin Avatar Upload (crop/zoom before upload) ============
-  const { uploadImage, isUploading: isAvatarUploading, error: avatarUploadError } =
-    useImageUpload();
+  const {
+    uploadImage,
+    isUploading: isAvatarUploading,
+    error: avatarUploadError,
+  } = useImageUpload();
 
   const viewportSize = 240; // px (circle crop viewport)
   const canvasSize = 480; // px (output image)
@@ -147,7 +161,8 @@ const ProfilePage = () => {
       // API can return either: { user, roles, active_context } or AdminLoginUserProfile
       if (typeof data === "object" && data !== null && "user" in data) {
         const user = (data as { user: AdminLoginUserProfile }).user;
-        const roles = (data as { roles?: AdminLoginUserProfile["roles"] }).roles;
+        const roles = (data as { roles?: AdminLoginUserProfile["roles"] })
+          .roles;
         setAuth({ ...user, roles: roles ?? user.roles }, token);
         return;
       }
@@ -162,11 +177,11 @@ const ProfilePage = () => {
       try {
         setLoading(true);
         setError(null);
-       
+
         const response = await getAdminProfile();
         setProfile(response);
         syncAuthUserWithProfile(response);
-      
+
         toast.success("Tải thông tin profile thành công!");
       } catch (err: any) {
         console.error("Error fetching profile:", err);
@@ -181,7 +196,9 @@ const ProfilePage = () => {
     fetchProfile();
   }, [syncAuthUserWithProfile]);
 
-  const handleChangePasswordSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
+  const handleChangePasswordSubmit = async (
+    e: SyntheticEvent<HTMLFormElement>,
+  ) => {
     e.preventDefault();
 
     if (passwordFormData.new_password !== passwordFormData.confirm_password) {
@@ -413,21 +430,24 @@ const ProfilePage = () => {
     (profileData as { roles?: AdminRoleLike[] } | null)?.roles ??
     userData?.roles ??
     [];
-  const activeContext =
-    (profileData as {
+  const activeContext = (
+    profileData as {
       active_context?: {
         role?: string;
         scope?: string;
         franchiseId?: string | number | null;
         franchiseid?: string | number | null;
       };
-    } | null)?.active_context;
+    } | null
+  )?.active_context;
 
   if (!userData) {
     return (
       <div className="p-6">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-yellow-800 mb-2">No Data</h2>
+          <h2 className="text-xl font-semibold text-yellow-800 mb-2">
+            No Data
+          </h2>
           <p className="text-yellow-700">No profile data available</p>
         </div>
       </div>
@@ -471,7 +491,9 @@ const ProfilePage = () => {
                   {userData.name}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {userData.email || userData.phone || "Chưa cập nhật thông tin"}
+                  {userData.email ||
+                    userData.phone ||
+                    "Chưa cập nhật thông tin"}
                 </p>
               </div>
             </div>
@@ -506,7 +528,9 @@ const ProfilePage = () => {
                 Địa chỉ Email
               </label>
               <div className="px-4 py-2.5 border border-primary/30 rounded-lg bg-primary/5 dark:bg-primary/10">
-                <p className="text-gray-900 dark:text-white">{userData.email || "N/A"}</p>
+                <p className="text-gray-900 dark:text-white">
+                  {userData.email || "N/A"}
+                </p>
               </div>
             </div>
             <div>
@@ -514,7 +538,9 @@ const ProfilePage = () => {
                 Số điện thoại
               </label>
               <div className="px-4 py-2.5 border border-primary/30 rounded-lg bg-primary/5 dark:bg-primary/10">
-                <p className="text-gray-900 dark:text-white">{userData.phone || "N/A"}</p>
+                <p className="text-gray-900 dark:text-white">
+                  {userData.phone || "N/A"}
+                </p>
               </div>
             </div>
             <div>
@@ -583,7 +609,9 @@ const ProfilePage = () => {
                   Franchise ID
                 </p>
                 <p className="text-sm font-mono text-gray-800 dark:text-gray-200 break-all mt-1">
-                  {activeContext.franchiseId ?? activeContext.franchiseid ?? "N/A"}
+                  {activeContext.franchiseId ??
+                    activeContext.franchiseid ??
+                    "N/A"}
                 </p>
               </div>
             </div>
@@ -636,7 +664,7 @@ const ProfilePage = () => {
 
       {/* Update Profile Modal */}
       {isUpdateProfileModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">

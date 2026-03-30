@@ -352,7 +352,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Chỉnh sửa sản phẩm"
-      maxWidth="max-w-xl"
+      maxWidth="max-w-5xl"
     >
       <ProductForm
         defaultValues={defaultValues}

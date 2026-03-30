@@ -38,7 +38,7 @@ export interface FilterConfig<T> {
 }
 
 export interface CRUDPageTemplateProps<T> {
-  title: string;
+  title: React.ReactNode;
   data: T[];
   columns: Column<T>[];
   selectedRowId?: string | number;

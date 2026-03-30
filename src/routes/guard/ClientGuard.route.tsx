@@ -2,7 +2,6 @@ import React from "react";
 import { Outlet, Navigate } from "react-router-dom";
 import ROUTER_URL from "../router.const";
 import { useCustomerAuthStore } from "@/stores/customerAuth.store";
-import { toastWarning } from "../../utils/toast.util";
 import ClientLoading from "@/components/Client/Client.Loading";
 
 const ClientGuard: React.FC = () => {
@@ -18,7 +17,6 @@ const ClientGuard: React.FC = () => {
 
   // Redirect to login if not authenticated
   if (!isClientAuthenticated) {
-    toastWarning("Vui lòng đăng nhập để tiếp tục");
     return <Navigate to={ROUTER_URL.CLIENT_ROUTER.LOGIN} replace />;
   }
 

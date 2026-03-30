@@ -228,6 +228,7 @@ const OrderPage = () => {
   // Hàm xử lý tìm kiếm - khi bấm nút Tìm kiếm
   const handleSearch = useCallback(
     async (term: string, filters?: any) => {
+      term = term.trim();
       if (isFetching.current) return;
       isFetching.current = true;
 

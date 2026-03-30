@@ -1036,6 +1036,7 @@ const ProductCategoryFranchisePage = () => {
         isLoading={isProcessing}
         onClose={() => setFormState((prev) => ({ ...prev, isOpen: false }))}
         onSubmit={handleSubmitForm}
+        selectedFranchiseId={isGlobalAdmin ? selectedSearchFranchiseId : ""}
       />
 
       <Modal

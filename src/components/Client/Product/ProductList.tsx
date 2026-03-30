@@ -1,5 +1,6 @@
 import ProductCard from "./ProductCard";
 import { useEffect, useState } from "react";
+import { ArrowUp } from "lucide-react";
 import type { Product } from "./models/product.model";
 import { getPublicProducts } from "./services/product.service";
 import ClientLoading from "../Client.Loading";
@@ -18,9 +19,21 @@ const ProductList = ({
   const ITEMS_PER_PAGE = 8;
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const [franchiseId, setFranchiseId] = useState<string | null>(
     localStorage.getItem("selectedFranchise"),
   );
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 260);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Listen for franchise changes
   useEffect(() => {
@@ -222,6 +235,17 @@ const ProductList = ({
               <span className="material-symbols-outlined">chevron_right</span>
             </button>
           </div>
+        )}
+
+        {showScrollTop && (
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            aria-label="Cuộn lên đầu trang"
+            className="fixed bottom-5 right-4 z-40 sm:hidden h-11 w-11 rounded-full bg-primary text-white shadow-lg shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform"
+          >
+            <ArrowUp size={18} />
+          </button>
         )}
       </>
     </>

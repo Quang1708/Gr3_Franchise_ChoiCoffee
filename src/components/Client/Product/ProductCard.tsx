@@ -81,21 +81,45 @@ const ProductCard = ({ item }: ProductCardProps) => {
             <h3 className="font-heading font-bold text-charcoal text-base line-clamp-2 min-h-12">
               {item.name}
             </h3>
-            <div className="mt-auto">
-              <span className="text-charcoal font-semibold text-sm">
-                Giá từ:
-              </span>
-              <div className="text-lg font-bold text-primary">
-                {(firstAvailableSize?.price || 0).toLocaleString()} VND
+            <div className="mt-auto flex items-end justify-between gap-3 sm:block">
+              <div>
+                <span className="text-charcoal font-semibold text-sm">
+                  Giá từ:
+                </span>
+                <div className="text-lg font-bold text-primary">
+                  {(firstAvailableSize?.price || 0).toLocaleString()} VND
+                </div>
               </div>
+
+              <button
+                onClick={handleCartButtonClick}
+                disabled={!item.SKU || !hasAvailableSize}
+                aria-label={hasAvailableSize ? "Thêm vào giỏ hàng" : "Hết hàng"}
+                className={`
+                  sm:hidden
+                  h-9 w-9 rounded-full shrink-0
+                  flex items-center justify-center
+                  transition-colors duration-300
+                  ${
+                    item.SKU && hasAvailableSize
+                      ? "bg-primary text-white"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }
+                `}
+              >
+                <span className="material-symbols-outlined text-[17px] leading-none">
+                  add_shopping_cart
+                </span>
+              </button>
             </div>
             <button
               onClick={handleCartButtonClick}
               disabled={!item.SKU || !hasAvailableSize}
               className={`
+              hidden sm:flex
               cursor-pointer
               absolute inset-x-0 bottom-0 h-12
-              flex items-center justify-center gap-2
+              items-center justify-center gap-2
               text-sm font-bold
               transition-all duration-300
               ${

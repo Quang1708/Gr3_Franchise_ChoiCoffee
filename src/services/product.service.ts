@@ -15,6 +15,7 @@ export type CreateProductPayload = {
   minPrice: number;
   maxPrice: number;
   isActive?: boolean;
+  is_have_topping?: boolean;
 };
 
 export type UpdateProductPayload = Partial<CreateProductPayload>;
@@ -140,6 +141,9 @@ const buildStrictUpdatePayload = (payload: UpdateProductPayload) => {
 
   // Optional: keep current behavior for status toggle
   if (payload.isActive !== undefined) apiPayload.is_active = payload.isActive;
+  if (payload.is_have_topping !== undefined) {
+    apiPayload.is_have_topping = payload.is_have_topping;
+  }
 
   return apiPayload;
 };
@@ -291,6 +295,7 @@ export async function createProduct(
     const img = toSafeString(payload.img, "").trim() || undefined;
     const minPrice = toSafeNumber(payload.minPrice, 0);
     const maxPrice = toSafeNumber(payload.maxPrice, 0);
+    const isHaveTopping = toSafeBoolean(payload.is_have_topping, false);
 
     const cleanPayload = (value: Record<string, unknown>) => {
       const cleaned: Record<string, unknown> = {};
@@ -315,6 +320,7 @@ export async function createProduct(
       images_url: img ? [img] : undefined,
       min_price: minPrice,
       max_price: maxPrice,
+      is_have_topping: isHaveTopping,
     });
 
     const candidates: Array<Record<string, unknown>> = [

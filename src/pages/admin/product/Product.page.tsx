@@ -135,11 +135,8 @@ const ProductPage = () => {
         },
       };
 
-      console.log("Search payload:", searchPayload);
-
+      
       const res = await searchProductsUsecase(searchPayload);
-
-      console.log("Search response:", res);
 
       // Validate response structure
       if (res && typeof res === "object") {

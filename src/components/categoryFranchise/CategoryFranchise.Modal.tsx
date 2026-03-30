@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { getAllCategory } from "./services/category07.service";
 import type { Category } from "./models/category.model";
 import { CRUDModalTemplate } from "../Admin/template/CRUDModal.template";
-import { FormInput } from "../Admin/form/FormInput";
+import { FormInput } from "../Admin/Form/FormInput";
 import { toastError, toastSuccess } from "@/utils/toast.util";
 import { postCategoryFranchise } from "./services/categoryFranchise01.service";
 import { getAllFranchises } from "./services/franchise08.service";
@@ -71,17 +71,16 @@ const CategoryFranchiseCreateModal = ({
       return;
     }
 
-      try {
-        const response = await getCategoryFranchise({
-          searchCondition: {
-            franchise_id: targetFranchiseId,
-            
-          },
-          pageInfo: {
-            pageNum: 1,
-            pageSize: 1000,
-          },
-        });
+    try {
+      const response = await getCategoryFranchise({
+        searchCondition: {
+          franchise_id: targetFranchiseId,
+        },
+        pageInfo: {
+          pageNum: 1,
+          pageSize: 1000,
+        },
+      });
 
       const ids = new Set<string>(
         (response?.data ?? [])

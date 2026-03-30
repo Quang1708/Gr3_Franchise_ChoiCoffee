@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Modal } from "../../UI/Modal";
-import { FormInput } from "@/components/Admin/form/FormInput";
+import { FormInput } from "@/components/Admin/Form/FormInput";
 import type { Franchise } from "@/pages/admin/franchise/models/franchise.model";
 import { AlertTriangle } from "lucide-react";
 
@@ -139,9 +139,11 @@ const FranchiseModal: React.FC<FranchiseModalProps> = ({
 
         <div className="flex justify-center">
           <FormInput
+            label="Logo"
             type="file"
             defaultValue={defaultValues?.logo_url}
             register={register("logo_url")}
+            uploadFolder="franchises"
             onUploadSuccess={(url) => setValue("logo_url", url)}
           />
         </div>
@@ -277,7 +279,12 @@ export const CreateFranchiseModal: React.FC<{
   onSubmit: (data: FranchiseFormData) => void;
 }> = ({ isOpen, onClose, onSubmit }) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Thêm chi nhánh" size="md">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Thêm chi nhánh"
+      maxWidth="max-w-2xl"
+    >
       <FranchiseModal
         submitLabel="Tạo"
         onSubmit={onSubmit}
@@ -302,7 +309,7 @@ export const EditFranchiseModal: React.FC<{
       isOpen={isOpen}
       onClose={onClose}
       title="Cập nhật chi nhánh"
-      size="md"
+      maxWidth="max-w-2xl"
     >
       {/* ✅ chỉ render form khi có data */}
       {franchise && (
@@ -338,7 +345,12 @@ export const DeleteFranchiseModal: React.FC<{
   if (!franchise) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Xóa chi nhánh" size="sm">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Xóa chi nhánh"
+      maxWidth="max-w-md"
+    >
       <div className="space-y-5">
         <div className="flex items-start gap-3">
           <div className="p-2 bg-red-100 rounded-full">
@@ -395,7 +407,7 @@ export const RestoreFranchiseModal: React.FC<{
       isOpen={isOpen}
       onClose={onClose}
       title="Khôi phục chi nhánh"
-      size="sm"
+      maxWidth="max-w-md"
     >
       <div className="space-y-5">
         <div className="flex items-start gap-3">

@@ -4,8 +4,8 @@ import { useForm } from "react-hook-form";
 import { Loader2, MapPin, Layers, Info, Plus, Package } from "lucide-react";
 
 import { CRUDModalTemplate } from "@/components/Admin/template/CRUDModal.template";
-import FormSelect from "@/components/Admin/form/FormSelect";
-import { FormInput } from "@/components/Admin/form/FormInput";
+import FormSelect from "@/components/Admin/Form/FormSelect";
+import { FormInput } from "@/components/Admin/Form/FormInput";
 import type { ProductFranchise } from "@/components/cart/models/productResponse.model";
 
 import { getAllFranchises } from "@/components/categoryFranchise/services/franchise08.service";
@@ -89,7 +89,9 @@ export const ProductFranchiseForm = ({
 
   // Lấy danh sách size đã có (chỉ lấy tên size)
   const existingSizeNames = useMemo(() => {
-    return existingSizesForProduct.map(item => item.size?.toUpperCase() || "");
+    return existingSizesForProduct.map(
+      (item) => item.size?.toUpperCase() || "",
+    );
   }, [existingSizesForProduct]);
 
   // Lấy chi tiết sản phẩm
@@ -134,7 +136,7 @@ export const ProductFranchiseForm = ({
         product_id: "",
         size: "",
         price_base: 0,
-      }); 
+      });
       setSelectedProductDetail(null);
       setIsReady(false);
       return;
@@ -170,7 +172,9 @@ export const ProductFranchiseForm = ({
           // Nếu là edit, lấy chi tiết sản phẩm để hiển thị giá tham khảo
           if (initialData.product_id) {
             try {
-              const response = await getProductDetailService(initialData.product_id);
+              const response = await getProductDetailService(
+                initialData.product_id,
+              );
               if (response?.success && response?.data) {
                 setSelectedProductDetail({
                   min_price: response.data.min_price,
@@ -270,8 +274,8 @@ export const ProductFranchiseForm = ({
                         opt.value ===
                         String(
                           watch("franchise_id") ||
-                          initialData?.franchise_id ||
-                          selectedFranchiseId,
+                            initialData?.franchise_id ||
+                            selectedFranchiseId,
                         ),
                     )?.label || "Đang tải tên chi nhánh..."}
                   </span>
@@ -359,12 +363,16 @@ export const ProductFranchiseForm = ({
                 <div className="mt-2">
                   <div className="flex items-center gap-2 mb-2">
                     <Plus size={14} className="text-blue-500" />
-                    <span className="text-xs text-gray-500">Size phổ biến:</span>
+                    <span className="text-xs text-gray-500">
+                      Size phổ biến:
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {COMMON_SIZES.map((size, idx) => {
                       // Chỉ kiểm tra đã có size nếu đã chọn sản phẩm
-                      const isExisting = watchedProductId ? existingSizeNames.includes(size) : false;
+                      const isExisting = watchedProductId
+                        ? existingSizeNames.includes(size)
+                        : false;
                       return (
                         <button
                           key={idx}
@@ -372,9 +380,10 @@ export const ProductFranchiseForm = ({
                           disabled={isExisting}
                           onClick={() => !isExisting && setValue("size", size)}
                           className={`text-[13px] px-3 py-1 rounded-md transition-all cursor-pointer
-                            ${isExisting
-                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                              : "bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100"
+                            ${
+                              isExisting
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100"
                             }`}
                         >
                           {size} {isExisting && "(đã có)"}
@@ -393,7 +402,9 @@ export const ProductFranchiseForm = ({
                       <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex items-center gap-2 text-gray-500">
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span className="text-xs">Đang tải size đã có...</span>
+                          <span className="text-xs">
+                            Đang tải size đã có...
+                          </span>
                         </div>
                       </div>
                     ) : (
@@ -411,7 +422,8 @@ export const ProductFranchiseForm = ({
                                 key={idx}
                                 className="text-xs bg-white px-2 py-1 rounded border border-orange-200 text-orange-700"
                               >
-                                {item.size} - {item.price_base.toLocaleString()}đ
+                                {item.size} - {item.price_base.toLocaleString()}
+                                đ
                               </span>
                             ))}
                           </div>
@@ -442,7 +454,9 @@ export const ProductFranchiseForm = ({
                       <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex items-center gap-2 text-gray-500">
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span className="text-xs">Đang tải giá tham khảo...</span>
+                          <span className="text-xs">
+                            Đang tải giá tham khảo...
+                          </span>
                         </div>
                       </div>
                     ) : (
@@ -455,18 +469,22 @@ export const ProductFranchiseForm = ({
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            {selectedProductDetail.min_price === selectedProductDetail.max_price ? (
+                            {selectedProductDetail.min_price ===
+                            selectedProductDetail.max_price ? (
                               <span className="text-sm font-semibold text-green-700">
-                                {selectedProductDetail.min_price.toLocaleString()}đ
+                                {selectedProductDetail.min_price.toLocaleString()}
+                                đ
                               </span>
                             ) : (
                               <>
                                 <span className="text-sm font-semibold text-green-700">
-                                  {selectedProductDetail.min_price.toLocaleString()}đ
+                                  {selectedProductDetail.min_price.toLocaleString()}
+                                  đ
                                 </span>
                                 <span className="text-gray-400">→</span>
                                 <span className="text-sm font-semibold text-green-700">
-                                  {selectedProductDetail.max_price.toLocaleString()}đ
+                                  {selectedProductDetail.max_price.toLocaleString()}
+                                  đ
                                 </span>
                               </>
                             )}

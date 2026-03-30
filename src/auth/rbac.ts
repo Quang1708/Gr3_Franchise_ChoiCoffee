@@ -2,7 +2,6 @@
 import { ROLE_PERMISSIONS } from "./rbac.map";
 import type { PermissionCode } from "./rbac.permissions";
 
-
 export type CmsUser = {
   id: string | number;
   email: string;
@@ -10,12 +9,12 @@ export type CmsUser = {
   phone: string;
   avatar_url?: string | null;
   roles?: {
-  role?: string;
-  role_code?: string;
-  scope?: "GLOBAL" | "FRANCHISE";
-  franchise_id?: string | null;
-  franchiseId?: string | null;
-  franchise_name?: string | null;
+    role?: string;
+    role_code?: string;
+    scope?: "GLOBAL" | "FRANCHISE";
+    franchise_id?: string | null;
+    franchiseId?: string | null;
+    franchise_name?: string | null;
   }[];
 };
 
@@ -57,8 +56,8 @@ export function getEffectivePermissions(
 ): PermissionCode[] {
   if (!user?.roles?.length) return [];
 
-  const normalizedFranchiseId =
-    franchiseId == null || franchiseId === "" ? null : String(franchiseId);
+  // const normalizedFranchiseId =
+  //   franchiseId == null || franchiseId === "" ? null : String(franchiseId);
 
   const roleCodes = user.roles
     .filter((r) => {
@@ -122,9 +121,10 @@ export function canAny(
     .map((r) => r.franchise_id ?? r.franchiseId)
     .filter((id): id is string => !!id)
     .map((id) => ({ id: String(id), code: "", name: "" }));
-  const fr = roleFranchises.length > 0
-    ? roleFranchises
-    : getAccessibleFranchises(user, allFranchises);
+  const fr =
+    roleFranchises.length > 0
+      ? roleFranchises
+      : getAccessibleFranchises(user, allFranchises);
 
   return fr.some((f) => can(user, perm, f.id));
 }

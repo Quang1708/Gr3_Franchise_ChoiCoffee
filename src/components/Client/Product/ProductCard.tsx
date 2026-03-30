@@ -108,7 +108,7 @@ const ProductCard = ({ item }: ProductCardProps) => {
               <span className="material-symbols-outlined">
                 add_shopping_cart
               </span>
-              Thêm vào giỏ hàng
+              {hasAvailableSize ? "Thêm vào giỏ hàng" : "Hết hàng"}
               <i className="fa-solid fa-basket-shopping"></i>
             </button>
           </div>

@@ -1,18 +1,17 @@
-import { Outlet } from "react-router-dom"
-import ClientHeader from "./ClientHeader.layout"
-import ClientFooter from "./ClientFooter.layout"
-
+import { Outlet } from "react-router-dom";
+import ClientHeader from "./ClientHeader.layout";
+import ClientFooter from "./ClientFooter.layout";
 
 const ClientLayout = () => {
   return (
-    <div className = "min-h-screen ">
-        <ClientHeader />
-        <main className="flex-1 ">
-            <Outlet />
-        </main>
-        <ClientFooter />
+    <div className="min-h-screen ">
+      <ClientHeader />
+      <main className="flex-1 w-full">
+        <Outlet />
+      </main>
+      <ClientFooter />
     </div>
-  )
-}
+  );
+};
 
-export default ClientLayout
+export default ClientLayout;

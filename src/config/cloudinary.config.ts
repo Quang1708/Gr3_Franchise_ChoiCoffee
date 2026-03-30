@@ -2,7 +2,6 @@ import { ENV } from "./env.config";
 
 export const CLOUDINARY_CONFIG = {
   cloudName: ENV.CLOUDINARY_CLOUD_NAME,
-  apiKey: ENV.CLOUDINARY_API_KEY,
   uploadPreset: ENV.CLOUDINARY_UPLOAD_PRESET,
 };
 

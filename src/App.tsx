@@ -1,7 +1,7 @@
 import { Suspense, useEffect } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import ClientAuthRoutes from "./routes/client/ClientAuth.route";
-import { ClientPublicRoutes } from "./routes/client/ClientPublic.route";
+import ClientPublicRoutes from "./routes/client/ClientPublic.route";
 import NotFoundPage from "./pages/NotFoundPage.page";
 import { Toaster } from "sonner";
 import AdminAuthRoutes from "./routes/admin/AdminAuth.route";
@@ -10,6 +10,8 @@ import { ToastContainer } from "react-toastify";
 import { useAuthStore } from "./stores/auth.store";
 import { useAdminContextStore } from "./stores/adminContext.store";
 import { initializeCustomerAuth } from "./services/customerAuth.init.service";
+import ScrollToTop from "./components/UI/ScrollToTop";
+import ClientLoading from "./components/Client/Client.Loading";
 
 function App() {
   useEffect(() => {
@@ -20,6 +22,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Toaster richColors position="top-right" />
       <ToastContainer
         position="top-right"
@@ -33,7 +36,7 @@ function App() {
         pauseOnHover
         theme="light"
       />
-      <Suspense>
+      <Suspense fallback={<ClientLoading />}>
         <Routes>
           {/* Admin Auth */}
           {AdminAuthRoutes}

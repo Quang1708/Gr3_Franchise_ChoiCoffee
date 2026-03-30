@@ -28,7 +28,7 @@ import type { FieldError } from "node_modules/react-hook-form/dist/types/errors"
 import { useForm } from "react-hook-form";
 import type { CategorySelectItem } from "@/models/category.model";
 import { getCategorySelectUsecase } from "./usecases";
-import FormSelect from "@/components/Admin/form/FormSelect";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 
 const CategoryPage = () => {
   const user = useAuthStore((s) => s.user);

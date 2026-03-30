@@ -5,18 +5,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { voucherSchema } from "../schemas/voucher.schema";
 import type { VoucherFormData } from "../model/voucherPayload.model";
 import { useForm, type Resolver } from "react-hook-form";
-import { FormInput } from "@/components/Admin/form/FormInput";
-import FormSelect from "@/components/Admin/form/FormSelect";
+import { FormInput } from "@/components/Admin/Form/FormInput";
+import FormSelect from "@/components/Admin/Form/FormSelect";
 import { getProductFranchiseByFranchiseId } from "../../product/services/productFranchise/productFranchise08.service";
 import { Loader2 } from "lucide-react";
-
 
 export type VoucherFormProps = {
   isOpen: boolean;
   franchise?: { id: string; name: string } | null;
   franchiseId?: string;
   mode: "create" | "edit" | "view";
-  initialData?:  Voucher | null;
+  initialData?: Voucher | null;
   isLoading?: boolean;
   onClose: () => void;
   onSubmit: (data: VoucherFormData) => void | Promise<void>;
@@ -33,7 +32,9 @@ const EMPTY_FORM: VoucherFormData = {
   end_date: "",
 };
 
-const isVoucher = (data?: VoucherFormData | Voucher | null): data is Voucher => {
+const isVoucher = (
+  data?: VoucherFormData | Voucher | null,
+): data is Voucher => {
   return Boolean(data && "_id" in data);
 };
 
@@ -44,11 +45,8 @@ const toDateTimeLocal = (value?: string) => {
 
   const offset = date.getTimezoneOffset() * 60000;
 
-  return new Date(date.getTime() - offset)
-    .toISOString()
-    .slice(0, 10);
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
 };
-
 
 const formatDate = (value?: string) => {
   if (!value) return "--";
@@ -66,14 +64,15 @@ const VoucherForm = ({
   onSubmit,
   franchiseId,
 }: VoucherFormProps) => {
-  
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
   } = useForm<VoucherFormData>({
-    resolver: zodResolver(voucherSchema(mode=== "view" ? "edit" : mode)) as Resolver<VoucherFormData>,
+    resolver: zodResolver(
+      voucherSchema(mode === "view" ? "edit" : mode),
+    ) as Resolver<VoucherFormData>,
     defaultValues: EMPTY_FORM,
     mode: "onChange",
   });
@@ -100,13 +99,15 @@ const VoucherForm = ({
   useEffect(() => {
     if (!isOpen) return;
     const fetchProductFranchise = async () => {
-      try{
+      try {
         setLoading(true);
-        const response = await getProductFranchiseByFranchiseId(voucherData?.franchise_id || franchise?.id || franchiseId || "");
-        if(response.success) {
+        const response = await getProductFranchiseByFranchiseId(
+          voucherData?.franchise_id || franchise?.id || franchiseId || "",
+        );
+        if (response.success) {
           setProductFranchises(response.data);
         }
-      }catch(error) {
+      } catch (error) {
         console.error("Failed to fetch product franchises", error);
       } finally {
         setLoading(false);
@@ -121,14 +122,15 @@ const VoucherForm = ({
     if (mode === "create") {
       reset({
         ...EMPTY_FORM,
-        franchise_id: franchise?.id || "",
+        franchise_id: franchise?.id || franchiseId || "",
       });
       return;
     }
 
-    if (initialData ) {
+    if (initialData) {
       reset({
-        franchise_id: initialData.franchise_id || franchise?.id || "",
+        franchise_id:
+          initialData.franchise_id || franchise?.id || franchiseId || "",
         name: initialData.name || "",
         type: initialData.type || "FIXED",
         value: Number(initialData.value || 0),
@@ -138,9 +140,9 @@ const VoucherForm = ({
         end_date: toDateTimeLocal(initialData.end_date),
       });
     }
-  }, [franchise?.id, initialData, isOpen, mode, reset]);
+  }, [franchise?.id, franchiseId, initialData, isOpen, mode, reset]);
 
-  console.log(productFranchises);  
+  console.log(productFranchises);
 
   return (
     <CRUDModalTemplate
@@ -185,12 +187,18 @@ const VoucherForm = ({
           </div>
 
           <div>
-          {isViewMode ? (
+            {isViewMode ? (
               <FormInput
                 label="Loại voucher"
                 type="text"
                 placeholder="Chưa chọn loại voucher"
-                defaultValue={initialData?.type === "FIXED" ? "Giảm tiền" : initialData?.type === "PERCENT" ? "Giảm %" : ""}
+                defaultValue={
+                  initialData?.type === "FIXED"
+                    ? "Giảm tiền"
+                    : initialData?.type === "PERCENT"
+                      ? "Giảm %"
+                      : ""
+                }
                 isDisabled={true}
                 register={{}}
               />
@@ -200,13 +208,13 @@ const VoucherForm = ({
                 options={[
                   { label: "Giảm tiền", value: "FIXED" },
                   { label: "Giảm %", value: "PERCENT" },
-              ]}
-              placeholder="Chọn loại voucher"
-              register={register("type")}
-              error={errors.type}
-              className="w-full"
-              value={initialData?.type || "FIXED"}
-            />
+                ]}
+                placeholder="Chọn loại voucher"
+                register={register("type")}
+                error={errors.type}
+                className="w-full"
+                value={initialData?.type || "FIXED"}
+              />
             )}
           </div>
 
@@ -224,14 +232,26 @@ const VoucherForm = ({
           </div>
 
           <div>
-            {isViewMode || mode=== "edit" ? (
+            {isViewMode || mode === "edit" ? (
               <FormInput
                 label="Áp dụng cho sản phẩm"
                 type="text"
                 placeholder="Chưa chọn sản phẩm"
-                defaultValue={initialData?.product_franchise_id ? productFranchises.find(pf => pf.product_franchise_id === initialData.product_franchise_id)?.product_name + " - " + productFranchises.find(pf => pf.product_franchise_id === initialData.product_franchise_id)?.size : "Áp dụng cho tất cả sản phẩm"
+                defaultValue={
+                  initialData?.product_franchise_id
+                    ? productFranchises.find(
+                        (pf) =>
+                          pf.product_franchise_id ===
+                          initialData.product_franchise_id,
+                      )?.product_name +
+                      " - " +
+                      productFranchises.find(
+                        (pf) =>
+                          pf.product_franchise_id ===
+                          initialData.product_franchise_id,
+                      )?.size
+                    : "Áp dụng cho tất cả sản phẩm"
                 }
-
                 isDisabled={true}
                 register={{}}
                 className="flex gap-2"
@@ -242,12 +262,12 @@ const VoucherForm = ({
                 options={productFranchises.map((pf) => ({
                   label: `${pf.product_name} - ${pf.size}`,
                   value: pf.id,
-              }))}
-              placeholder="Chọn product franchise"
-              register={register("product_franchise_id")}
-              error={errors.product_franchise_id}
-              className="gap-2"
-            />
+                }))}
+                placeholder="Chọn product franchise"
+                register={register("product_franchise_id")}
+                error={errors.product_franchise_id}
+                className="gap-2"
+              />
             )}
           </div>
 

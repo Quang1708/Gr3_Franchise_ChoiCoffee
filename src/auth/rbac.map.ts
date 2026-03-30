@@ -42,7 +42,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERM.PROMOTION_READ,
     PERM.PROMOTION_WRITE,
     PERM.POS_READ,
-    PERM.POS_WRITE
+    PERM.POS_WRITE,
   ],
 
   // ✅ MANAGER: chỉ franchise-level, KHÔNG còn product/category tổng
@@ -86,7 +86,7 @@ export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERM.PROMOTION_READ,
     PERM.PROMOTION_WRITE,
     PERM.POS_READ,
-    PERM.POS_WRITE
+    PERM.POS_WRITE,
   ],
 
   // ✅ STAFF: chỉ READ + đúng scope bạn yêu cầu
@@ -100,6 +100,8 @@ export const ROLE_PERMISSIONS: Record<string, PermissionCode[]> = {
     PERM.SHIFT_READ,
     PERM.SHIFT_WRITE,
     PERM.POS_READ,
-    PERM.POS_WRITE
+    PERM.POS_WRITE,
   ],
+
+  SHIPPER: [PERM.ORDER_READ],
 };

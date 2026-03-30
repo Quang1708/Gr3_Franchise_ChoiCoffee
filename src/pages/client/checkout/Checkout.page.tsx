@@ -42,6 +42,9 @@ type CheckoutOrderSummary = {
   address: string;
   items: CheckoutOrderItem[];
   originalAmount: number;
+  voucherDiscountAmount: number;
+  promotionDiscountAmount: number;
+  otherDiscountAmount: number;
   deductedAmount: number;
   finalAmount: number;
 };
@@ -97,6 +100,9 @@ const mapOrderSummary = (value: unknown): CheckoutOrderSummary => {
       address: "Dang cap nhat",
       items: [],
       originalAmount: 0,
+      voucherDiscountAmount: 0,
+      promotionDiscountAmount: 0,
+      otherDiscountAmount: 0,
       deductedAmount: 0,
       finalAmount: 0,
     };
@@ -166,7 +172,37 @@ const mapOrderSummary = (value: unknown): CheckoutOrderSummary => {
     root.subtotal_amount ?? root.total_amount,
   );
   const finalAmount = toNumberOrZero(root.final_amount ?? root.total_amount);
-  const deductedAmount = Math.max(0, originalAmount - finalAmount);
+  const voucherDiscountAmount = toNumberOrZero(
+    root.voucher_discount_amount ??
+      root.voucher_discount ??
+      root.discount_voucher_amount,
+  );
+  const loyaltyDiscountAmount = toNumberOrZero(
+    root.loyalty_discount_amount ??
+      root.points_deduction_amount ??
+      root.loyalty_deduction_amount,
+  );
+  const promotionDiscountAmount = toNumberOrZero(
+    root.promotion_discount_amount ??
+      root.promo_discount_amount ??
+      root.promotion_discount,
+  );
+  const explicitDiscountAmount = toNumberOrZero(
+    root.deducted_amount ?? root.discount_amount ?? root.total_discount_amount,
+  );
+  const computedDiscountAmount = Math.max(0, originalAmount - finalAmount);
+  const deductedAmount = Math.max(
+    explicitDiscountAmount,
+    computedDiscountAmount,
+    voucherDiscountAmount + loyaltyDiscountAmount + promotionDiscountAmount,
+  );
+  const otherDiscountAmount = Math.max(
+    0,
+    deductedAmount -
+      voucherDiscountAmount -
+      loyaltyDiscountAmount -
+      promotionDiscountAmount,
+  );
 
   return {
     orderCode: toStringOrUndefined(root.code ?? root.order_code) || "",
@@ -175,6 +211,9 @@ const mapOrderSummary = (value: unknown): CheckoutOrderSummary => {
     address: toStringOrUndefined(root.address) || "Dang cap nhat",
     items,
     originalAmount,
+    voucherDiscountAmount,
+    promotionDiscountAmount,
+    otherDiscountAmount,
     deductedAmount,
     finalAmount,
   };
@@ -198,11 +237,23 @@ const CheckoutPage: React.FC = () => {
     address: customer?.address?.trim() || "Dang cap nhat",
     items: [],
     originalAmount: 0,
+    voucherDiscountAmount: 0,
+    promotionDiscountAmount: 0,
+    otherDiscountAmount: 0,
     deductedAmount: 0,
     finalAmount: 0,
   });
   const [paymentMethod, setPaymentMethod] =
     useState<CheckoutPaymentMethod>("CARD");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardHolderName, setCardHolderName] = useState("");
+  const [isQrVisible, setIsQrVisible] = useState(false);
+
+  // Placeholder links: replace these with real provider QR links/images later.
+  const MOMO_QR_URL =
+    "https://res.cloudinary.com/du261e4fa/image/upload/v1774785765/iqlbrtrwjxgtdjjapkkg.jpg";
+  const VNPAY_QR_URL =
+    "https://res.cloudinary.com/du261e4fa/image/upload/v1774785765/e1u7evnhzrdueqey8hoq.png";
 
   const checkoutState = useMemo(
     () => (location.state as CheckoutLocationState | null) || {},
@@ -228,6 +279,24 @@ const CheckoutPage: React.FC = () => {
     0,
     orderSummary.deductedAmount ||
       displayedOriginalAmount - displayedFinalAmount,
+  );
+  const displayedVoucherDiscount = Math.min(
+    displayedDeductedAmount,
+    orderSummary.voucherDiscountAmount,
+  );  
+  const displayedPromotionDiscount = Math.min(
+    Math.max(
+      0,
+      displayedDeductedAmount -
+        displayedVoucherDiscount,
+    ),
+    orderSummary.promotionDiscountAmount,
+  );
+  const displayedOtherDiscount = Math.max(
+    0,
+    displayedDeductedAmount -
+      displayedVoucherDiscount -
+      displayedPromotionDiscount,
   );
 
   useEffect(() => {
@@ -348,7 +417,7 @@ const CheckoutPage: React.FC = () => {
     })();
   }, [fallbackAmount, orderSummary.finalAmount, resolvedOrderId]);
 
-  const handleConfirmPayment = async () => {
+  const executeConfirmPayment = async () => {
     if (!paymentId) {
       toastError("Không tìm thấy mã thanh toán để xác nhận");
       return;
@@ -366,6 +435,31 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
+  const handleConfirmPayment = async () => {
+    if (paymentMethod === "CARD") {
+      if (!cardNumber.trim() || !cardHolderName.trim()) {
+        toastError("Vui lòng nhập số thẻ và tên chủ thẻ");
+        return;
+      }
+    }
+
+    if (paymentMethod === "MOMO" || paymentMethod === "VNPAY") {
+      setIsQrVisible(true);
+      return;
+    }
+
+    await executeConfirmPayment();
+  };
+
+  const qrPaymentUrl =
+    paymentMethod === "MOMO"
+      ? MOMO_QR_URL
+      : paymentMethod === "VNPAY"
+        ? VNPAY_QR_URL
+        : "";
+
+  const qrPaymentLabel = paymentMethod === "MOMO" ? "MoMo" : "VNPay";
+
   const paymentMethodOptions: Array<{
     id: CheckoutPaymentMethod;
     label: string;
@@ -373,15 +467,15 @@ const CheckoutPage: React.FC = () => {
     color: string;
   }> = [
     {
-      id: "CARD",
-      label: "Thẻ",
-      icon: "credit_card",
+      id: "COD",
+      label: "COD",
+      icon: "local_shipping",
       color: "text-blue-500",
     },
     {
-      id: "CASH",
-      label: "Tiền mặt",
-      icon: "payments",
+      id: "CARD",
+      label: "Thẻ",
+      icon: "credit_card",
       color: "text-emerald-600",
     },
     {
@@ -397,6 +491,23 @@ const CheckoutPage: React.FC = () => {
       color: "text-indigo-600",
     },
   ];
+
+  useEffect(() => {
+    if (paymentMethod !== "MOMO" && paymentMethod !== "VNPAY") {
+      setIsQrVisible(false);
+    }
+  }, [paymentMethod]);
+
+  useEffect(() => {
+    if (!isQrVisible) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isQrVisible]);
 
   return (
     <div className="pb-10 relative">
@@ -479,7 +590,10 @@ const CheckoutPage: React.FC = () => {
                     type="radio"
                     name="payment"
                     checked={paymentMethod === pm.id}
-                    onChange={() => setPaymentMethod(pm.id)}
+                    onChange={() => {
+                      setPaymentMethod(pm.id);
+                      setIsQrVisible(false);
+                    }}
                     className="appearance-none size-4 rounded-full border-2 border-slate-300 checked:border-primary cursor-pointer"
                   />
                   {paymentMethod === pm.id && (
@@ -500,6 +614,40 @@ const CheckoutPage: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {paymentMethod === "CARD" && (
+          <div className="bg-white border border-slate-200 rounded-md p-4">
+            <div className="flex items-center gap-2 text-primary text-base font-medium mb-4">
+              <span className="material-symbols-outlined text-xl">
+                credit_card
+              </span>
+              Thông tin thẻ
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm text-slate-600">Số thẻ</label>
+                <input
+                  type="text"
+                  value={cardNumber}
+                  onChange={(e) => setCardNumber(e.target.value)}
+                  placeholder="VD: 9704 0000 0000 0000"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-slate-600">Tên chủ thẻ</label>
+                <input
+                  type="text"
+                  value={cardHolderName}
+                  onChange={(e) => setCardHolderName(e.target.value)}
+                  placeholder="VD: NGUYEN VAN A"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+              </div>
+            </div>            
+          </div>
+        )}
 
         <div className="bg-white border border-slate-200 rounded-md overflow-hidden">
           <div className="p-5">
@@ -542,7 +690,7 @@ const CheckoutPage: React.FC = () => {
                             {item.name}
                           </p>
                           <p className="text-sm text-slate-500 mt-0.5">
-                            So luong: {item.quantity}
+                            Số lượng: {item.quantity}
                           </p>
                         </div>
                         <p className="font-semibold text-primary whitespace-nowrap">
@@ -610,10 +758,37 @@ const CheckoutPage: React.FC = () => {
 
               <div className="flex justify-between text-base text-charcoal">
                 <span>Số tiền đã giảm</span>
-                <span className="text-emerald-600 tracking-tight">
+                <span className="font-semibold text-emerald-600 tracking-tight">
                   -₫{displayedDeductedAmount.toLocaleString()}
                 </span>
               </div>
+
+              {displayedVoucherDiscount > 0 && (
+                <div className="flex justify-between text-sm text-slate-600">
+                  <span>Giảm voucher</span>
+                  <span className="text-emerald-600 tracking-tight">
+                    -₫{displayedVoucherDiscount.toLocaleString()}
+                  </span>
+                </div>
+              )}
+
+              {displayedPromotionDiscount > 0 && (
+                <div className="flex justify-between text-sm text-slate-600">
+                  <span>Giảm khuyến mãi</span>
+                  <span className="text-emerald-600 tracking-tight">
+                    -₫{displayedPromotionDiscount.toLocaleString()}
+                  </span>
+                </div>
+              )}
+
+              {displayedOtherDiscount > 0 && (
+                <div className="flex justify-between text-sm text-slate-600">
+                  <span>Giảm khác</span>
+                  <span className="text-emerald-600 tracking-tight">
+                    -₫{displayedOtherDiscount.toLocaleString()}
+                  </span>
+                </div>
+              )}
 
               <div className="flex justify-between items-center pt-4">
                 <span className="font-black text-charcoal uppercase text-base">
@@ -630,7 +805,9 @@ const CheckoutPage: React.FC = () => {
                 label={
                   isConfirmingPayment
                     ? "Đang xác nhận..."
-                    : "Xác nhận thanh toán"
+                    : paymentMethod === "MOMO" || paymentMethod === "VNPAY"
+                      ? "Xác nhận và hiển thị mã QR"
+                      : "Xác nhận thanh toán"
                 }
                 disabled={isConfirmingPayment || isLoadingPayment || !paymentId}
                 onClick={handleConfirmPayment}
@@ -643,6 +820,64 @@ const CheckoutPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {(paymentMethod === "MOMO" || paymentMethod === "VNPAY") &&
+        isQrVisible && (
+          <div className="fixed inset-0 z-[90] bg-black/40 backdrop-blur-[1px] flex items-center justify-center px-4">
+            <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h3 className="text-base font-semibold text-charcoal">
+                  Quét mã QR thanh toán {qrPaymentLabel}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsQrVisible(false)}
+                  className="cursor-pointer size-8 rounded-full hover:bg-slate-100 text-slate-500"
+                  aria-label="Đóng"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="px-5 pt-4 pb-5 space-y-4">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <img
+                    src={qrPaymentUrl}
+                    alt={`QR ${qrPaymentLabel}`}
+                    className="w-56 h-56 object-contain mx-auto"
+                  />
+                </div>
+
+                <div className="text-sm text-slate-600 space-y-1">
+                  <p>1. Mở ứng dụng {qrPaymentLabel} và quét mã QR.</p>
+                  <p>2. Hoàn tất chuyển khoản, sau đó bấm xác nhận.</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsQrVisible(false)}
+                    className="cursor-pointer flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Đóng
+                  </button>
+                  <button
+                    type="button"
+                    onClick={executeConfirmPayment}
+                    disabled={
+                      isConfirmingPayment || isLoadingPayment || !paymentId
+                    }
+                    className="cursor-pointer flex-1 rounded-lg bg-primary text-white px-4 py-2.5 text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isConfirmingPayment
+                      ? "Đang xác nhận..."
+                      : "Tôi đã thanh toán"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
       {(isLoadingPayment || isConfirmingPayment) && <ClientLoading />}
     </div>

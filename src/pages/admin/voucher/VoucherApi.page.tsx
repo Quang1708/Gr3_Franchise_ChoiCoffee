@@ -52,6 +52,13 @@ const VoucherApiPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [franchises, setFranchises] = useState<any[]>([]);
   const [posFranchise, setPosFranchise] = useState<any>(null);
+  const currentFranchise = useMemo(() => {
+    if (posFranchise) return posFranchise;
+    if (!selectedFranchiseId) return null;
+    const found = franchises.find((f) => String(f.value) === String(selectedFranchiseId));
+    if (found) return { id: String(found.value), name: found.name };
+    return { id: String(selectedFranchiseId), name: String(selectedFranchiseId) };
+  }, [franchises, posFranchise, selectedFranchiseId]);
   const [loading, setLoading] = useState(false);
   const [isFormLoading, setIsFormLoading] = useState(false);
 
@@ -248,7 +255,7 @@ const VoucherApiPage = () => {
         className: "min-w-[200px]",
         render: () =>  (
           <span>
-            {posFranchise?.name}
+            {currentFranchise?.name || posFranchise?.name || ""}
           </span>
         ),
       },
@@ -432,10 +439,27 @@ const VoucherApiPage = () => {
   }
 
   return (
-    <>  
-   
-        <CRUDPageTemplate<Voucher>
-        title="Danh sách voucher"
+    <>
+      {isAdmin && posFranchise ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-100 bg-white p-4">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Chi nhánh đã chọn</p>
+            <p className="mt-1 text-base font-semibold text-gray-800">
+              {posFranchise.name}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPosFranchise(null)}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            Chọn lại chi nhánh
+          </button>
+        </div>
+      ) : null}
+
+      <CRUDPageTemplate<Voucher>
+        title="Quản lý voucher"
         data={vouchers}
         columns={columns}
         isTableLoading={isTableLoading}
@@ -522,7 +546,7 @@ const VoucherApiPage = () => {
       <VoucherForm
         key={`${formMode}-${selectedVoucher?._id || "new"}-${isModalOpen ? "open" : "closed"}`}
         isOpen={isModalOpen}
-        franchise={posFranchise || selectedFranchiseId || undefined}
+        franchise={currentFranchise}
         franchiseId={selectedFranchiseId || ""}
         mode={formMode}
         initialData={selectedVoucher}

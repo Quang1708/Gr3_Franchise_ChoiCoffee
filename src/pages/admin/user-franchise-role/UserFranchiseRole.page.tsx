@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { CRUDPageTemplate, type Column } from "@/components/Admin/template/CRUDPage.template";
@@ -212,7 +213,6 @@ const UserFranchiseRolePage = () => {
     async (
       pageNum = 1,
       size = pageSize,
-      keyword = searchKeyword,
       isDeleted: boolean | "" = searchIsDeleted,
       roleId = searchRoleId,
       franchiseId = searchFranchiseId,
@@ -222,7 +222,6 @@ const UserFranchiseRolePage = () => {
 
         const res = (await searchUserFranchiseRolesUsecase({
           searchCondition: {
-            user_id: keyword,
             is_deleted: isDeleted,
             role_id: roleId || undefined,
             franchise_id: franchiseId || undefined,
@@ -249,12 +248,30 @@ const UserFranchiseRolePage = () => {
         setIsTableLoading(false);
       }
     },
-    [pageSize, searchFranchiseId, searchIsDeleted, searchKeyword, searchRoleId],
+    [pageSize, searchFranchiseId, searchIsDeleted, searchRoleId],
   );
 
   useEffect(() => {
     fetchData(1);
   }, [fetchData]);
+
+  const displayedRows = useMemo(() => {
+    const keyword = searchKeyword.trim().toLowerCase();
+
+    if (!keyword) return rows;
+
+    return rows.filter((item) => {
+      const userName = String(item.userName ?? "").toLowerCase();
+      const userEmail = String(item.userEmail ?? "").toLowerCase();
+      const userId = String(item.userId ?? "").toLowerCase();
+
+      return (
+        userName.includes(keyword) ||
+        userEmail.includes(keyword) ||
+        userId.includes(keyword)
+      );
+    });
+  }, [rows, searchKeyword]);
 
   useEffect(() => {
     const loadUserOptions = async () => {
@@ -462,16 +479,9 @@ const UserFranchiseRolePage = () => {
         if (type === "delete") {
           // After soft-delete, switch to deleted view so user can restore immediately.
           setSearchIsDeleted(true);
-          await fetchData(1, pageSize, searchKeyword, true, searchRoleId, searchFranchiseId);
+          await fetchData(1, pageSize, true, searchRoleId, searchFranchiseId);
         } else {
-          await fetchData(
-            page,
-            pageSize,
-            searchKeyword,
-            searchIsDeleted,
-            searchRoleId,
-            searchFranchiseId,
-          );
+          await fetchData(page, pageSize, searchIsDeleted, searchRoleId, searchFranchiseId);
         }
         setModalConfig((prev) => ({ ...prev, isOpen: false }));
       }
@@ -511,17 +521,15 @@ const UserFranchiseRolePage = () => {
 
       <CRUDPageTemplate<UserFranchiseRole>
         title="Phân quyền người dùng"
-        data={rows}
+        data={displayedRows}
         columns={columns}
         pageSize={pageSize}
         totalItems={totalItems}
         currentPage={page}
-        onPageChange={(p) =>
-          fetchData(p, pageSize, searchKeyword, searchIsDeleted, searchRoleId, searchFranchiseId)
-        }
+        onPageChange={(p) => fetchData(p, pageSize, searchIsDeleted, searchRoleId, searchFranchiseId)}
         onPageSizeChange={(size) => {
           setPageSize(size);
-          fetchData(1, size, searchKeyword, searchIsDeleted, searchRoleId, searchFranchiseId);
+          fetchData(1, size, searchIsDeleted, searchRoleId, searchFranchiseId);
         }}
         filters={[
           {
@@ -543,7 +551,20 @@ const UserFranchiseRolePage = () => {
             options: franchiseOptions,
           },
         ]}
-        searchContent={<></>}
+        searchContent={
+          <div className="relative w-full group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400 group-focus-within:text-primary transition-colors" />
+            </div>
+            <input
+              type="text"
+              placeholder="Tìm theo tên tài khoản hoặc email..."
+              className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all hover:border-gray-300"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+            />
+          </div>
+        }
         statusField="isActive"
         onAdd={() => handleOpenForm("create")}
         onView={(item) => handleOpenForm("view", item)}
@@ -555,9 +576,9 @@ const UserFranchiseRolePage = () => {
           setSearchIsDeleted(false);
           setSearchRoleId("");
           setSearchFranchiseId("");
-          fetchData(1, pageSize, "", false, "", "");
+          fetchData(1, pageSize, false, "", "");
         }}
-        onSearch={async (keyword, filters) => {
+        onSearch={async (_keyword, filters) => {
           const filterMap = filters as Record<string, string | undefined> | undefined;
           let isDeleted: boolean | "" = "";
           const roleId =
@@ -573,11 +594,10 @@ const UserFranchiseRolePage = () => {
             isDeleted = false;
           }
 
-          setSearchKeyword(keyword);
           setSearchIsDeleted(isDeleted);
           setSearchRoleId(roleId);
           setSearchFranchiseId(franchiseId);
-          await fetchData(1, pageSize, keyword, isDeleted, roleId, franchiseId);
+          await fetchData(1, pageSize, isDeleted, roleId, franchiseId);
         }}
         isTableLoading={isTableLoading}
       />
